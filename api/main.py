@@ -339,26 +339,6 @@ def get_scan_signals(scan_id: str):
             {"id": scan_id},
         ).mappings().all()
 
-    if rows is None:
-        raise HTTPException(status_code=404, detail="Scan no encontrado")
-
-    return {"scan_id": scan_id, "signals": rows}
-
-@app.get("/scan/{scan_id}/signals")
-def get_scan_signals(scan_id: str):
-    with engine.connect() as conn:
-        rows = conn.execute(
-            text(
-                """
-                select name, value, created_at
-                from public.scan_signals
-                where scan_id = :id
-                order by id asc
-                """
-            ),
-            {"id": scan_id},
-        ).mappings().all()
-
     return {"scan_id": scan_id, "signals": rows}
 
 @app.get("/scan/{scan_id}/report")
