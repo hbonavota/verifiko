@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import uuid
@@ -272,19 +273,19 @@ def create_url_scan(payload: UrlScanIn):
         )
         save_signals(conn, scan_id, signals)
         conn.execute(
-    text(
-        """
-        insert into public.scan_reports (scan_id, summary, recommendations, confidence_notes)
-        values (:scan_id, :summary, :recs::jsonb, :notes::jsonb)
-        """
-    ),
-    {
-        "scan_id": scan_id,
-        "summary": summary,
-        "recs": __import__("json").dumps(recs),
-        "notes": __import__("json").dumps(notes),
-    },
-)
+            text(
+                """
+                insert into public.scan_reports (scan_id, summary, recommendations, confidence_notes)
+                values (:scan_id, :summary, :recs, :notes)
+                """
+            ),
+            {
+                "scan_id": scan_id,
+                "summary": summary,
+                "recs": json.dumps(recs),
+                "notes": json.dumps(notes),
+            },
+        )
 
         # Señales "futuras" (IA) — dejamos placeholder para el pipeline
         # Ejemplo: conn.execute(... name='ai_content_risk', value='not_implemented')
