@@ -86,6 +86,18 @@ SUSPICIOUS_TLDS = {
     "zip", "mov", "top", "xyz", "icu", "click", "work", "support", "lol", "cam"
 }
 
+SIGNAL_META = {
+    "host_is_ip": {"weight": 35, "label": "URL con IP directa", "why": "Suele usarse para ocultar dominios y montar phishing rápido."},
+    "url_shortener": {"weight": 25, "label": "Enlace acortado", "why": "Puede ocultar el destino real del enlace."},
+    "suspicious_tld": {"weight": 15, "label": "TLD sospechoso", "why": "Algunos TLD son más usados para campañas de phishing."},
+    "many_hyphens": {"weight": 10, "label": "Muchos guiones", "why": "Patrón común en dominios falsos que imitan marcas."},
+    "long_hostname": {"weight": 8, "label": "Dominio muy largo", "why": "Los dominios largos suelen intentar parecer legítimos."},
+    "contains_at_in_netloc": {"weight": 30, "label": "Contiene @ en la URL", "why": "Truco clásico para confundir al usuario sobre el dominio real."},
+    "brand_in_subdomain": {"weight": 12, "label": "Marca en subdominio", "why": "Los atacantes meten marcas en subdominios para parecer oficiales."},
+    "brand_in_domain": {"weight": 18, "label": "Marca en dominio", "why": "Imitación directa de marcas (ej. paypal-login...)."},
+    "phishy_path_words": {"weight": 12, "label": "Ruta sospechosa", "why": "Palabras como verify/login/account aparecen mucho en phishing."},
+}
+
 BRAND_HINTS = {
     "paypal", "google", "apple", "microsoft", "amazon", "meta", "facebook", "instagram",
     "whatsapp", "dhl", "correos", "bbva", "santander", "caixabank"
@@ -339,7 +351,31 @@ def get_scan_signals(scan_id: str):
             {"id": scan_id},
         ).mappings().all()
 
-    return {"scan_id": scan_id, "signals": rows}
+    enriched = []
+    for r in rows:
+        name = r["name"]
+        value = r["value"]
+        meta = SIGNAL_META.get(name, {})
+        weight = meta.get("weight")
+
+        # Ajuste dinámico para señales con peso variable
+        if name == "phishy_path_words":
+            # value = "verify,account"
+            hits = [x for x in (value or "").split(",") if x]
+            weight = min(12, 3 * len(hits))
+
+        enriched.append(
+            {
+                "name": name,
+                "value": value,
+                "weight": weight,
+                "label": meta.get("label", name),
+                "why": meta.get("why", ""),
+                "created_at": r["created_at"],
+            }
+        )
+
+    return {"scan_id": scan_id, "signals": enriched}
 
 @app.get("/scan/{scan_id}/report")
 def get_scan_report(scan_id: str):
