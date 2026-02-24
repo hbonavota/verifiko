@@ -169,6 +169,50 @@ def compute_url_risk(normalized_url: str) -> Tuple[int, List[Tuple[str, str]]]:
     score = max(0, min(100, score))
     return score, signals
 
+def build_report(verdict: str, score: int, signals: list[tuple[str, str]], normalized_url: str) -> tuple[str, list[str], list[str]]:
+    """
+    Genera un reporte explicable (sin LLM).
+    - summary: 1-2 frases
+    - recommendations: lista accionable
+    - confidence_notes: caveats / limitaciones
+    """
+    signal_names = {n for (n, _) in signals}
+
+    # Summary
+    if verdict == "red":
+        summary = f"Riesgo alto ({score}/100): esta URL muestra varios patrones típicos de phishing/estafa."
+    elif verdict == "yellow":
+        summary = f"Riesgo medio ({score}/100): hay señales sospechosas, conviene extremar precauciones."
+    else:
+        summary = f"Riesgo bajo ({score}/100): no vemos señales fuertes de phishing, pero ninguna verificación es infalible."
+
+    # Recommendations
+    recs: list[str] = []
+
+    # Reglas orientadas a usuario final
+    if "url_shortener" in signal_names:
+        recs.append("No abras enlaces acortados sin expandirlos primero (pueden ocultar el destino real).")
+    if "host_is_ip" in signal_names:
+        recs.append("Evita URLs con IP directa: es un patrón frecuente en páginas de phishing.")
+    if "brand_in_subdomain" in signal_names or "brand_in_domain" in signal_names:
+        recs.append("Si parece una marca, entra por la web oficial escribiendo el dominio a mano (no desde enlaces).")
+    if "phishy_path_words" in signal_names:
+        recs.append("No introduzcas contraseñas/códigos si el enlace llegó por SMS/WhatsApp/correo inesperado.")
+    if verdict in ("yellow", "red"):
+        recs.append("Verifica por un canal alternativo: app oficial o teléfono del banco/servicio.")
+        recs.append("Si ya has hecho clic, no descargues archivos y revisa que el navegador no haya guardado credenciales.")
+    else:
+        recs.append("Comprueba que el dominio y el candado HTTPS coinciden con el sitio oficial antes de iniciar sesión.")
+
+    # Confidence notes (honestidad radical)
+    notes: list[str] = [
+        "Este resultado es un análisis heurístico: reduce riesgo, pero no garantiza que una URL sea segura o maliciosa.",
+        "Los atacantes cambian tácticas con frecuencia; algunas estafas pueden no activar señales.",
+    ]
+    if verdict == "green":
+        notes.append("Para máxima seguridad, confirma siempre la URL por la fuente oficial (marcador/app).")
+
+    return summary, recs, notes
 
 def save_signals(conn, scan_id: str, signals: List[Tuple[str, str]]) -> None:
     if not signals:
@@ -207,6 +251,7 @@ def create_url_scan(payload: UrlScanIn):
     # Análisis rápido síncrono (MVP)
     score, signals = compute_url_risk(normalized)
     verdict = verdict_from_score(score)
+    summary, recs, notes = build_report(verdict, score, signals, normalized)
 
     with engine.begin() as conn:
         conn.execute(
@@ -226,6 +271,20 @@ def create_url_scan(payload: UrlScanIn):
             },
         )
         save_signals(conn, scan_id, signals)
+        conn.execute(
+    text(
+        """
+        insert into public.scan_reports (scan_id, summary, recommendations, confidence_notes)
+        values (:scan_id, :summary, :recs::jsonb, :notes::jsonb)
+        """
+    ),
+    {
+        "scan_id": scan_id,
+        "summary": summary,
+        "recs": __import__("json").dumps(recs),
+        "notes": __import__("json").dumps(notes),
+    },
+)
 
         # Señales "futuras" (IA) — dejamos placeholder para el pipeline
         # Ejemplo: conn.execute(... name='ai_content_risk', value='not_implemented')
@@ -283,3 +342,45 @@ def get_scan_signals(scan_id: str):
         raise HTTPException(status_code=404, detail="Scan no encontrado")
 
     return {"scan_id": scan_id, "signals": rows}
+
+@app.get("/scan/{scan_id}/signals")
+def get_scan_signals(scan_id: str):
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                """
+                select name, value, created_at
+                from public.scan_signals
+                where scan_id = :id
+                order by id asc
+                """
+            ),
+            {"id": scan_id},
+        ).mappings().all()
+
+    return {"scan_id": scan_id, "signals": rows}
+
+@app.get("/scan/{scan_id}/report")
+def get_scan_report(scan_id: str):
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(
+                """
+                select scan_id, summary, recommendations, confidence_notes, created_at
+                from public.scan_reports
+                where scan_id = :id
+                """
+            ),
+            {"id": scan_id},
+        ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    return {
+        "scan_id": row["scan_id"],
+        "summary": row["summary"],
+        "recommendations": row["recommendations"],
+        "confidence_notes": row["confidence_notes"],
+        "created_at": row["created_at"],
+    }
