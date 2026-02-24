@@ -1,0 +1,16 @@
+services:
+  api:
+    build: ./api
+    container_name: verifiko_api
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7
+    container_name: verifiko_redis
+    restart: always
