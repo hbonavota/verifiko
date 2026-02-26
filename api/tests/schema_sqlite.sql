@@ -1,0 +1,3 @@
+-- Schema para tests SQLite
+-- Las tablas se crean automáticamente vía Base.metadata.create_all()
+-- Si necesitas datos iniciales, agrégalos aquí

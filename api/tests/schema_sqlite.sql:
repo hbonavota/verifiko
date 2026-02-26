@@ -1,0 +1,29 @@
+create table scans (
+  id text primary key,
+  scan_type text not null,
+  input text not null,
+  normalized_input text not null,
+  status text not null,
+  score integer,
+  verdict text,
+  created_at text not null
+);
+
+create table scan_signals (
+  id integer primary key autoincrement,
+  scan_id text not null,
+  name text not null,
+  value text not null,
+  created_at text default (datetime('now')),
+  foreign key (scan_id) references scans(id)
+);
+
+create table scan_reports (
+  id integer primary key autoincrement,
+  scan_id text not null,
+  summary text not null,
+  recommendations text not null,
+  confidence_notes text not null,
+  created_at text default (datetime('now')),
+  foreign key (scan_id) references scans(id)
+);
