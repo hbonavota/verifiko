@@ -1,6 +1,6 @@
-# Verifiko Backend
+# Verifiko API
 
-Verifiko is a signal-based verification engine backend focused on explainable risk assessment for suspicious digital content.
+Verifiko is a signal-based verification API focused on explainable risk assessment for suspicious digital content.
 
 The current codebase includes a usable domain scoring flow, application use cases, and a minimal FastAPI layer backed by an in-memory repository. PostgreSQL and SQLAlchemy scaffolding are present, but persistent storage is not wired yet.
 

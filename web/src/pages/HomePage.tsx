@@ -101,7 +101,7 @@ export function HomePage() {
       <section className="landing-hero">
         <div className="landing-hero__content">
           <SectionTitle
-            eyebrow="Signal-based verification backend"
+            eyebrow="Signal-based verification API"
             title="Explainable risk assessment for suspicious digital content"
             description="Verifiko is designed for verification workflows where analysts need more than a score. It emphasizes explainable signals, evidence traceability, and operational clarity so suspicious content can be reviewed with context instead of guesswork."
           />
@@ -113,7 +113,7 @@ export function HomePage() {
                 Built for reviewability, scoring transparency, and evidence-first decision support.
               </h2>
               <p className="hero-panel__copy">
-                The frontend frames the existing backend as a serious internal tool or early SaaS
+                The web workspace frames the existing API as a serious internal tool or early SaaS
                 product surface, with enough structure to communicate how verification results can
                 be interpreted, challenged, and acted on.
               </p>
@@ -209,7 +209,7 @@ export function HomePage() {
         <Card
           eyebrow="How verification works"
           title="A clear path from input to explainable result"
-          description="The backend already carries the core verification and scoring logic. The frontend surface is meant to present that logic in a review-friendly form."
+          description="The API already carries the core verification and scoring logic. The web workspace is meant to present that logic in a review-friendly form."
         >
           <div className="support-list">
             {verificationSteps.map((step, index) => (

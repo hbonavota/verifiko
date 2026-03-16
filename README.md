@@ -6,14 +6,14 @@ Verifiko is a portfolio-grade verification workspace for suspicious digital cont
 
 Verifiko is positioned as a serious analyst-facing product surface rather than a marketing demo. The project shows how suspicious URLs or content can be reviewed through a clear workflow: assess the target, inspect the contributing signals, understand the reasoning behind the score, review supporting evidence, and decide the next action.
 
-Current frontend routes:
+Current web routes:
 
 - `/` product overview
 - `/dashboard` verification operations workspace
 - `/verifications/:id` verification detail and explainability view
-- `/api-health` live backend health check
+- `/api-health` live API health check
 
-Current backend API:
+Current API surface:
 
 - `GET /health`
 - `POST /api/verifications`
@@ -38,26 +38,26 @@ Verification detail view:
 
 Live demo: https://verifiko-demo.example.com
 
-Replace the placeholder URL with the deployed frontend entry point when the project is published.
+Replace the placeholder URL with the deployed web entry point when the project is published.
 
 ## Feature Highlights
 
 - Explainable verification results with readable signal breakdowns
 - Analyst-oriented dashboard for triage, evidence review, and next-step framing
 - Verification detail surface focused on score rationale, supporting evidence, unresolved items, and recommended action
-- Live backend health check from the frontend
+- Live API health check from the web workspace
 - Typed demo data used to shape the UI before broader API coupling
 
 ## Tech Stack
 
-Frontend:
+Web:
 
 - React 18
 - TypeScript
 - Vite
 - React Router
 
-Backend:
+API:
 
 - Python 3.11+
 - FastAPI
@@ -66,48 +66,49 @@ Backend:
 
 ## Architecture Overview
 
-The frontend is a React + TypeScript + Vite application built around reusable layout primitives and a small design system. The backend is a FastAPI service with clear domain and application layers. The strongest backend logic lives in the verification and scoring flow, while the current UI layer uses typed mock data for dashboard and detail views so the product surface can be shaped cleanly before full live integration.
+The web workspace is a React + TypeScript + Vite application built around reusable layout primitives and a small design system. The API is a FastAPI service with clear domain and application layers. The strongest API logic lives in the verification and scoring flow, while the current UI layer uses typed mock data for dashboard and detail views so the product surface can be shaped cleanly before full live integration.
 
 ## Repository Structure
 
 ```text
 verifiko/
-  frontend/   React + TypeScript + Vite application
-  backend/    FastAPI service with domain/application core
+  api/        FastAPI verification service
+  web/        React + TypeScript + Vite investigation workspace
+  screenshots/
 ```
 
 ## Running Locally
 
-Backend:
+API:
 
 ```bash
-cd backend
+cd api
 cp .env.example .env
 pip install -e .
 uvicorn app.entrypoints.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Frontend:
+Web:
 
 ```bash
-cd frontend
+cd web
 cp .env.example .env
 npm install
 npm run dev
 ```
 
-Frontend expects the backend at `http://localhost:8000` by default.
+Web expects the API at `http://localhost:8000` by default.
 
 Production build check:
 
 ```bash
-cd frontend
+cd web
 npm run build
 ```
 
 ## Notes For Reviewers
 
-- The frontend is intentionally driven by typed mock data for the dashboard and verification detail routes.
-- The backend already exposes a minimal usable API and contains the main domain/application scoring logic.
-- Persistent storage and broader backend integrations are intentionally not completed yet.
+- The web workspace is intentionally driven by typed mock data for the dashboard and verification detail routes.
+- The API already exposes a minimal usable service and contains the main domain/application scoring logic.
+- Persistent storage and broader API integrations are intentionally not completed yet.
 - The project is intentionally restrained in tone and avoids generic cybersecurity visual cliches.

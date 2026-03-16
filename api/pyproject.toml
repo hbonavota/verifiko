@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "verifiko-backend"
+name = "verifiko-api"
 version = "0.1.0"
-description = "Verifiko verification engine backend"
+description = "Verifiko verification API"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
