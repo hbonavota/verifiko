@@ -1,0 +1,9 @@
+from enum import Enum
+
+
+class VerdictType(str, Enum):
+    TRUSTED = "TRUSTED"
+    CAUTION = "CAUTION"
+    SUSPICIOUS = "SUSPICIOUS"
+    LIKELY_MALICIOUS = "LIKELY_MALICIOUS"
+    CONFIRMED_MALICIOUS = "CONFIRMED_MALICIOUS"

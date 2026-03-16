@@ -1,0 +1,28 @@
+services:
+  api:
+    build: .
+    container_name: verifiko-api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - ./:/app
+    command: uvicorn app.entrypoints.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgres:16-alpine
+    container_name: verifiko-db
+    environment:
+      POSTGRES_DB: verifiko
+      POSTGRES_USER: verifiko
+      POSTGRES_PASSWORD: verifiko
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -1,0 +1,54 @@
+from app.domain.enums.signal_category import SignalCategory
+from app.domain.enums.signal_severity import SignalSeverity
+from app.domain.enums.signal_type import SignalType
+
+SEVERITY_MULTIPLIERS: dict[SignalSeverity, float] = {
+    SignalSeverity.LOW: 0.5,
+    SignalSeverity.MEDIUM: 1.0,
+    SignalSeverity.HIGH: 1.5,
+    SignalSeverity.CRITICAL: 2.0,
+}
+
+BASE_SIGNAL_WEIGHTS: dict[SignalType, float] = {
+    SignalType.BLACKLIST_MATCH: 30,
+    SignalType.SSL_HOSTNAME_MISMATCH: 20,
+    SignalType.TACTICAL_EMAIL_STAGING: 16,
+    SignalType.BRAND_IMPERSONATION: 18,
+    SignalType.RECENT_DOMAIN_REGISTRATION: 14,
+    SignalType.IP_ADDRESS_URL: 18,
+    SignalType.UNICODE_HOMOGRAPH: 18,
+    SignalType.ZERO_WIDTH_CHAR_INJECTION: 18,
+    SignalType.HIGH_DOMAIN_ENTROPY: 14,
+    SignalType.TLD_TYPOSQUATTING: 12,
+    SignalType.MISLEADING_SUBDOMAIN: 14,
+    SignalType.SUSPICIOUS_REDIRECT_CHAIN: 10,
+    SignalType.SHORTENED_URL: 8,
+    SignalType.PHISHING_KEYWORDS: 7,
+    SignalType.NON_STANDARD_PORT_USAGE: 7,
+}
+
+CATEGORY_CAPS: dict[SignalCategory, float] = {
+    SignalCategory.DOMAIN_REPUTATION: 35,
+    SignalCategory.DOMAIN_STRUCTURE: 40,
+    SignalCategory.NETWORK_TRANSPORT: 30,
+    SignalCategory.NAVIGATION_BEHAVIOR: 20,
+    SignalCategory.CONTENT_BEHAVIOR: 15,
+}
+
+SIGNAL_CATEGORY_MAP: dict[SignalType, SignalCategory] = {
+    SignalType.RECENT_DOMAIN_REGISTRATION: SignalCategory.DOMAIN_REPUTATION,
+    SignalType.BLACKLIST_MATCH: SignalCategory.DOMAIN_REPUTATION,
+    SignalType.SSL_HOSTNAME_MISMATCH: SignalCategory.NETWORK_TRANSPORT,
+    SignalType.NON_STANDARD_PORT_USAGE: SignalCategory.NETWORK_TRANSPORT,
+    SignalType.TACTICAL_EMAIL_STAGING: SignalCategory.CONTENT_BEHAVIOR,
+    SignalType.BRAND_IMPERSONATION: SignalCategory.CONTENT_BEHAVIOR,
+    SignalType.MISLEADING_SUBDOMAIN: SignalCategory.DOMAIN_STRUCTURE,
+    SignalType.IP_ADDRESS_URL: SignalCategory.DOMAIN_STRUCTURE,
+    SignalType.UNICODE_HOMOGRAPH: SignalCategory.DOMAIN_STRUCTURE,
+    SignalType.ZERO_WIDTH_CHAR_INJECTION: SignalCategory.DOMAIN_STRUCTURE,
+    SignalType.HIGH_DOMAIN_ENTROPY: SignalCategory.DOMAIN_STRUCTURE,
+    SignalType.TLD_TYPOSQUATTING: SignalCategory.DOMAIN_STRUCTURE,
+    SignalType.SHORTENED_URL: SignalCategory.NAVIGATION_BEHAVIOR,
+    SignalType.SUSPICIOUS_REDIRECT_CHAIN: SignalCategory.NAVIGATION_BEHAVIOR,
+    SignalType.PHISHING_KEYWORDS: SignalCategory.CONTENT_BEHAVIOR,
+}

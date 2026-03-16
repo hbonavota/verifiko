@@ -1,0 +1,1 @@
+"""External analyzer placeholder module."""

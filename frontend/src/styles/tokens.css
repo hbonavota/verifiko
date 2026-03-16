@@ -1,0 +1,48 @@
+:root {
+  --font-heading: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-ui: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+
+  --color-background: #f5f0e6;
+  --color-background-emphasis: #eee8de;
+  --color-surface: rgba(255, 255, 255, 0.74);
+  --color-surface-strong: rgba(255, 255, 255, 0.92);
+  --color-border: rgba(27, 50, 44, 0.12);
+  --color-text: #183029;
+  --color-text-muted: #52655f;
+  --color-primary: #214d42;
+  --color-primary-soft: rgba(33, 77, 66, 0.12);
+  --color-warning: #b87a2d;
+  --color-warning-soft: rgba(184, 122, 45, 0.12);
+  --color-danger: #9c534d;
+  --color-danger-soft: rgba(156, 83, 77, 0.12);
+  --color-success: #397161;
+  --color-success-soft: rgba(57, 113, 97, 0.12);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --radius-sm: 16px;
+  --radius-md: 22px;
+  --radius-lg: 32px;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 18px 40px rgba(48, 55, 51, 0.08);
+  --shadow-strong: 0 20px 60px rgba(48, 55, 51, 0.12);
+
+  --content-width: 1180px;
+
+  font-family: var(--font-ui);
+  color: var(--color-text);
+  background:
+    radial-gradient(circle at top left, rgba(112, 145, 134, 0.12), transparent 32%),
+    linear-gradient(180deg, #f8f4ea 0%, #f2ede3 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

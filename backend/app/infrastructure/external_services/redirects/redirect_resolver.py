@@ -1,0 +1,1 @@
+"""Redirect resolver placeholder module."""

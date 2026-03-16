@@ -1,0 +1,1 @@
+"""Persistence mapper placeholder module."""

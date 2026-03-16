@@ -1,0 +1,38 @@
+# Environment
+.env
+.env.*
+
+# Python virtual env
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Lint / formatting
+.ruff_cache/
+.mypy_cache/
+
+# Local DB
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Docker
+docker-compose.override.yml
