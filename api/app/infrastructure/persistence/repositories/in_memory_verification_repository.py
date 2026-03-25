@@ -29,7 +29,7 @@ class InMemoryVerificationRepository(VerificationRepository):
         offset: int = 0,
         status: VerificationStatus | None = None,
     ) -> list[Verification]:
-        items = self._items
+        items = sorted(self._items, key=lambda item: item.created_at, reverse=True)
         if status is not None:
             items = [item for item in items if item.status is status]
         return items[offset : offset + limit]

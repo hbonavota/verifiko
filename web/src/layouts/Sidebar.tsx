@@ -1,6 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
 
-import { dashboardMetrics } from "../data/mockDashboard";
 import brandMark from "../assets/verifiko-mark.svg";
 import { primaryNavigation } from "../data/navigation";
 
@@ -50,12 +49,9 @@ export function Sidebar() {
       <div className="sidebar-panel">
         <p className="sidebar-panel__label">Workspace context</p>
         <div className="sidebar-panel__stack">
-          <p className="sidebar-panel__text">Environment: {dashboardMetrics.environmentLabel}</p>
-          <p className="sidebar-panel__text">Mode: Demo data with investigation-style workflows</p>
-          <p className="sidebar-panel__text">
-            Last sync: {new Date(dashboardMetrics.lastVerificationAt).toLocaleString()}
-          </p>
-          <p className="sidebar-panel__text">Backend status: {dashboardMetrics.apiStatus}</p>
+          <p className="sidebar-panel__text">Mode: API-backed verification workspace</p>
+          <p className="sidebar-panel__text">Scope: Current in-memory backend runtime</p>
+          <p className="sidebar-panel__text">Use the API health route to confirm backend reachability.</p>
         </div>
       </div>
     </aside>

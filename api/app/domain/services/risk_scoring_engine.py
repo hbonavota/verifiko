@@ -7,6 +7,7 @@ from app.domain.services.compound_rules import (
     BrandNewLookalikeDomainRule,
     CompoundRule,
     CredentialLurePatternRule,
+    DeceptiveBrandSubdomainRule,
     EmailFraudStagingPatternRule,
     RedirectedDeceptionPatternRule,
     detected_types,
@@ -21,6 +22,7 @@ class RiskScoringEngine(ScoringService):
         self._compound_rules = compound_rules or [
             BrandNewLookalikeDomainRule(),
             CredentialLurePatternRule(),
+            DeceptiveBrandSubdomainRule(),
             EmailFraudStagingPatternRule(),
             RedirectedDeceptionPatternRule(),
         ]
@@ -64,10 +66,12 @@ class RiskScoringEngine(ScoringService):
         verdict = _verdict_for_level(risk_level)
 
         summary = (
-            f"Detected {len(active_signals)} signal(s); "
-            f"category penalties={category_total_penalty:.2f}; "
-            f"compound penalties={compound_penalty:.2f}."
+            f"Detected {len(active_signals)} signal(s) with {risk_level.value.lower()} risk output. "
+            f"Category penalties totaled {category_total_penalty:.2f} and compound penalties totaled {compound_penalty:.2f}."
         )
+        top_signal_titles = _top_signal_titles_from_penalties(signal_penalties, max_items=3)
+        if top_signal_titles:
+            summary = f"{summary} Main drivers: {', '.join(top_signal_titles)}."
         if triggered_rules:
             summary = f"{summary} Rules: {', '.join(triggered_rules)}."
 

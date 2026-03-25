@@ -3,6 +3,11 @@ from enum import Enum
 
 class SignalType(str, Enum):
     RECENT_DOMAIN_REGISTRATION = "recent_domain_registration"
+    INSECURE_TRANSPORT = "insecure_transport"
+    TLS_VALIDATION_FAILURE = "tls_validation_failure"
+    DECEPTIVE_BRAND_SUBDOMAIN = "deceptive_brand_subdomain"
+    CREDENTIAL_HARVEST_FORM = "credential_harvest_form"
+    SUSPICIOUS_LOGIN_INTERFACE = "suspicious_login_interface"
     BLACKLIST_MATCH = "blacklist_match"
     SSL_HOSTNAME_MISMATCH = "ssl_hostname_mismatch"
     NON_STANDARD_PORT_USAGE = "non_standard_port_usage"

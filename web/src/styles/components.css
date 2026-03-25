@@ -605,6 +605,8 @@
 }
 
 .verification-detail-overview,
+.verification-detail-header,
+.verification-detail-primary,
 .verification-detail-grid,
 .verification-detail-analysis-grid,
 .verification-detail-meta-grid,
@@ -627,6 +629,16 @@
   align-items: start;
 }
 
+.verification-detail-header {
+  gap: var(--space-3);
+}
+
+.verification-detail-header__copy {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 42rem;
+}
+
 .verification-detail-overview__lead {
   display: grid;
   gap: var(--space-4);
@@ -642,7 +654,35 @@
 }
 
 .verification-detail__title {
-  font-size: clamp(2.35rem, 4vw, 4rem);
+  font-size: clamp(1.85rem, 3vw, 2.6rem);
+}
+
+.verification-detail-target {
+  display: grid;
+  gap: var(--space-1);
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.58);
+  max-width: 42rem;
+}
+
+.verification-detail-target__label {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.verification-detail-target__value {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .verification-detail__summary-copy,
@@ -662,6 +702,10 @@
   gap: var(--space-3);
 }
 
+.verification-detail-meta-grid--compact {
+  gap: var(--space-2);
+}
+
 .verification-detail-meta-item {
   display: grid;
   gap: var(--space-1);
@@ -669,6 +713,14 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface-strong);
+}
+
+.verification-detail-meta-card {
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.verification-detail-meta-grid--compact .verification-detail-meta-item {
+  padding: 0.85rem 0.95rem;
 }
 
 .verification-detail-meta-item__label,
@@ -700,12 +752,11 @@
 
 .verification-assessment-card {
   gap: var(--space-3);
-  padding: 1.25rem 1.35rem;
+  padding: 1.45rem 1.55rem;
   box-shadow: var(--shadow-strong);
 }
 
 .verification-assessment-card__topline,
-.verification-assessment-card__headline,
 .signal-review-card__header,
 .signal-review-card__meta {
   display: flex;
@@ -715,9 +766,15 @@
   flex-wrap: wrap;
 }
 
-.verification-assessment-card__headline {
+.verification-assessment-card__hero {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
   padding-top: var(--space-2);
   border-top: 1px solid var(--color-border);
+  align-items: center;
+  justify-items: center;
+  column-gap: var(--space-6);
+  row-gap: var(--space-4);
 }
 
 .verification-assessment-card__score {
@@ -729,8 +786,22 @@
 
 .verification-assessment-card__verdict-block {
   display: grid;
-  gap: var(--space-1);
-  max-width: 18rem;
+  gap: var(--space-2);
+  max-width: 25rem;
+  width: 100%;
+}
+
+.verification-assessment-card__posture {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.verification-assessment-card__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-top: var(--space-2);
 }
 
 .verification-assessment-card__verdict {
@@ -739,10 +810,97 @@
   line-height: 1.55;
 }
 
+.verification-assessment-card__explanation,
+.summary-reason-card__copy,
+.technical-analysis-section__copy {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
 .verification-assessment-card__pills {
   display: flex;
   gap: var(--space-3);
   flex-wrap: wrap;
+  opacity: 0.86;
+}
+
+.verification-assessment-card__pills .stat-pill {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(27, 50, 44, 0.08);
+}
+
+.score-ring {
+  position: relative;
+  width: 15rem;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.score-ring__svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.score-ring__track,
+.score-ring__progress {
+  fill: none;
+  stroke-width: 7;
+}
+
+.score-ring__track {
+  stroke: rgba(24, 48, 41, 0.1);
+}
+
+.score-ring__progress {
+  stroke-linecap: round;
+}
+
+.score-ring--success .score-ring__progress {
+  stroke: var(--color-success);
+}
+
+.score-ring--warning .score-ring__progress {
+  stroke: var(--color-warning);
+}
+
+.score-ring--danger .score-ring__progress {
+  stroke: var(--color-danger);
+}
+
+.score-ring__content {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.score-ring__label,
+.summary-reason-card__index {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.score-ring__label {
+  color: var(--color-text-muted);
+  max-width: 5rem;
+  margin-inline: auto;
+}
+
+.score-ring__value {
+  margin: 0;
+  font-size: 3.65rem;
+  line-height: 0.95;
+  font-family: var(--font-heading);
+  color: var(--color-text);
 }
 
 .verification-detail-grid {
@@ -763,6 +921,62 @@
   font-size: 1.2rem;
   font-weight: 700;
   line-height: 1.45;
+}
+
+.summary-reason-list,
+.summary-reason-card,
+.technical-analysis-section,
+.technical-analysis-section__header {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.summary-reason-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.summary-reason-card {
+  padding: 1rem 1.05rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-strong);
+}
+
+.summary-reason-card__topline {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.summary-reason-card__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.65rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.summary-reason-card__title,
+.technical-analysis-section__title {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.summary-reason-card__title {
+  font-weight: 700;
+}
+
+.technical-analysis-section {
+  gap: var(--space-4);
+}
+
+.technical-analysis-section__header {
+  padding: 0.25rem 0;
 }
 
 .signal-review-list {
@@ -1055,6 +1269,7 @@
   }
 
   .verification-detail-meta-grid,
+  .summary-reason-list,
   .signal-review-card__reasoning {
     grid-template-columns: 1fr;
   }
@@ -1117,11 +1332,20 @@
   .dashboard-card-headline,
   .activity-feed__row,
   .decision-trace__header,
-  .verification-assessment-card__headline,
   .signal-review-card__header,
   .signal-review-card__meta,
   .verification-assessment-card__topline {
     flex-direction: column;
+  }
+
+  .verification-assessment-card__hero {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .score-ring {
+    width: 12.25rem;
+    margin-inline: auto;
   }
 
   .preview-card__score-block {

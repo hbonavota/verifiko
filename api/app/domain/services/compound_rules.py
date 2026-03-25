@@ -39,6 +39,24 @@ class CredentialLurePatternRule(CompoundRule):
         return None
 
 
+class DeceptiveBrandSubdomainRule(CompoundRule):
+    name = "deceptive_brand_subdomain_pattern"
+
+    def evaluate(self, signal_types: set[SignalType]) -> float | None:
+        if SignalType.DECEPTIVE_BRAND_SUBDOMAIN not in signal_types:
+            return None
+        if signal_types.intersection(
+            {
+                SignalType.PHISHING_KEYWORDS,
+                SignalType.INSECURE_TRANSPORT,
+                SignalType.CREDENTIAL_HARVEST_FORM,
+                SignalType.SUSPICIOUS_LOGIN_INTERFACE,
+            }
+        ):
+            return 10
+        return None
+
+
 class EmailFraudStagingPatternRule(CompoundRule):
     name = "email_fraud_staging_pattern"
 

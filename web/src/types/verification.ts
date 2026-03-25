@@ -65,15 +65,6 @@ export interface VerificationSummary {
   decisionTrace: DecisionTraceStep[];
 }
 
-export interface ActivityItem {
-  id: string;
-  title: string;
-  detail: string;
-  timestamp: string;
-  actor: string;
-  type: "verification_started" | "signal_detected" | "case_created" | "analyst_comment";
-}
-
 export interface DecisionTraceStep {
   id: string;
   label: string;
@@ -82,20 +73,56 @@ export interface DecisionTraceStep {
   timestamp?: string;
 }
 
-export interface DashboardMetrics {
-  pendingReviews: number;
-  activeCases: number;
-  highRiskQueue: number;
-  flaggedSignals: number;
-  lastVerificationAt: string;
-  apiStatus: "Operational" | "Degraded" | "Unavailable";
-  environmentLabel: string;
-  confidencePosture: string;
-  unresolvedEvidenceCount: number;
-}
-
 export interface HealthCheckResult {
   status: "ok" | "error";
   checkedAt: string;
   detail: string;
+}
+
+export interface ApiAnalysisSignal {
+  id: string;
+  signal_type: string;
+  category: string;
+  severity: SignalSeverity;
+  confidence: number;
+  detected: boolean;
+  title: string;
+  description: string;
+  evidence: string[];
+  source: string;
+  base_weight: number;
+  score_contribution: number;
+  tags: string[];
+  created_at: string;
+}
+
+export interface ApiRiskAssessment {
+  score: number;
+  risk_level: RiskLevel;
+  verdict: string;
+  summary: string;
+  top_signals: string[];
+  category_breakdown: Record<string, number>;
+  terminal_override: boolean;
+  terminal_reason: string | null;
+  calculation_version: string;
+  calculated_at: string;
+}
+
+export interface ApiVerification {
+  id: string;
+  target_type: string;
+  original_input: string;
+  normalized_input: string;
+  status: VerificationStatus;
+  signals: ApiAnalysisSignal[];
+  risk_assessment: ApiRiskAssessment | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  calculation_version: string;
+}
+
+export interface CreateVerificationInput {
+  url: string;
 }

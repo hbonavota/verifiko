@@ -1,5 +1,6 @@
 from app.application.dto.verification_dto import AnalysisSignalDTO, RiskAssessmentDTO, VerificationDTO
 from app.domain.entities.verification import Verification
+from app.domain.services.scoring_policies import SEVERITY_MULTIPLIERS
 
 
 class VerificationMapper:
@@ -33,6 +34,10 @@ class VerificationMapper:
                 evidence=signal.evidence,
                 source=signal.source,
                 base_weight=signal.base_weight,
+                score_contribution=round(
+                    signal.base_weight * SEVERITY_MULTIPLIERS[signal.severity] * signal.confidence.as_ratio,
+                    2,
+                ),
                 tags=signal.tags,
                 created_at=signal.created_at.isoformat(),
             )

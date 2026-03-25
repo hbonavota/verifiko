@@ -1,1 +1,75 @@
-"""Persistence model placeholder module."""
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.infrastructure.persistence.database import Base
+
+
+class VerificationModel(Base):
+    __tablename__ = "verifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    original_input: Mapped[str] = mapped_column(Text, nullable=False)
+    normalized_input: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    calculation_version: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    signals: Mapped[list["SignalModel"]] = relationship(
+        back_populates="verification",
+        cascade="all, delete-orphan",
+        order_by="SignalModel.created_at",
+    )
+    risk_assessment: Mapped["RiskAssessmentModel | None"] = relationship(
+        back_populates="verification",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class SignalModel(Base):
+    __tablename__ = "signals"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    verification_id: Mapped[str] = mapped_column(
+        ForeignKey("verifications.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    signal_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(32), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    detected: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    source: Mapped[str] = mapped_column(String(255), nullable=False)
+    base_weight: Mapped[float] = mapped_column(Float, nullable=False)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    verification: Mapped[VerificationModel] = relationship(back_populates="signals")
+
+
+class RiskAssessmentModel(Base):
+    __tablename__ = "risk_assessments"
+
+    verification_id: Mapped[str] = mapped_column(
+        ForeignKey("verifications.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    risk_level: Mapped[str] = mapped_column(String(32), nullable=False)
+    verdict: Mapped[str] = mapped_column(String(32), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    top_signals: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    category_breakdown: Mapped[dict[str, float]] = mapped_column(JSON, nullable=False, default=dict)
+    terminal_override: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    terminal_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    calculation_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    calculated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    verification: Mapped[VerificationModel] = relationship(back_populates="risk_assessment")

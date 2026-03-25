@@ -10,6 +10,8 @@ env/
 # Python cache
 __pycache__/
 *.pyc
+build/
+*.egg-info/
 
 # Testing
 .pytest_cache/

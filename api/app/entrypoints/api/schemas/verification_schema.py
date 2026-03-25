@@ -36,6 +36,7 @@ class AnalysisSignalResponse(BaseModel):
     evidence: tuple[str, ...]
     source: str
     base_weight: float
+    score_contribution: float
     tags: tuple[str, ...]
     created_at: str
 

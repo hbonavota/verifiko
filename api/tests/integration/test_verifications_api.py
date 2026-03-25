@@ -1,23 +1,48 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
+import pytest
 
 from app.entrypoints.api.dependencies.container import get_verification_repository
 from app.entrypoints.api.main import app
+from app.infrastructure.config.settings import get_settings
+from app.infrastructure.persistence.database import drop_db, get_engine, get_session_factory
+from tests.integration.alembic_helpers import upgrade_to_head
 
 
-def test_verification_api_create_list_and_get() -> None:
-    repository = get_verification_repository()
-    repository.clear()
+@pytest.fixture()
+def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    database_path = tmp_path / "verifiko-api.sqlite3"
+    database_url = f"sqlite+pysqlite:///{database_path}"
 
-    client = TestClient(app)
+    monkeypatch.setenv("DATABASE_URL", database_url)
 
+    get_settings.cache_clear()
+    get_engine.cache_clear()
+    get_session_factory.cache_clear()
+    get_verification_repository.cache_clear()
+
+    upgrade_to_head(database_url)
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    drop_db()
+    get_verification_repository.cache_clear()
+    get_session_factory.cache_clear()
+    get_engine.cache_clear()
+    get_settings.cache_clear()
+
+
+def test_verification_api_create_list_and_get(client: TestClient) -> None:
     create_response = client.post(
         "/api/verifications",
         json={
             "url": "verifiko.es/login",
             "signals": [
                 {
-                    "signal_type": "BRAND_IMPERSONATION",
-                    "category": "CONTENT_BEHAVIOR",
+                    "signal_type": "brand_impersonation",
+                    "category": "content_behavior",
                     "severity": "HIGH",
                     "confidence": 92,
                     "title": "Brand impersonation",
@@ -56,12 +81,21 @@ def test_verification_api_create_list_and_get() -> None:
     assert fetched_body["normalized_input"] == "https://verifiko.es/login"
 
 
-def test_verification_api_returns_404_for_missing_verification() -> None:
-    repository = get_verification_repository()
-    repository.clear()
+def test_verification_api_can_generate_signals_from_url_only(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/verifications",
+        json={
+            "url": "http://paypal-login-security-check.example.xyz/verify?redirect=https://example.org",
+        },
+    )
 
-    client = TestClient(app)
+    assert create_response.status_code == 201
+    created_body = create_response.json()
+    assert created_body["signals"]
+    assert created_body["risk_assessment"] is not None
 
+
+def test_verification_api_returns_404_for_missing_verification(client: TestClient) -> None:
     response = client.get("/api/verifications/550e8400-e29b-41d4-a716-446655440099")
 
     assert response.status_code == 404

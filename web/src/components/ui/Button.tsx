@@ -14,6 +14,7 @@ interface ButtonAsButtonProps extends SharedButtonProps {
   href?: undefined;
   type?: ButtonHTMLAttributes<HTMLButtonElement>["type"];
   onClick?: ButtonHTMLAttributes<HTMLButtonElement>["onClick"];
+  disabled?: ButtonHTMLAttributes<HTMLButtonElement>["disabled"];
 }
 
 interface ButtonAsLinkProps extends SharedButtonProps {
@@ -67,6 +68,7 @@ export function Button(props: ButtonProps) {
   return (
     <button
       className={buttonClassName}
+      disabled={buttonProps.disabled}
       onClick={buttonProps.onClick}
       type={buttonProps.type ?? "button"}
     >
