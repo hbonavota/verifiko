@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { AnalyzeUrlForm } from "../components/analysis/AnalyzeUrlForm";
+import { ScoreRing } from "../components/analysis/ScoreRing";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -63,57 +64,59 @@ export function DashboardPage() {
     <PageShell>
       <SectionTitle
         eyebrow="Review"
-        title="Latest analyses"
-        description="Open a recent result, inspect the strongest signals, and continue into the full evidence view."
+        title="Review results"
+        description="Open a result or run another check."
       />
 
       <Card
         eyebrow="New analysis"
-        title="Start from a suspicious URL"
-        description="Run a new analysis and open the result directly."
+        title="Analyze another URL"
+        description={undefined}
         tone="success"
         id="verifications"
         className="dashboard-intake-card"
       >
         <AnalyzeUrlForm
-          buttonLabel="Analyze now"
+          buttonLabel="Analyze"
           className="dashboard-intake"
-          hint="Suspicious URL or hostname."
+          hint="URL or hostname."
           inputClassName="dashboard-intake__input-control"
-          inputLabel="Analysis target"
-          placeholder="Paste suspicious URL or hostname to analyze"
+          inputLabel="URL"
+          placeholder="Paste URL or hostname"
         />
       </Card>
 
       <Card
         eyebrow="Latest result"
-        title={activeVerification ? "Most recent verification" : "No analyses yet"}
-        description={
-          activeVerification
-            ? activeVerification.summary
-            : "Run an analysis to populate the review surface and inspect the retained signals."
-        }
+        title={activeVerification ? "Trust score" : "No analyses yet"}
+        description={undefined}
         tone="warning"
         className="dashboard-assessment-card"
       >
         {activeVerification ? (
           <div className="dashboard-card-stack">
-            <div className="dashboard-card-headline">
-              <div>
-                <p className="metric-card__label">Target</p>
-                <p className="dashboard-card__target">{activeVerification.subject}</p>
-              </div>
-              <Badge label={activeVerification.riskLevel} tone={toneForRiskLevel(activeVerification.riskLevel)} />
-            </div>
-
-            <div className="dashboard-card-headline">
-              <div>
-                <p className="metric-card__label">Trust score</p>
-                <p className="metric-card__value">{activeVerification.score}</p>
-              </div>
-              <div className="dashboard-card__run">
-                <p className="metric-card__label">Result</p>
+            <div className="dashboard-assessment-card__hero">
+              <ScoreRing
+                label="Trust score"
+                riskLevel={activeVerification.riskLevel}
+                score={activeVerification.score}
+                size="hero"
+              />
+              <div className="dashboard-assessment-card__summary">
+                <p className="dashboard-card__subject" title={activeVerification.subject}>
+                  {activeVerification.subject}
+                </p>
+                <div className="dashboard-card__status-row">
+                  <Badge label={activeVerification.riskLevel} tone={toneForRiskLevel(activeVerification.riskLevel)} />
+                </div>
+                <p className="metric-card__label">Verdict</p>
                 <p className="dashboard-card__verdict">{activeVerification.verdict}</p>
+                <p className="dashboard-card__posture">{activeVerification.executiveSummary.posture}</p>
+                <div className="dashboard-assessment-card__actions">
+                  <Button to={`/verifications/${activeVerification.id}`} variant="primary">
+                    Open result
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -121,11 +124,6 @@ export function DashboardPage() {
               <div className="dashboard-card-pills">
                 <StatPill label="Signals" value={String(activeVerification.signals.length)} tone="warning" />
                 <StatPill label="Open questions" value={String(activeVerification.inconclusive.length)} tone="danger" />
-              </div>
-              <div className="dashboard-card-pills">
-                <Button to={`/verifications/${activeVerification.id}`} variant="primary">
-                  Open result
-                </Button>
               </div>
             </div>
           </div>
@@ -138,7 +136,6 @@ export function DashboardPage() {
               </div>
               <Badge label="EMPTY" tone="neutral" />
             </div>
-            <p className="metric-card__detail">Paste a URL above to generate the first result.</p>
           </div>
         )}
       </Card>
@@ -148,11 +145,7 @@ export function DashboardPage() {
           <Card
             eyebrow="Signal breakdown"
             title={activeVerification ? "Current verification signals" : "Signal breakdown unavailable"}
-            description={
-              activeVerification
-                ? "Inspection table for the signals currently shaping the score."
-                : "Create a verification to inspect the retained signals shaping a live result."
-            }
+            description={undefined}
             id="signals"
           >
             {activeVerification ? (
@@ -202,7 +195,7 @@ export function DashboardPage() {
             <Card
               eyebrow="Why this was flagged"
               title="Most influential signals"
-              description="Readable reasoning for the observations that materially moved the verification into a suspicious range."
+              description={undefined}
             >
               <div className="support-list">
                 {activeReasons.map((reason, index) => (
@@ -219,7 +212,7 @@ export function DashboardPage() {
             <Card
               eyebrow="Evidence snapshot"
               title="Observed, sourced, and unresolved context"
-              description="Traceability panel showing what supports the score and what still needs analyst judgment."
+              description={undefined}
             >
               {activeVerification ? (
                 <div className="evidence-grid">
@@ -259,7 +252,7 @@ export function DashboardPage() {
           <Card
             eyebrow="Decision trace"
             title="Score generation sequence"
-            description="Sequential reasoning chain from normalized input to explanation output."
+            description={undefined}
             id="cases"
           >
             {activeVerification ? (
@@ -285,7 +278,7 @@ export function DashboardPage() {
           <Card
             eyebrow="Case recommendation"
             title="Suggested next action"
-            description="Operational framing derived from the current evidence posture."
+            description={undefined}
             tone="warning"
           >
             {activeVerification ? (
@@ -305,7 +298,7 @@ export function DashboardPage() {
           <Card
             eyebrow="Recent analyses"
             title="Latest results"
-            description="Most recent analyses available for review."
+            description={undefined}
             className="dashboard-rail-card"
           >
             {verifications.length > 0 ? (
@@ -313,7 +306,7 @@ export function DashboardPage() {
                 {verifications.slice(0, 5).map((verification) => (
                   <article key={verification.id} className="activity-feed__item">
                     <div className="activity-feed__row">
-                      <p className="activity-feed__title">{verification.subject}</p>
+                      <p className="activity-feed__title" title={verification.subject}>{verification.subject}</p>
                       <span className={`activity-feed__actor activity-feed__actor--${toneForCount(verification.riskLevel)}`}>
                         {verification.riskLevel}
                       </span>
@@ -335,7 +328,7 @@ export function DashboardPage() {
           <Card
             eyebrow="Suggested next step"
             title="What to do next"
-            description="Recommended action based on the latest result."
+            description={undefined}
             tone="warning"
             className="dashboard-rail-card"
           >

@@ -56,9 +56,10 @@ export function ScoreRing({
   const progress = state === "ready" ? `${clampedScore} ${100 - clampedScore}` : "32 68";
   const displayValue = valueLabel ?? (state === "ready" ? String(clampedScore) : "--");
   const className = scoreRingClassName({ riskLevel, size, state });
+  const tone = state === "ready" && riskLevel ? toneForRiskLevel(riskLevel) : "neutral";
 
   return (
-    <div className={className} aria-label={`${label}: ${displayValue}`}>
+    <div className={className} aria-label={`${label}: ${displayValue}`} data-state={state} data-tone={tone}>
       <svg viewBox="0 0 120 120" className="score-ring__svg" aria-hidden="true">
         <circle className="score-ring__track" cx="60" cy="60" r="48" />
         <circle

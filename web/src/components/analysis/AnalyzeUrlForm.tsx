@@ -19,16 +19,16 @@ interface AnalyzeUrlFormProps {
 }
 
 export function AnalyzeUrlForm({
-  buttonLabel = "Analyze URL",
+  buttonLabel = "Analyze",
   buttonClassName,
   className,
   errorClassName,
-  hint = "Paste a suspicious URL or hostname.",
+  hint = "URL or hostname.",
   inputClassName,
-  inputLabel = "URL to analyze",
+  inputLabel = "URL",
   onStateChange,
   placeholder = "https://example.com/login",
-  submittingLabel = "Analyzing...",
+  submittingLabel = "Scanning...",
 }: AnalyzeUrlFormProps) {
   const navigate = useNavigate();
   const [analysisTarget, setAnalysisTarget] = useState("");
@@ -40,7 +40,7 @@ export function AnalyzeUrlForm({
 
     const trimmedTarget = analysisTarget.trim();
     if (!trimmedTarget) {
-      setSubmitError("Enter a suspicious URL to analyze.");
+      setSubmitError("Enter a URL to analyze.");
       onStateChange?.("error");
       return;
     }

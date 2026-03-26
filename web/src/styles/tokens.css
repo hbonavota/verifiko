@@ -11,12 +11,12 @@
   --color-text-muted: #52655f;
   --color-primary: #214d42;
   --color-primary-soft: rgba(33, 77, 66, 0.12);
-  --color-warning: #b87a2d;
-  --color-warning-soft: rgba(184, 122, 45, 0.12);
-  --color-danger: #9c534d;
-  --color-danger-soft: rgba(156, 83, 77, 0.12);
-  --color-success: #397161;
-  --color-success-soft: rgba(57, 113, 97, 0.12);
+  --color-warning: #b46a12;
+  --color-warning-soft: rgba(180, 106, 18, 0.14);
+  --color-danger: #b13a31;
+  --color-danger-soft: rgba(177, 58, 49, 0.14);
+  --color-success: #1f7a5d;
+  --color-success-soft: rgba(31, 122, 93, 0.14);
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -32,7 +32,7 @@
   --radius-pill: 999px;
 
   --shadow-soft: 0 18px 40px rgba(48, 55, 51, 0.08);
-  --shadow-strong: 0 20px 60px rgba(48, 55, 51, 0.12);
+  --shadow-strong: 0 22px 64px rgba(48, 55, 51, 0.14);
 
   --content-width: 1180px;
 

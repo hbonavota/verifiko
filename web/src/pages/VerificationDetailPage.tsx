@@ -18,36 +18,16 @@ function formatTimestamp(value: string) {
   return new Date(value).toLocaleString();
 }
 
-function plainLanguageSummary(verification: VerificationSummary) {
-  if (verification.riskLevel === "CRITICAL" || verification.riskLevel === "HIGH") {
-    return "This target shows strong warning signs.";
-  }
-
-  if (verification.riskLevel === "MEDIUM") {
-    return "This target needs a closer review.";
-  }
-
-  return "This target currently appears low risk.";
-}
-
 function shortResultExplanation(verification: VerificationSummary) {
   if (verification.riskLevel === "CRITICAL" || verification.riskLevel === "HIGH") {
-    return "Treat this target as suspicious until reviewed.";
+    return "Treat this target as suspicious until it is cleared.";
   }
 
   if (verification.riskLevel === "MEDIUM") {
     return "Review this target before treating it as trusted.";
   }
 
-  return "No strong warning signs were retained in this run.";
-}
-
-function topReasonSummary(verification: VerificationSummary) {
-  if (verification.signals.length === 0) {
-    return "No strong warning signal was retained from the current verification run.";
-  }
-
-  return "The strongest retained reasons are shown first so the result can be understood before opening the full trace.";
+  return "No strong warning signals were retained in this run.";
 }
 
 type VerificationState =
@@ -112,7 +92,7 @@ export function VerificationDetailPage() {
         <SectionTitle
           eyebrow="Verification Detail"
           title="Loading verification result"
-          description="Loading the verification result for this page."
+          description="Preparing the latest verification result."
         />
       </PageShell>
     );
@@ -131,7 +111,7 @@ export function VerificationDetailPage() {
           }
         />
         <Button to="/dashboard" variant="secondary">
-          Return to dashboard
+          Return to review
         </Button>
       </PageShell>
     );
@@ -153,7 +133,7 @@ export function VerificationDetailPage() {
           <p className="eyebrow">Verification Detail</p>
           <h1 className="serif-heading verification-detail__title">Verification result</h1>
           <p className="muted-copy verification-detail__summary-copy">
-            Trust score first. Supporting detail below.
+            Score first. Evidence below.
           </p>
         </div>
         <div className="verification-detail-target">
@@ -179,7 +159,7 @@ export function VerificationDetailPage() {
             <ScoreRing label="Trust score" riskLevel={verification.riskLevel} score={verification.score} size="hero" />
 
             <div className="verification-assessment-card__verdict-block">
-              <p className="metric-card__label">What this means</p>
+              <p className="metric-card__label">Verdict</p>
               <p className="verification-assessment-card__verdict">{verification.verdict}</p>
               <p className="verification-assessment-card__posture">{verification.executiveSummary.posture}</p>
               <p className="verification-assessment-card__explanation">
@@ -187,10 +167,10 @@ export function VerificationDetailPage() {
               </p>
               <div className="verification-assessment-card__actions">
                 <Button to="/dashboard" variant="primary">
-                  Analyze another target
+                  Analyze another URL
                 </Button>
                 <Button to="/dashboard" variant="secondary">
-                  Back to dashboard
+                  Back to review
                 </Button>
               </div>
             </div>
@@ -212,7 +192,7 @@ export function VerificationDetailPage() {
           <Card
             eyebrow="Main reasons"
             title="Why this result was flagged"
-            description={topReasonSummary(verification)}
+            description={undefined}
           >
             {primaryReasons.length > 0 ? (
               <div className="summary-reason-list">
@@ -231,16 +211,16 @@ export function VerificationDetailPage() {
               <div className="verification-summary-panel">
                 <p className="verification-summary-panel__headline">No major warning reason surfaced</p>
                 <p className="verification-summary-panel__copy">
-                  The current verification did not retain a strong signal, so the supporting detail below is mainly useful for context.
+                  The supporting detail below is mainly useful for context.
                 </p>
               </div>
             )}
           </Card>
 
           <Card
-            eyebrow="Verification context"
-            title="Run details"
-            description="Compact record metadata kept below the summary for traceability."
+            eyebrow="Result context"
+            title="Record details"
+            description={undefined}
             className="verification-detail-meta-card"
           >
             <div className="verification-detail-meta-grid verification-detail-meta-grid--compact">
@@ -265,17 +245,17 @@ export function VerificationDetailPage() {
 
           <section className="technical-analysis-section">
             <div className="technical-analysis-section__header">
-              <p className="eyebrow">Technical analysis</p>
+              <p className="eyebrow">Evidence</p>
               <h2 className="serif-heading technical-analysis-section__title">Detailed signal review</h2>
               <p className="muted-copy technical-analysis-section__copy">
-                Full evidence, signal weighting, and the current verification trace remain available below for analyst-style review.
+                Full evidence and the decision path remain available below.
               </p>
             </div>
 
             <Card
               eyebrow="Signal review"
               title="Signals shaping the current verdict"
-              description="All retained signals are listed here with contribution, confidence, and supporting observations."
+              description={undefined}
             >
               <div className="signal-review-list">
                 {topSignals.map((signal) => (
@@ -320,8 +300,8 @@ export function VerificationDetailPage() {
             <section className="verification-detail-analysis-grid">
               <Card
                 eyebrow="Evidence used"
-                title="Observed facts and supporting context"
-                description="Traceability panel showing what was observed, what contributed, and where the evidence came from."
+                title="Observed facts"
+                description={undefined}
               >
                 <div className="evidence-grid">
                   <div className="evidence-block">
@@ -354,9 +334,9 @@ export function VerificationDetailPage() {
               </Card>
 
               <Card
-                eyebrow="What remains inconclusive"
-                title="Confidence limits still affecting the result"
-                description="Unresolved items are kept explicit so the current verdict does not read as more certain than the evidence supports."
+                eyebrow="What remains uncertain"
+                title="Confidence limits"
+                description={undefined}
               >
                 <div className="inconclusive-list">
                   {verification.inconclusive.map((item) => (
@@ -375,8 +355,8 @@ export function VerificationDetailPage() {
 
             <Card
               eyebrow="Decision trace"
-              title="Audit timeline"
-              description="Step-by-step reasoning path from normalized input to final explanation output."
+              title="Decision path"
+              description={undefined}
             >
               <div className="decision-trace">
                 {verification.decisionTrace.map((step) => (
@@ -403,7 +383,7 @@ export function VerificationDetailPage() {
           <Card
             eyebrow="Recommended action"
             title={verification.recommendation.title}
-            description="Primary operational step derived from the current evidence posture."
+            description={undefined}
             tone={emphasisTone}
             className="verification-action-card"
           >
@@ -414,16 +394,16 @@ export function VerificationDetailPage() {
                   Back to review
                 </Button>
                 <Button to="/dashboard#signals" variant="ghost">
-                  Open signal review
+                  Open signals
                 </Button>
               </div>
             </div>
           </Card>
 
           <Card
-            eyebrow="Traceability"
-            title="Review context"
-            description="Compact context strip for the current verification record."
+            eyebrow="Context"
+            title="Result context"
+            description={undefined}
             className="verification-context-card"
           >
             <div className="verification-context-card__stack">
@@ -436,7 +416,7 @@ export function VerificationDetailPage() {
               />
             </div>
             <div className="verification-context-card__notes">
-              <p className="verification-action-card__label">Analyst note</p>
+              <p className="verification-action-card__label">Review note</p>
               <p className="notes-panel__text">{verification.analystNote}</p>
             </div>
           </Card>
