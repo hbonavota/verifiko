@@ -62,8 +62,8 @@ class RiskScoringEngine(ScoringService):
         final_score_value = max(0.0, min(100.0, 100 - category_total_penalty - compound_penalty))
         final_score = ConfidenceScore(final_score_value)
 
-        risk_level = _risk_level_for_score(final_score.value)
-        verdict = _verdict_for_level(risk_level)
+        risk_level = risk_level_for_score(final_score.value)
+        verdict = verdict_for_level(risk_level)
 
         summary = (
             f"Detected {len(active_signals)} signal(s) with {risk_level.value.lower()} risk output. "
@@ -105,7 +105,7 @@ def _signal_penalty(signal: AnalysisSignal) -> float:
     return signal.base_weight * multiplier * signal.confidence.as_ratio
 
 
-def _risk_level_for_score(score: float) -> RiskLevel:
+def risk_level_for_score(score: float) -> RiskLevel:
     if score >= 81:
         return RiskLevel.SAFE
     if score >= 61:
@@ -117,7 +117,7 @@ def _risk_level_for_score(score: float) -> RiskLevel:
     return RiskLevel.CRITICAL
 
 
-def _verdict_for_level(risk_level: RiskLevel) -> VerdictType:
+def verdict_for_level(risk_level: RiskLevel) -> VerdictType:
     if risk_level is RiskLevel.SAFE:
         return VerdictType.TRUSTED
     if risk_level is RiskLevel.LOW:

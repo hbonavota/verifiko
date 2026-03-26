@@ -72,3 +72,15 @@ def test_domain_recency_signal_analyzer_skips_lookup_failures() -> None:
     signals = analyzer.analyze(NormalizedUrl.from_raw("https://example.test/login"))
 
     assert signals == []
+
+
+def test_domain_recency_signal_analyzer_reports_lookup_failure_context() -> None:
+    analyzer = DomainRecencySignalAnalyzer(
+        domain_age_lookup=StubDomainAgeLookup(fail=True),
+        current_time_provider=lambda: datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc),
+    )
+
+    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://example.test/login"))
+
+    assert result.signals == ()
+    assert result.warnings == ("Domain registration intelligence was unavailable for this run.",)

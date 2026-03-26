@@ -56,11 +56,17 @@ class VerificationModelMapper:
             path=parsed_normalized_url.path,
             query=parsed_normalized_url.query,
             fragment=parsed_normalized_url.fragment,
+            decoded_path=parsed_normalized_url.decoded_path,
+            decoded_query=parsed_normalized_url.decoded_query,
+            decoded_fragment=parsed_normalized_url.decoded_fragment,
             registered_domain=parsed_normalized_url.registered_domain,
             subdomain=parsed_normalized_url.subdomain,
             is_ip_address=parsed_normalized_url.is_ip_address,
             contains_unicode=parsed_normalized_url.contains_unicode,
+            contains_punycode=parsed_normalized_url.contains_punycode,
             contains_zero_width_chars=parsed_normalized_url.contains_zero_width_chars,
+            has_userinfo=parsed_normalized_url.has_userinfo,
+            userinfo=parsed_normalized_url.userinfo,
         )
 
         return Verification(

@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.application.commands.create_verification_command import CreateVerificationCommand, SignalInput
+from app.application.commands.create_verification_command import CreateVerificationCommand
 from app.application.queries.get_verification_query import GetVerificationQuery
 from app.application.queries.list_verifications_query import ListVerificationsQuery
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
@@ -26,23 +26,15 @@ def create_verification(
     payload: CreateVerificationRequest,
     use_case: CreateURLVerificationUseCase = Depends(get_create_url_verification_use_case),
 ) -> VerificationResponse:
+    if payload.signals:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Client-supplied signals are not accepted on this endpoint.",
+        )
+
     dto = use_case.execute(
         CreateVerificationCommand(
             url=payload.url,
-            signals=tuple(
-                SignalInput(
-                    signal_type=signal.signal_type,
-                    category=signal.category,
-                    severity=signal.severity,
-                    confidence=signal.confidence,
-                    title=signal.title,
-                    description=signal.description,
-                    source=signal.source,
-                    evidence=signal.evidence,
-                    tags=signal.tags,
-                )
-                for signal in payload.signals
-            ),
         )
     )
     return VerificationPresenter.to_response(dto)

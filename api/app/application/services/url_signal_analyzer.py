@@ -77,9 +77,10 @@ class DeterministicUrlSignalAnalyzer:
             " ".join(
                 [
                     normalized_url.host,
-                    normalized_url.path.replace("/", " "),
-                    normalized_url.query.replace("&", " "),
-                    normalized_url.fragment.replace("/", " "),
+                    normalized_url.userinfo.replace(":", " "),
+                    normalized_url.decoded_path.replace("/", " "),
+                    normalized_url.decoded_query.replace("&", " "),
+                    normalized_url.decoded_fragment.replace("/", " "),
                 ]
             )
         )
@@ -101,18 +102,26 @@ class DeterministicUrlSignalAnalyzer:
                 )
             )
 
-        if normalized_url.contains_unicode:
+        if normalized_url.contains_unicode or normalized_url.contains_punycode:
+            evidence = []
+            if normalized_url.contains_unicode:
+                evidence.append(f"Rendered host: {normalized_url.host}.")
+            if normalized_url.contains_punycode:
+                evidence.append(f"ASCII host contains punycode label(s): {normalized_url.ascii_host}.")
+            else:
+                evidence.append(f"ASCII host: {normalized_url.ascii_host}.")
+
             signals.append(
                 self._signal(
                     signal_type=SignalType.UNICODE_HOMOGRAPH,
                     severity=SignalSeverity.HIGH,
-                    confidence=88,
-                    title="Unicode hostname characters",
-                    description="The hostname contains unicode characters that merit homograph review.",
-                    evidence=(
-                        f"Rendered host: {normalized_url.host}.",
-                        f"ASCII host: {normalized_url.ascii_host}.",
+                    confidence=88 if normalized_url.contains_unicode else 84,
+                    title="Unicode or punycode hostname pattern",
+                    description=(
+                        "The hostname contains unicode characters or punycode labels that merit "
+                        "homograph review."
                     ),
+                    evidence=tuple(evidence),
                     tags=("unicode-host", "homograph-review"),
                 )
             )
@@ -301,9 +310,11 @@ class DeterministicUrlSignalAnalyzer:
 
     def _redirect_indicators(self, normalized_url: NormalizedUrl) -> list[str]:
         indicators: list[str] = []
-        path_tokens = _tokenize(normalized_url.path.replace("/", " "))
+        path_tokens = _tokenize(normalized_url.decoded_path.replace("/", " "))
         if {"redirect", "continue", "out", "away"}.intersection(path_tokens):
-            indicators.append(f"Path contains redirect-style token(s): {normalized_url.path}.")
+            indicators.append(
+                f"Path contains redirect-style token(s): {normalized_url.decoded_path}."
+            )
 
         for key, value in parse_qsl(normalized_url.query, keep_blank_values=True):
             if key.lower() in _REDIRECT_KEYS:

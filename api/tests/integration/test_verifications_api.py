@@ -39,19 +39,6 @@ def test_verification_api_create_list_and_get(client: TestClient) -> None:
         "/api/verifications",
         json={
             "url": "verifiko.es/login",
-            "signals": [
-                {
-                    "signal_type": "brand_impersonation",
-                    "category": "content_behavior",
-                    "severity": "HIGH",
-                    "confidence": 92,
-                    "title": "Brand impersonation",
-                    "description": "Brand styling copied from the legitimate destination.",
-                    "source": "content-analyzer",
-                    "evidence": ["Logo and typography match the target brand."],
-                    "tags": ["brand", "visual-match"],
-                }
-            ],
         },
     )
 
@@ -101,4 +88,29 @@ def test_verification_api_returns_404_for_missing_verification(client: TestClien
     assert response.status_code == 404
     assert response.json()["detail"] == (
         "Verification not found: 550e8400-e29b-41d4-a716-446655440099"
+    )
+
+
+def test_verification_api_rejects_client_supplied_signals(client: TestClient) -> None:
+    response = client.post(
+        "/api/verifications",
+        json={
+            "url": "https://openai.com",
+            "signals": [
+                {
+                    "signal_type": "blacklist_match",
+                    "category": "content_behavior",
+                    "severity": "CRITICAL",
+                    "confidence": 99,
+                    "title": "Injected blacklist hit",
+                    "description": "Injected by client.",
+                    "source": "client",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "Client-supplied signals are not accepted on this endpoint."
     )

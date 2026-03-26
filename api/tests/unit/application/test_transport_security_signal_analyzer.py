@@ -1,4 +1,8 @@
-from app.application.ports.tls_validator import TlsValidationResult, TlsValidatorPort
+from app.application.ports.tls_validator import (
+    TlsValidationError,
+    TlsValidationResult,
+    TlsValidatorPort,
+)
 from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
@@ -13,6 +17,11 @@ class StubTlsValidator(TlsValidatorPort):
 
     def validate_hostname(self, hostname: str, port: int = 443) -> TlsValidationResult:
         return self._result
+
+
+class FailingTlsValidator(TlsValidatorPort):
+    def validate_hostname(self, hostname: str, port: int = 443) -> TlsValidationResult:
+        raise TlsValidationError("validation unavailable")
 
 
 def test_transport_security_signal_analyzer_emits_http_signal() -> None:
@@ -63,3 +72,16 @@ def test_transport_security_signal_analyzer_skips_valid_https() -> None:
     signals = analyzer.analyze(NormalizedUrl.from_raw("https://portal-example.test/home"))
 
     assert signals == []
+
+
+def test_transport_security_signal_analyzer_reports_validation_failures_as_warning() -> None:
+    analyzer = TransportSecuritySignalAnalyzer(
+        tls_validator=FailingTlsValidator()
+    )
+
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://portal-example.test/home")
+    )
+
+    assert result.signals == ()
+    assert result.warnings == ("TLS validation could not be completed for this run.",)

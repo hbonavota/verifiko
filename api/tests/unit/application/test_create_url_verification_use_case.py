@@ -271,6 +271,8 @@ def test_create_url_verification_use_case_continues_when_html_fetch_fails() -> N
 
     assert dto.status == "COMPLETED"
     assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level != "SAFE"
+    assert "Analysis coverage degraded:" in dto.risk_assessment.summary
 
 
 def test_create_url_verification_use_case_adds_insecure_transport_signal_for_http() -> None:
@@ -323,3 +325,15 @@ def test_create_url_verification_use_case_strengthens_deceptive_brand_subdomain(
     assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals)
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"HIGH", "CRITICAL"}
+
+
+def test_create_url_verification_use_case_caps_safe_result_when_coverage_is_degraded() -> None:
+    use_case = _build_use_case(html_fetcher=FakeHtmlFetcher(fail=True))
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.score == 80
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert dto.risk_assessment.verdict == "CAUTION"
+    assert "Analysis coverage degraded:" in dto.risk_assessment.summary

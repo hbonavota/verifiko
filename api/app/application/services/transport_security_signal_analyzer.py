@@ -6,6 +6,7 @@ from app.application.ports.tls_validator import (
     TlsValidationResult,
     TlsValidatorPort,
 )
+from app.application.services.analysis_result import SignalAnalysisResult
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -38,15 +39,18 @@ class TransportSecuritySignalAnalyzer:
     source: str = "transport-security-analyzer"
 
     def analyze(self, normalized_url: NormalizedUrl) -> list[AnalysisSignal]:
+        return list(self.analyze_with_context(normalized_url).signals)
+
+    def analyze_with_context(self, normalized_url: NormalizedUrl) -> SignalAnalysisResult:
         signals: list[AnalysisSignal] = []
         sensitive_terms = self._sensitive_terms(normalized_url)
 
         if normalized_url.scheme == "http":
             signals.append(self._insecure_transport_signal(normalized_url, sensitive_terms))
-            return signals
+            return SignalAnalysisResult(signals=tuple(signals))
 
         if normalized_url.scheme != "https" or normalized_url.is_ip_address:
-            return signals
+            return SignalAnalysisResult()
 
         try:
             validation_result = self.tls_validator.validate_hostname(
@@ -54,7 +58,9 @@ class TransportSecuritySignalAnalyzer:
                 normalized_url.port or 443,
             )
         except TlsValidationError:
-            return signals
+            return SignalAnalysisResult(
+                warnings=("TLS validation could not be completed for this run.",)
+            )
 
         if not validation_result.is_valid:
             signals.append(
@@ -65,7 +71,7 @@ class TransportSecuritySignalAnalyzer:
                 )
             )
 
-        return signals
+        return SignalAnalysisResult(signals=tuple(signals))
 
     def _insecure_transport_signal(
         self,
@@ -149,9 +155,10 @@ class TransportSecuritySignalAnalyzer:
         text = " ".join(
             [
                 normalized_url.host,
-                normalized_url.path.replace("/", " "),
-                normalized_url.query.replace("&", " "),
-                normalized_url.fragment.replace("/", " "),
+                normalized_url.userinfo.replace(":", " "),
+                normalized_url.decoded_path.replace("/", " "),
+                normalized_url.decoded_query.replace("&", " "),
+                normalized_url.decoded_fragment.replace("/", " "),
             ]
         )
         tokens = {match.group(0).lower() for match in _TOKEN_PATTERN.finditer(text)}

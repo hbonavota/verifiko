@@ -7,6 +7,10 @@ from app.application.ports.tls_validator import (
     TlsValidationResult,
     TlsValidatorPort,
 )
+from app.infrastructure.external_services.outbound_target_guard import (
+    UnsafeOutboundTargetError,
+    assert_safe_outbound_host,
+)
 
 
 @dataclass(slots=True)
@@ -18,6 +22,7 @@ class SocketTlsValidator(TlsValidatorPort):
         context = ssl.create_default_context()
 
         try:
+            assert_safe_outbound_host(hostname, port)
             with socket.create_connection((hostname, port), timeout=self.timeout_seconds) as sock:
                 with context.wrap_socket(sock, server_hostname=hostname):
                     return TlsValidationResult(
@@ -36,5 +41,7 @@ class SocketTlsValidator(TlsValidatorPort):
                 provider_name=self.provider_name,
                 failure_reason=str(exc),
             )
+        except UnsafeOutboundTargetError as exc:
+            raise TlsValidationError(str(exc)) from exc
         except (socket.timeout, socket.gaierror, OSError) as exc:
             raise TlsValidationError(str(exc)) from exc
