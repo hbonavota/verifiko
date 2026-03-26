@@ -21,8 +21,8 @@ function cardToneForRiskLevel(riskLevel: VerificationSummary["riskLevel"]) {
 
 export function HomePage() {
   useDocumentMeta(
-    "Analyze URL",
-    "Analyze suspicious URLs with a focused verification flow and inspect the latest result in Verifiko.",
+    "Verify Link",
+    "Verify a link and review the latest result in Verifiko.",
   );
 
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
@@ -84,18 +84,18 @@ export function HomePage() {
         <div className="analysis-hero__content" id="analyze-url">
           <SectionTitle
             eyebrow="Verifiko"
-            title="Check a URL."
-            description="Score first."
+            title="Verify links before you trust them."
+            description="Get a clear security verdict."
           />
 
           <Card className="analysis-hero__panel" tone="success">
-            <p className="hero-panel__eyebrow">Analyze URL</p>
+            <p className="hero-panel__eyebrow">Start verification</p>
 
             <AnalyzeUrlForm
-              buttonLabel="Analyze"
+              buttonLabel="Verify this link"
               buttonClassName="analysis-form__button analysis-form__button--hero"
               className="analysis-form--hero"
-              hint="URL or hostname."
+              hint="Paste a link to verify its safety."
               inputClassName="analysis-form__input-control"
               onStateChange={setAnalysisState}
             />
@@ -104,12 +104,12 @@ export function HomePage() {
 
         <div ref={resultCardRef}>
           <Card
-            eyebrow={isLoadingAnalysis ? "Analyzing" : latestVerification ? "Latest result" : "Result"}
+            eyebrow={isLoadingAnalysis ? "Verifying" : latestVerification ? "Latest result" : "Result"}
             title={
               isLoadingAnalysis
-                ? "Scanning target"
+                ? "Verification in progress"
                 : latestVerification
-                  ? "Trust score"
+                  ? "Verification result"
                   : "Ready to verify"
             }
             description={undefined}
@@ -118,10 +118,10 @@ export function HomePage() {
           >
             {isLoadingAnalysis ? (
               <div className="analysis-result-card__hero">
-                <ScoreRing label="Analyzing" size="hero" state="loading" valueLabel="..." />
+                <ScoreRing label="Verifying" size="hero" state="loading" valueLabel="..." />
                 <div className="analysis-result-card__summary-block">
-                  <p className="analysis-result-card__headline">Scanning for risk signals</p>
-                  <p className="analysis-result-card__copy">Checking signals.</p>
+                  <p className="analysis-result-card__headline">Verifying target</p>
+                  <p className="analysis-result-card__copy">Collecting signals.</p>
                   <div className="analysis-result-card__loading-stack" aria-hidden="true">
                     <span className="analysis-result-card__loading-line analysis-result-card__loading-line--strong" />
                     <span className="analysis-result-card__loading-line" />
@@ -147,14 +147,17 @@ export function HomePage() {
                     <p className="analysis-result-card__subject" title={latestVerification.subject}>
                       {latestVerification.subject}
                     </p>
-                    <p className="preview-card__label">Verdict</p>
-                    <p className="analysis-result-card__headline" title={latestVerification.verdict}>
+                    <p className="preview-card__label">Result</p>
+                    <p
+                      className="analysis-result-card__headline"
+                      title={`Verification result: ${formatVerdict(latestVerification.verdict)}`}
+                    >
                       {formatVerdict(latestVerification.verdict)}
                     </p>
                     <p className="analysis-result-card__copy">{latestVerification.executiveSummary.posture}</p>
                     <div className="analysis-result-card__actions">
                       <Button to={`/verifications/${latestVerification.id}`} variant="primary">
-                        Open result
+                        View result
                       </Button>
                       <Button to="/dashboard" variant="secondary">
                         Review signals
@@ -180,8 +183,10 @@ export function HomePage() {
               <div className="analysis-result-card__hero analysis-result-card__hero--empty">
                 <ScoreRing label="Awaiting result" size="hero" state="idle" valueLabel="--" />
                 <div className="analysis-result-card__summary-block">
-                  <p className="analysis-result-card__headline">Awaiting analysis</p>
-                  <p className="analysis-result-card__copy">Paste a URL.</p>
+                  <p className="analysis-result-card__headline">No result yet</p>
+                  <p className="analysis-result-card__copy">
+                    Enter a link to check if it&apos;s safe or potentially malicious.
+                  </p>
                 </div>
               </div>
             )}

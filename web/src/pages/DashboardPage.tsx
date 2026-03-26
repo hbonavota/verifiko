@@ -24,7 +24,7 @@ export function DashboardPage() {
 
   useDocumentMeta(
     "Review Results",
-    "Review recent Verifiko analyses, inspect retained signals, and continue into detailed evidence.",
+    "Review recent Verifiko results and open the full verification record.",
   );
 
   useEffect(() => {
@@ -66,24 +66,24 @@ export function DashboardPage() {
       <SectionTitle
         eyebrow="Review"
         title="Review results"
-        description="Open a result or run another check."
+        description="Open a result or verify another link."
       />
 
       <Card
-        eyebrow="New analysis"
-        title="Analyze another URL"
+        eyebrow="New verification"
+        title="Verify another link"
         description={undefined}
         tone="success"
         id="verifications"
         className="dashboard-intake-card"
       >
         <AnalyzeUrlForm
-          buttonLabel="Analyze"
+          buttonLabel="Verify this link"
           className="dashboard-intake"
-          hint="URL or hostname."
+          hint="Paste a link to verify its safety."
           inputClassName="dashboard-intake__input-control"
-          inputLabel="URL"
-          placeholder="Paste URL or hostname"
+          inputLabel="Link"
+          placeholder="Paste a link to verify its safety"
         />
       </Card>
 
@@ -117,7 +117,7 @@ export function DashboardPage() {
                 <p className="dashboard-card__posture">{activeVerification.executiveSummary.posture}</p>
                 <div className="dashboard-assessment-card__actions">
                   <Button to={`/verifications/${activeVerification.id}`} variant="primary">
-                    Open result
+                    View result
                   </Button>
                 </div>
               </div>
@@ -135,7 +135,7 @@ export function DashboardPage() {
             <div className="dashboard-card-headline">
               <div>
                 <p className="metric-card__label">Status</p>
-                <p className="dashboard-card__target">Ready for the first analysis</p>
+                <p className="dashboard-card__target">Ready for the first verification</p>
               </div>
               <Badge label="EMPTY" tone="neutral" />
             </div>
@@ -147,7 +147,7 @@ export function DashboardPage() {
         <div className="dashboard-main">
           <Card
             eyebrow="Signal breakdown"
-            title={activeVerification ? "Current verification signals" : "Signal breakdown unavailable"}
+            title={activeVerification ? "Signals in this result" : "Signals unavailable"}
             description={undefined}
             id="signals"
           >
@@ -189,7 +189,7 @@ export function DashboardPage() {
               </div>
             ) : (
               <p className="metric-card__detail">
-                No analysis is available yet for signal inspection.
+                No result is available yet.
               </p>
             )}
           </Card>
@@ -245,8 +245,8 @@ export function DashboardPage() {
                   </div>
                 </div>
               ) : (
-                <p className="metric-card__detail">
-                  Evidence context appears after the first analysis is available.
+              <p className="metric-card__detail">
+                  Evidence appears after the first result is available.
                 </p>
               )}
             </Card>
@@ -273,7 +273,7 @@ export function DashboardPage() {
               </div>
             ) : (
               <p className="metric-card__detail">
-                The decision trace will appear after the first result is available.
+                The decision trace appears after the first result is available.
               </p>
             )}
           </Card>
@@ -291,7 +291,7 @@ export function DashboardPage() {
               </div>
             ) : (
               <p className="metric-card__detail">
-                Recommended action becomes available after a verification result is created.
+                A recommended action appears after the first result is available.
               </p>
             )}
           </Card>
@@ -343,7 +343,7 @@ export function DashboardPage() {
               </div>
             ) : (
               <p className="metric-card__detail">
-                A recommended next step appears after the first result is available.
+                A next step appears after the first result is available.
               </p>
             )}
           </Card>

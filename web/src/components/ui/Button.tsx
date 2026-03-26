@@ -7,6 +7,7 @@ interface SharedButtonProps extends PropsWithChildren {
   variant?: ButtonVariant;
   className?: string;
   leadingIcon?: ReactNode;
+  title?: string;
 }
 
 interface ButtonAsButtonProps extends SharedButtonProps {
@@ -49,7 +50,7 @@ export function Button(props: ButtonProps) {
 
   if ("to" in props && props.to) {
     return (
-      <Link className={buttonClassName} to={props.to}>
+      <Link className={buttonClassName} title={props.title} to={props.to}>
         <ButtonContent leadingIcon={props.leadingIcon}>{props.children}</ButtonContent>
       </Link>
     );
@@ -57,7 +58,7 @@ export function Button(props: ButtonProps) {
 
   if ("href" in props && props.href) {
     return (
-      <a className={buttonClassName} href={props.href}>
+      <a className={buttonClassName} href={props.href} title={props.title}>
         <ButtonContent leadingIcon={props.leadingIcon}>{props.children}</ButtonContent>
       </a>
     );
@@ -70,6 +71,7 @@ export function Button(props: ButtonProps) {
       className={buttonClassName}
       disabled={buttonProps.disabled}
       onClick={buttonProps.onClick}
+      title={buttonProps.title}
       type={buttonProps.type ?? "button"}
     >
       <ButtonContent leadingIcon={buttonProps.leadingIcon}>{buttonProps.children}</ButtonContent>

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 const DEFAULT_DESCRIPTION =
-  "Verifiko analyzes suspicious URLs with readable, evidence-based trust scoring.";
+  "Verifiko verifies links with clear risk scoring and evidence-led results.";
 
 export function useDocumentMeta(title: string, description = DEFAULT_DESCRIPTION) {
   useEffect(() => {

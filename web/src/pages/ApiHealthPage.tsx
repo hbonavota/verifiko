@@ -20,7 +20,7 @@ export function ApiHealthPage() {
 
   useDocumentMeta(
     "Status",
-    "Check whether the Verifiko application can reach its analysis API.",
+    "Confirm that Verifiko can reach its verification service.",
   );
 
   async function runHealthCheck() {
@@ -43,14 +43,14 @@ export function ApiHealthPage() {
     <PageShell>
       <SectionTitle
         eyebrow="Status"
-        title="API status"
-        description="Confirm that Verifiko can reach its analysis service."
+        title="Service status"
+        description="Confirm that Verifiko can reach its verification service."
       />
 
       <Card
         eyebrow="Service check"
-        title="API status"
-        description="Verify that the analysis service is reachable."
+        title="Verification service"
+        description="Confirm that the verification service is reachable."
         action={
           <Button onClick={() => void runHealthCheck()} variant="secondary">
             Refresh
@@ -58,14 +58,14 @@ export function ApiHealthPage() {
         }
       >
         <Input
-          hint="Configured backend endpoint."
-          label="Service URL"
+          hint="Configured service endpoint."
+          label="Service endpoint"
           readOnly
           value={getApiBaseUrl()}
         />
 
         {healthState.status === "loading" || healthState.status === "idle" ? (
-          <p className="api-health__message">Checking service reachability…</p>
+          <p className="api-health__message">Checking service status…</p>
         ) : null}
 
         {healthState.status === "ready" ? (

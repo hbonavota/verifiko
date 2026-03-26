@@ -1,5 +1,5 @@
 export const primaryNavigation = [
-  { label: "Analyze", href: "/" },
+  { label: "Verify", href: "/" },
   { label: "Review", href: "/dashboard" },
   { label: "Status", href: "/api-health" },
 ] as const;

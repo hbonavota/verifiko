@@ -21,14 +21,14 @@ function formatTimestamp(value: string) {
 
 function shortResultExplanation(verification: VerificationSummary) {
   if (verification.riskLevel === "CRITICAL" || verification.riskLevel === "HIGH") {
-    return "Treat this target as suspicious until it is cleared.";
+    return "Do not trust this link until it is reviewed.";
   }
 
   if (verification.riskLevel === "MEDIUM") {
-    return "Review this target before treating it as trusted.";
+    return "Review this link before treating it as safe.";
   }
 
-  return "No strong warning signals were retained in this run.";
+  return "No strong warning signal was retained in this result.";
 }
 
 type VerificationState =
@@ -83,8 +83,8 @@ export function VerificationDetailPage() {
   useDocumentMeta(
     verification ? verification.subject : "Verification Detail",
     verification
-      ? `Evidence review for ${verification.subject}, including score rationale, signal materiality, unresolved items, and recommended action.`
-      : "Verification detail route for reviewing score rationale, supporting evidence, and next-step guidance.",
+      ? `Review the verification result for ${verification.subject}, including score, signals, and next action.`
+      : "Review score, signals, and next action for a verification result.",
   );
 
   if (verificationState.status === "loading") {
@@ -92,8 +92,8 @@ export function VerificationDetailPage() {
       <PageShell>
         <SectionTitle
           eyebrow="Verification Detail"
-          title="Loading verification result"
-          description="Preparing the latest verification result."
+          title="Loading result"
+          description="Preparing the verification result."
         />
       </PageShell>
     );
@@ -104,11 +104,11 @@ export function VerificationDetailPage() {
       <PageShell>
         <SectionTitle
           eyebrow="Verification Detail"
-          title="Verification result unavailable"
+          title="Result unavailable"
           description={
             verificationState.status === "error"
               ? verificationState.message
-              : "The requested verification could not be loaded."
+              : "The requested result could not be loaded."
           }
         />
         <Button to="/dashboard" variant="secondary">
@@ -134,7 +134,7 @@ export function VerificationDetailPage() {
           <p className="eyebrow">Verification Detail</p>
           <h1 className="serif-heading verification-detail__title">Verification result</h1>
           <p className="muted-copy verification-detail__summary-copy">
-            Score first. Evidence below.
+            Verdict first. Evidence below.
           </p>
         </div>
         <div className="verification-detail-target">
@@ -163,7 +163,10 @@ export function VerificationDetailPage() {
 
             <div className="verification-assessment-card__verdict-block">
               <p className="metric-card__label">Verdict</p>
-              <p className="verification-assessment-card__verdict" title={verification.verdict}>
+              <p
+                className="verification-assessment-card__verdict"
+                title={`Verification result: ${formatVerdict(verification.verdict)}`}
+              >
                 {formatVerdict(verification.verdict)}
               </p>
               <p className="verification-assessment-card__posture">{verification.executiveSummary.posture}</p>
@@ -172,7 +175,7 @@ export function VerificationDetailPage() {
               </p>
               <div className="verification-assessment-card__actions">
                 <Button to="/dashboard" variant="primary">
-                  Analyze another URL
+                  Verify another link
                 </Button>
                 <Button to="/dashboard" variant="secondary">
                   Back to review
@@ -234,7 +237,7 @@ export function VerificationDetailPage() {
                 <p className="verification-detail-meta-item__value">{verification.id}</p>
               </article>
               <article className="verification-detail-meta-item">
-                <p className="verification-detail-meta-item__label">Analyzed target</p>
+                <p className="verification-detail-meta-item__label">Verified target</p>
                 <p className="verification-detail-meta-item__value">{verification.normalizedInput}</p>
               </article>
               <article className="verification-detail-meta-item">
@@ -253,7 +256,7 @@ export function VerificationDetailPage() {
               <p className="eyebrow">Evidence</p>
               <h2 className="serif-heading technical-analysis-section__title">Detailed signal review</h2>
               <p className="muted-copy technical-analysis-section__copy">
-                Full evidence and the decision path remain available below.
+                Full evidence and the decision path are shown below.
               </p>
             </div>
 
@@ -399,7 +402,7 @@ export function VerificationDetailPage() {
                   Back to review
                 </Button>
                 <Button to="/dashboard#signals" variant="ghost">
-                  Open signals
+                  View signals
                 </Button>
               </div>
             </div>
@@ -421,7 +424,7 @@ export function VerificationDetailPage() {
               />
             </div>
             <div className="verification-context-card__notes">
-              <p className="verification-action-card__label">Review note</p>
+              <p className="verification-action-card__label">Assessment note</p>
               <p className="notes-panel__text">{verification.analystNote}</p>
             </div>
           </Card>

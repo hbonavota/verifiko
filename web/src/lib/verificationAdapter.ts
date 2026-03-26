@@ -54,12 +54,12 @@ function mapSignal(signal: ApiAnalysisSignal): VerificationSignal {
 function buildEvidenceSummary(verification: ApiVerification, signals: VerificationSignal[]): EvidenceSummary {
   const observed = signals.map((signal) => signal.description);
   const supportingContext = [
-    `Input normalized to ${verification.normalized_input}.`,
-    `Calculated with version ${verification.calculation_version}.`,
+    `Submitted link normalized to ${verification.normalized_input}.`,
+    `Result generated with verification engine version ${verification.calculation_version}.`,
   ];
 
   if (verification.risk_assessment?.terminal_reason) {
-    supportingContext.push(`Terminal reason: ${verification.risk_assessment.terminal_reason}.`);
+    supportingContext.push(`Final decision reason: ${verification.risk_assessment.terminal_reason}.`);
   }
 
   return {
@@ -68,10 +68,10 @@ function buildEvidenceSummary(verification: ApiVerification, signals: Verificati
     supportingContext,
     unresolved:
       signals.length === 0
-        ? ["No suspicious indicators were retained from the current verification run."]
+        ? ["No strong warning signal was retained in this verification."]
         : [
-            "This assessment combines URL structure analysis with additional checks such as domain age, page credential patterns, and transport security validation when available.",
-            "The current record still lacks deeper infrastructure history such as passive DNS, hosting lineage, and reputation feeds.",
+            "This result combines the checks completed during verification, including destination, transport, and page review when available.",
+            "Broader infrastructure history is not included in this view.",
           ],
   };
 }
@@ -81,9 +81,9 @@ function buildInconclusiveItems(verification: ApiVerification): InconclusiveItem
     return [
       {
         id: `${verification.id}-inc-1`,
-        title: "No suspicious signals were retained",
-        detail: "The current verification did not retain a suspicious signal from the available checks.",
-        nextEvidence: "Add broader infrastructure or content context if you need a deeper review.",
+        title: "No strong warning signal was retained",
+        detail: "This verification did not retain a strong warning signal from the checks that completed.",
+        nextEvidence: "Use more context before treating the link as safe.",
       },
     ];
   }
@@ -91,9 +91,9 @@ function buildInconclusiveItems(verification: ApiVerification): InconclusiveItem
   return [
     {
       id: `${verification.id}-inc-1`,
-      title: "Infrastructure context is not attached",
-      detail: "This vertical slice does not yet include DNS, hosting, certificate, or reputation enrichment.",
-      nextEvidence: "Attach passive DNS, registrar, or hosting history before making a final containment decision.",
+      title: "More context may change the result",
+      detail: "This result reflects the checks completed during verification, not the full history of the target.",
+      nextEvidence: "Review additional domain, hosting, or reputation context before making a final decision.",
     },
   ];
 }
@@ -103,8 +103,8 @@ function buildRecommendation(verification: ApiVerification): RecommendedAction {
 
   if (riskLevel === "CRITICAL" || riskLevel === "HIGH") {
     return {
-      title: "Escalate for analyst review",
-      detail: "The URL triggered multiple high-signal indicators and should move into active review.",
+      title: "Escalate for review",
+      detail: "This link triggered multiple strong warning signals and should be reviewed now.",
       priority: "High priority",
       owner: "Verification response queue",
     };
@@ -112,16 +112,16 @@ function buildRecommendation(verification: ApiVerification): RecommendedAction {
 
   if (riskLevel === "MEDIUM") {
     return {
-      title: "Queue for deeper validation",
-      detail: "The result is suspicious enough to justify follow-up, but it still lacks infrastructure confirmation.",
+      title: "Review before trusting",
+      detail: "This result needs follow-up before the link is treated as safe.",
       priority: "Priority review",
       owner: "Threat review queue",
     };
   }
 
   return {
-    title: "Retain for monitoring",
-    detail: "No strong risk signal was produced from the URL alone, so monitoring is more appropriate than escalation.",
+    title: "Keep under watch",
+    detail: "No strong warning signal was retained, but this is not a guarantee of safety.",
     priority: "Routine review",
     owner: "Verification triage",
   };
@@ -131,20 +131,20 @@ function buildDecisionTrace(verification: ApiVerification, signals: Verification
   const steps: DecisionTraceStep[] = [
     {
       id: `${verification.id}-trace-1`,
-      label: "Normalized input",
-      detail: `Input was normalized to ${verification.normalized_input}.`,
-      outcome: "Stable verification object created",
+      label: "Input prepared",
+      detail: `Submitted link normalized to ${verification.normalized_input}.`,
+      outcome: "Verification started",
       timestamp: verification.created_at,
     },
     {
       id: `${verification.id}-trace-2`,
-      label: "Derived URL signals",
+      label: "Signals reviewed",
       detail:
         signals.length > 0
-          ? `${signals.length} deterministic URL signal(s) were retained from the host, path, and query structure.`
-          : "No deterministic URL signals crossed the retention threshold.",
+          ? `${signals.length} signal(s) were retained from the verification checks.`
+          : "No signal crossed the retention threshold.",
       outcome:
-        signals.length > 0 ? `${signals.length} signal(s) attached to the verification record` : "Verification kept with zero retained signals",
+        signals.length > 0 ? `${signals.length} signal(s) retained` : "No retained signals",
       timestamp: verification.updated_at,
     },
   ];
@@ -152,9 +152,9 @@ function buildDecisionTrace(verification: ApiVerification, signals: Verification
   if (verification.risk_assessment) {
     steps.push({
       id: `${verification.id}-trace-3`,
-      label: "Calculated score",
+      label: "Result calculated",
       detail: verification.risk_assessment.summary,
-      outcome: `Risk score set to ${verification.risk_assessment.score} with verdict ${verification.risk_assessment.verdict}`,
+      outcome: `Score ${verification.risk_assessment.score} with verdict ${verification.risk_assessment.verdict}`,
       timestamp: verification.risk_assessment.calculated_at,
     });
   }
@@ -180,22 +180,22 @@ export function adaptApiVerification(verification: ApiVerification): Verificatio
     createdAt: verification.created_at,
     analystNote:
       verification.signals.length > 0
-        ? "The current result is based on the implemented verification checks, including URL analysis and available request-time enrichments."
-        : "No suspicious signal was retained from the checks executed in this local slice.",
+        ? "This result reflects the checks completed for this link during verification."
+        : "No strong warning signal was retained in this verification.",
     summary:
       verification.risk_assessment?.summary ??
-      "No suspicious signal was generated from the submitted URL.",
+      "No warning signal was generated from the submitted link.",
     signals,
     evidenceSummary,
     executiveSummary: {
       posture:
         verification.signals.length > 0
-          ? `Current posture is ${verification.risk_assessment?.risk_level ?? "LOW"} risk based on the signals retained by the current verification checks.`
-          : "Current posture is low-risk because the implemented checks did not retain suspicious indicators.",
+          ? `${verification.risk_assessment?.risk_level ?? "LOW"} risk based on the signals retained in this verification.`
+          : "No strong warning signal was retained in this verification.",
       operationalImpact:
         verification.signals.length > 0
-          ? "The verification can be reviewed immediately, but it still benefits from broader infrastructure context for higher-confidence decisions."
-          : "This result should not be treated as a clean bill of health without broader content or infrastructure context.",
+          ? "Review the retained signals before making a final decision."
+          : "Treat this result with care if broader context is still missing.",
     },
     inconclusive: buildInconclusiveItems(verification),
     recommendation,

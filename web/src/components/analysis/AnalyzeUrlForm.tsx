@@ -19,16 +19,16 @@ interface AnalyzeUrlFormProps {
 }
 
 export function AnalyzeUrlForm({
-  buttonLabel = "Analyze",
+  buttonLabel = "Verify this link",
   buttonClassName,
   className,
   errorClassName,
-  hint = "URL or hostname.",
+  hint = "Paste a link to verify its safety.",
   inputClassName,
-  inputLabel = "URL",
+  inputLabel = "Link",
   onStateChange,
-  placeholder = "https://example.com/login",
-  submittingLabel = "Scanning...",
+  placeholder = "Paste a link to verify its safety",
+  submittingLabel = "Verifying...",
 }: AnalyzeUrlFormProps) {
   const navigate = useNavigate();
   const [analysisTarget, setAnalysisTarget] = useState("");
@@ -40,7 +40,7 @@ export function AnalyzeUrlForm({
 
     const trimmedTarget = analysisTarget.trim();
     if (!trimmedTarget) {
-      setSubmitError("Enter a URL to analyze.");
+      setSubmitError("Enter a URL to verify.");
       onStateChange?.("error");
       return;
     }
@@ -53,7 +53,7 @@ export function AnalyzeUrlForm({
       const verification = await createVerification({ url: trimmedTarget });
       navigate(`/verifications/${verification.id}`);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Verification request failed.");
+      setSubmitError(error instanceof Error ? error.message : "Verification failed.");
       onStateChange?.("error");
     } finally {
       setIsSubmitting(false);
@@ -74,10 +74,17 @@ export function AnalyzeUrlForm({
           inputMode="url"
           label={inputLabel}
           placeholder={placeholder}
+          title="Analyze this link for potential security risks"
           value={analysisTarget}
           onChange={(event) => setAnalysisTarget(event.target.value)}
         />
-        <Button className={resolvedButtonClassName} disabled={isSubmitting} type="submit" variant="primary">
+        <Button
+          className={resolvedButtonClassName}
+          disabled={isSubmitting}
+          title="Analyze this link for potential security risks"
+          type="submit"
+          variant="primary"
+        >
           {isSubmitting ? submittingLabel : buttonLabel}
         </Button>
       </form>
