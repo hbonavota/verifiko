@@ -252,6 +252,16 @@ def test_create_url_verification_use_case_generates_signals_from_url() -> None:
 
     assert dto.risk_assessment is not None
     assert len(dto.signals) >= 2
+    assert dto.trace is not None
+    assert dto.trace.total_signals == len(dto.signals)
+    assert "url-rule-analyzer" in dto.trace.layers_executed
+    assert "url-rule-analyzer" in dto.trace.signals_by_source
+    assert dto.score_breakdown is not None
+    assert dto.score_breakdown.base_score == 100.0
+    assert dto.score_breakdown.final_score == dto.risk_assessment.score
+    assert dto.risk_assessment.explanation.primary_factors
+    assert dto.risk_assessment.analysis_trace
+    assert dto.risk_assessment.analysis_trace[0].stage == "url_analysis"
 
 
 def test_create_url_verification_use_case_adds_recency_signal_for_recent_domain() -> None:
@@ -368,6 +378,15 @@ def test_create_url_verification_use_case_continues_when_html_fetch_fails() -> N
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level != "SAFE"
     assert "Analysis coverage degraded:" in dto.risk_assessment.summary
+    assert dto.risk_assessment.analysis_warnings == (
+        "fetch failed for http://secure-paypal-login.example.xyz/verify",
+    )
+    assert dto.trace is not None
+    assert "html-credential-analyzer" in dto.trace.layers_executed
+    assert any(
+        stage.stage == "html_content" and stage.status == "degraded"
+        for stage in dto.risk_assessment.analysis_trace
+    )
 
 
 def test_create_url_verification_use_case_adds_insecure_transport_signal_for_http() -> None:

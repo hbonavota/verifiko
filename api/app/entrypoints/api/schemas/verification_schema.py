@@ -41,6 +41,39 @@ class AnalysisSignalResponse(BaseModel):
     created_at: str
 
 
+class AnalysisTraceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    layers_executed: tuple[str, ...]
+    signals_by_source: dict[str, tuple["AnalysisSignalResponse", ...]]
+    total_signals: int
+
+
+class SignalContributionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    signal_type: str
+    base_weight: float
+    confidence: float
+    impact: float
+
+
+class CompoundRuleDeltaResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    rule_name: str
+    delta: float
+
+
+class ScoreBreakdownResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    base_score: float
+    signal_contributions: tuple[SignalContributionResponse, ...]
+    compound_rules_applied: tuple[CompoundRuleDeltaResponse, ...]
+    final_score: float
+
+
 class RiskAssessmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,7 +86,42 @@ class RiskAssessmentResponse(BaseModel):
     terminal_override: bool
     terminal_reason: str | None
     calculation_version: str
+    analysis_warnings: tuple[str, ...]
+    analysis_trace: tuple["AnalysisStageTraceResponse", ...]
+    explanation: "RiskExplanationResponse"
     calculated_at: str
+
+
+class ExplanationFactorResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    signal_type: str
+    title: str
+    source: str
+    severity: str
+    score_contribution: float
+    evidence: tuple[str, ...]
+
+
+class AnalysisStageTraceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    stage: str
+    source: str
+    status: str
+    signal_count: int
+    signal_titles: tuple[str, ...]
+    warnings: tuple[str, ...]
+
+
+class RiskExplanationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    headline: str
+    decision_basis: str
+    primary_factors: tuple[ExplanationFactorResponse, ...]
+    analysis_trace: tuple[AnalysisStageTraceResponse, ...]
+    coverage_warnings: tuple[str, ...]
 
 
 class VerificationResponse(BaseModel):
@@ -66,6 +134,8 @@ class VerificationResponse(BaseModel):
     status: str
     signals: tuple[AnalysisSignalResponse, ...]
     risk_assessment: RiskAssessmentResponse | None
+    trace: AnalysisTraceResponse | None
+    score_breakdown: ScoreBreakdownResponse | None
     created_at: str
     updated_at: str
     completed_at: str | None

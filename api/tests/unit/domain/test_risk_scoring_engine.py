@@ -28,6 +28,10 @@ def test_terminal_override_for_high_confidence_blacklist_match() -> None:
     assert result.terminal_override is True
     assert result.score.value == 0
     assert result.verdict is VerdictType.CONFIRMED_MALICIOUS
+    assert result.score_breakdown is not None
+    assert result.score_breakdown.base_score == 100.0
+    assert result.score_breakdown.final_score == 0
+    assert result.score_breakdown.signal_contributions[0].signal_type == "blacklist_match"
 
 
 def test_compound_rule_adds_penalty() -> None:
@@ -59,6 +63,12 @@ def test_compound_rule_adds_penalty() -> None:
 
     assert result.score.value < 100
     assert "credential_lure_pattern" in result.summary
+    assert result.score_breakdown is not None
+    assert any(
+        entry.rule_name == "credential_lure_pattern"
+        for entry in result.score_breakdown.compound_rules_applied
+    )
+    assert len(result.score_breakdown.signal_contributions) == 2
 
 
 def test_infrastructure_compound_rule_adds_penalty() -> None:
@@ -90,3 +100,8 @@ def test_infrastructure_compound_rule_adds_penalty() -> None:
 
     assert result.score.value < 100
     assert "infrastructure_backed_credential_lure" in result.summary
+    assert result.score_breakdown is not None
+    assert any(
+        entry.rule_name == "infrastructure_backed_credential_lure"
+        for entry in result.score_breakdown.compound_rules_applied
+    )

@@ -119,6 +119,10 @@ def test_verification_api_create_list_and_get(client: TestClient) -> None:
     fetched_body = get_response.json()
     assert fetched_body["id"] == verification_id
     assert fetched_body["normalized_input"] == "https://verifiko.es/login"
+    assert fetched_body["trace"]["total_signals"] == len(fetched_body["signals"])
+    assert fetched_body["score_breakdown"]["base_score"] == 100.0
+    assert fetched_body["risk_assessment"]["explanation"]["headline"]
+    assert fetched_body["risk_assessment"]["explanation"]["analysis_trace"]
 
 
 def test_verification_api_can_generate_signals_from_url_only(client: TestClient) -> None:

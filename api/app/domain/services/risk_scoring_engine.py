@@ -13,6 +13,7 @@ from app.domain.services.compound_rules import (
     RedirectedDeceptionPatternRule,
     detected_types,
 )
+from app.domain.services.score_breakdown_builder import build_score_breakdown
 from app.domain.services.scoring_policies import CATEGORY_CAPS, SEVERITY_MULTIPLIERS
 from app.domain.services.scoring_service import ScoringService
 from app.domain.value_objects.confidence_score import ConfidenceScore
@@ -32,8 +33,9 @@ class RiskScoringEngine(ScoringService):
     def calculate(self, signals: list[AnalysisSignal], calculation_version: str) -> RiskAssessment:
         active_signals = [signal for signal in signals if signal.detected]
         if _is_terminal_blacklist(active_signals):
+            final_score = ConfidenceScore(0)
             return RiskAssessment(
-                score=ConfidenceScore(0),
+                score=final_score,
                 risk_level=RiskLevel.CRITICAL,
                 verdict=VerdictType.CONFIRMED_MALICIOUS,
                 summary="Terminal override triggered by high-confidence blacklist match.",
@@ -42,6 +44,11 @@ class RiskScoringEngine(ScoringService):
                 terminal_override=True,
                 terminal_reason="blacklist_match confidence >= 0.98",
                 calculation_version=calculation_version,
+                score_breakdown=build_score_breakdown(
+                    active_signals,
+                    self._compound_rules,
+                    final_score=final_score.value,
+                ),
             )
 
         raw_category_penalties: dict[str, float] = {}
@@ -87,6 +94,11 @@ class RiskScoringEngine(ScoringService):
             terminal_override=False,
             terminal_reason=None,
             calculation_version=calculation_version,
+            score_breakdown=build_score_breakdown(
+                active_signals,
+                self._compound_rules,
+                final_score=final_score.value,
+            ),
         )
 
     def _compound_penalty(self, signals: list[AnalysisSignal]) -> tuple[float, list[str]]:

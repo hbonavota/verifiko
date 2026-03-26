@@ -1,8 +1,10 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from app.domain.entities.analysis_trace_stage import AnalysisTraceStage
 from app.domain.enums.risk_level import RiskLevel
 from app.domain.enums.verdict_type import VerdictType
+from app.domain.entities.score_breakdown import ScoreBreakdown
 from app.domain.value_objects.confidence_score import ConfidenceScore
 
 
@@ -17,4 +19,7 @@ class RiskAssessment:
     terminal_override: bool
     terminal_reason: str | None
     calculation_version: str
+    analysis_warnings: tuple[str, ...] = ()
+    analysis_trace: tuple[AnalysisTraceStage, ...] = ()
+    score_breakdown: ScoreBreakdown | None = None
     calculated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
