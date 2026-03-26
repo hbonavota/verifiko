@@ -11,9 +11,7 @@ body,
 body {
   margin: 0;
   color: var(--color-text);
-  background:
-    radial-gradient(circle at top left, rgba(112, 145, 134, 0.12), transparent 32%),
-    linear-gradient(180deg, #f8f4ea 0%, #f2ede3 100%);
+  background: #0a0f1e;
 }
 
 body,
@@ -44,8 +42,8 @@ textarea:focus-visible,
 select:focus-visible {
   outline: 0;
   box-shadow:
-    0 0 0 2px rgba(248, 244, 234, 0.95),
-    0 0 0 5px rgba(33, 77, 66, 0.26);
+    0 0 0 2px rgba(10, 15, 30, 0.96),
+    0 0 0 5px rgba(0, 191, 255, 0.24);
 }
 
 img {

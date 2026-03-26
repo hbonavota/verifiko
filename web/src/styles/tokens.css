@@ -3,10 +3,10 @@
   --font-ui: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
 
   --color-background: #0a0f1e;
-  --color-background-emphasis: #0f172d;
-  --color-surface: rgba(15, 22, 42, 0.88);
-  --color-surface-strong: rgba(18, 28, 54, 0.98);
-  --color-border: rgba(160, 176, 196, 0.14);
+  --color-background-emphasis: #0d1427;
+  --color-surface: rgba(14, 21, 39, 0.94);
+  --color-surface-strong: rgba(17, 26, 49, 0.98);
+  --color-border: rgba(160, 176, 196, 0.12);
   --color-text: #f3f7ff;
   --color-text-muted: #a0a0a0;
   --color-primary: #00bfff;
@@ -31,16 +31,14 @@
   --radius-lg: 32px;
   --radius-pill: 999px;
 
-  --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.34);
-  --shadow-strong: 0 28px 72px rgba(0, 0, 0, 0.42);
+  --shadow-soft: 0 16px 34px rgba(0, 0, 0, 0.28);
+  --shadow-strong: 0 24px 56px rgba(0, 0, 0, 0.34);
 
   --content-width: 1180px;
 
   font-family: var(--font-ui);
   color: var(--color-text);
-  background:
-    radial-gradient(circle at top left, rgba(0, 191, 255, 0.12), transparent 32%),
-    linear-gradient(180deg, #0c1326 0%, #0a0f1e 100%);
+  background: #0a0f1e;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
