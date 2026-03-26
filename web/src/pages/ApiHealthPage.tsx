@@ -20,7 +20,7 @@ export function ApiHealthPage() {
 
   useDocumentMeta(
     "API Health",
-    "API connectivity check for the current Verifiko API surface, including live status and configured base URL.",
+    "Check whether the Verifiko application can reach its analysis API.",
   );
 
   async function runHealthCheck() {
@@ -42,15 +42,15 @@ export function ApiHealthPage() {
   return (
     <PageShell>
       <SectionTitle
-        eyebrow="API Connectivity"
-        title="API health and local integration status"
-        description="Direct health probe for the current API surface, kept intentionally focused so connectivity can be validated without expanding web workspace scope."
+        eyebrow="Connection"
+        title="API connection status"
+        description="A simple check to confirm that Verifiko can reach its analysis service."
       />
 
       <Card
         eyebrow="Health check"
         title="API status"
-        description="Direct probe of the API health route to confirm local integration readiness."
+        description="Check whether the analysis service is reachable."
         action={
           <Button onClick={() => void runHealthCheck()} variant="secondary">
             Refresh
@@ -58,14 +58,14 @@ export function ApiHealthPage() {
         }
       >
         <Input
-          hint="Configured from VITE_API_BASE_URL."
-          label="API base URL"
+          hint="Configured for this application."
+          label="Service URL"
           readOnly
           value={getApiBaseUrl()}
         />
 
         {healthState.status === "loading" || healthState.status === "idle" ? (
-          <p className="api-health__message">Checking API health endpoint…</p>
+          <p className="api-health__message">Checking service connection…</p>
         ) : null}
 
         {healthState.status === "ready" ? (

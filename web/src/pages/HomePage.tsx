@@ -1,244 +1,179 @@
-import { Button } from "../components/ui/Button";
+import { useEffect, useState } from "react";
+
+import { AnalyzeUrlForm } from "../components/analysis/AnalyzeUrlForm";
+import { ScoreRing } from "../components/analysis/ScoreRing";
 import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { SectionTitle } from "../components/ui/SectionTitle";
+import { listVerifications } from "../lib/api";
+import { adaptApiVerification } from "../lib/verificationAdapter";
+import { toneForRiskLevel } from "../lib/risk";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
-import { SectionTitle } from "../components/ui/SectionTitle";
+import type { VerificationSummary } from "../types/verification";
 
-const credibilityPillars = [
-  {
-    title: "Explainable",
-    description:
-      "Risk output is decomposed into individual signals, category penalties, and a readable summary.",
-  },
-  {
-    title: "Operational",
-    description:
-      "The interface is framed for review work, escalation decisions, and evidence handoff, not vanity metrics.",
-  },
-  {
-    title: "Composable",
-    description:
-      "Backend capabilities are exposed as clear services and routes that can be surfaced in focused product flows.",
-  },
-  {
-    title: "Pragmatic",
-    description:
-      "Verifiko favors traceable signals, calm UX, and explicit tradeoffs over speculative automation language.",
-  },
-];
-
-const credibilityChips = [
-  "FastAPI",
-  "PostgreSQL-ready",
-  "Hexagonal architecture",
-  "Explainable signals",
-] as const;
-
-const scoreBreakdown = [
-  { label: "Domain structure", value: 21, tone: "danger" },
-  { label: "Content behavior", value: 18, tone: "warning" },
-  { label: "Navigation behavior", value: 11, tone: "neutral" },
-] as const;
-
-const previewSignals = [
-  {
-    title: "Brand impersonation",
-    detail: "Visual identity and login framing align too closely with the legitimate destination.",
-    tone: "danger" as const,
-  },
-  {
-    title: "Credential lure language",
-    detail: "Action prompts are optimized for rapid credential submission rather than navigation clarity.",
-    tone: "warning" as const,
-  },
-  {
-    title: "Redirect mismatch",
-    detail: "Observed path behavior introduces a destination shift before the form experience resolves.",
-    tone: "neutral" as const,
-  },
-] as const;
-
-const verificationSteps = [
-  {
-    title: "Normalize the target",
-    description:
-      "Inputs are normalized into a consistent verification object so downstream analysis uses a stable representation.",
-  },
-  {
-    title: "Collect signals",
-    description:
-      "Signals describe concrete observations such as structure anomalies, content cues, redirects, and reputation context.",
-  },
-  {
-    title: "Score with traceability",
-    description:
-      "Category penalties and compound rules shape the score while preserving a readable explanation of why it moved.",
-  },
-] as const;
-
-const explainabilityPoints = [
-  {
-    title: "Review confidence depends on traceable reasoning",
-    description:
-      "Analysts need to understand which signals drove a score and which ones are still inconclusive before taking action.",
-  },
-  {
-    title: "Operational teams need defensible outputs",
-    description:
-      "A verification result should support escalation, monitoring, or blocking decisions without turning into a black box.",
-  },
-] as const;
+function cardToneForRiskLevel(riskLevel: VerificationSummary["riskLevel"]) {
+  const tone = toneForRiskLevel(riskLevel);
+  return tone === "warning" || tone === "danger" || tone === "success" ? tone : "default";
+}
 
 export function HomePage() {
   useDocumentMeta(
-    "Overview",
-    "Verifiko is an explainable verification workspace for suspicious digital content, focused on evidence traceability and operational clarity.",
+    "Analyze URL",
+    "Analyze suspicious URLs with a focused verification flow and inspect the latest result in Verifiko.",
   );
+
+  const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
+  const [analysisState, setAnalysisState] = useState<"idle" | "submitting" | "error">("idle");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadVerifications() {
+      try {
+        const payload = await listVerifications();
+        if (!isMounted) {
+          return;
+        }
+
+        setVerifications(payload.map(adaptApiVerification));
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setVerifications([]);
+      }
+    }
+
+    void loadVerifications();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const latestVerification = verifications[0] ?? null;
+  const latestSignals = latestVerification?.signals.slice(0, 2) ?? [];
+  const isLoadingAnalysis = analysisState === "submitting";
 
   return (
     <PageShell>
-      <section className="landing-hero">
-        <div className="landing-hero__content">
+      <section className="analysis-hero">
+        <div className="analysis-hero__content" id="analyze-url">
           <SectionTitle
-            eyebrow="Signal-based verification API"
-            title="Explainable risk assessment for suspicious digital content"
-            description="Verifiko is designed for verification workflows where analysts need more than a score. It emphasizes explainable signals, evidence traceability, and operational clarity so suspicious content can be reviewed with context instead of guesswork."
+            eyebrow="Verifiko"
+            title="Paste a URL. Read the score."
+            description="One clear action. One clear result."
           />
 
-          <div className="hero-panel">
-            <div className="hero-panel__body">
-              <p className="hero-panel__eyebrow">Product posture</p>
-              <h2 className="hero-panel__title">
-                Built for reviewability, scoring transparency, and evidence-first decision support.
-              </h2>
-              <p className="hero-panel__copy">
-                The web workspace frames the existing API as a serious internal tool or early SaaS
-                product surface, with enough structure to communicate how verification results can
-                be interpreted, challenged, and acted on.
-              </p>
+          <Card className="analysis-hero__panel" tone="success">
+            <div className="analysis-hero__panel-copy">
+              <p className="hero-panel__eyebrow">Analyze URL</p>
+              <h2 className="hero-panel__title">Fast input. Immediate visual feedback.</h2>
+              <p className="hero-panel__copy">Paste the target and let the result take over.</p>
             </div>
-            <div className="hero-panel__actions">
-              <Button to="/dashboard" variant="primary">
-                Start analysis
-              </Button>
-              <Button to="/api-health" variant="secondary">
-                View API health
-              </Button>
-            </div>
-          </div>
 
-          <div className="landing-chip-row" aria-label="Technology and credibility markers">
-            {credibilityChips.map((chip) => (
-              <Badge key={chip} label={chip} tone="primary" />
-            ))}
-          </div>
+            <AnalyzeUrlForm
+              buttonLabel="Analyze URL"
+              buttonClassName="analysis-form__button analysis-form__button--hero"
+              className="analysis-form--hero"
+              hint="Suspicious URL or hostname."
+              inputClassName="analysis-form__input-control"
+              onStateChange={setAnalysisState}
+            />
+          </Card>
         </div>
 
         <Card
-          eyebrow="Verification preview"
-          title="Verification result preview"
-          description="Representative example of how a single verification can be reviewed with score context, evidence, and reasoning."
-          tone="warning"
+          eyebrow={isLoadingAnalysis ? "Analysis in progress" : "Result"}
+          title={
+            isLoadingAnalysis
+              ? "Running analysis"
+              : latestVerification
+                ? latestVerification.subject
+                : "Ready for the next URL"
+          }
+          description={
+            isLoadingAnalysis
+              ? "Collecting the signals behind the result."
+              : latestVerification
+              ? latestVerification.summary
+              : "The main result appears here with the score, verdict, and strongest retained signals."
+          }
+          tone={isLoadingAnalysis ? "success" : latestVerification ? cardToneForRiskLevel(latestVerification.riskLevel) : "default"}
+          className="analysis-hero__result"
         >
-          <div className="preview-card__topline">
-            <div>
-              <p className="preview-card__label">Run ID</p>
-              <p className="preview-card__run-id">vrf-2026-0315-018</p>
-            </div>
-            <Badge label="MEDIUM RISK" tone="warning" />
-          </div>
-
-          <div className="preview-card__score-block">
-            <div>
-              <p className="preview-card__label">Risk score</p>
-              <p className="preview-card__score">58</p>
-            </div>
-            <p className="preview-card__summary">
-              Signals indicate meaningful suspicious behavior, but the current evidence does not yet
-              justify a terminal malicious disposition.
-            </p>
-          </div>
-
-          <div className="breakdown-list">
-            {scoreBreakdown.map((item) => (
-              <div key={item.label} className="breakdown-list__row">
-                <div className="breakdown-list__labels">
-                  <span>{item.label}</span>
-                  <span>{item.value}</span>
-                </div>
-                <div className="breakdown-list__track">
-                  <div
-                    className={`breakdown-list__fill breakdown-list__fill--${item.tone}`}
-                    style={{ width: `${item.value * 3}%` }}
-                  />
+          {isLoadingAnalysis ? (
+            <div className="analysis-result-card__hero">
+              <ScoreRing label="Analyzing" size="hero" state="loading" valueLabel="..." />
+              <div className="analysis-result-card__summary-block">
+                <p className="analysis-result-card__headline">Running verification</p>
+                <p className="analysis-result-card__copy">
+                  Verifiko is preparing the score, verdict, and retained signals.
+                </p>
+                <div className="analysis-result-card__loading-stack" aria-hidden="true">
+                  <span className="analysis-result-card__loading-line analysis-result-card__loading-line--strong" />
+                  <span className="analysis-result-card__loading-line" />
+                  <span className="analysis-result-card__loading-line analysis-result-card__loading-line--short" />
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : latestVerification ? (
+            <>
+              <div className="analysis-result-card__topline">
+                <Badge label={latestVerification.riskLevel} tone={toneForRiskLevel(latestVerification.riskLevel)} />
+                <p className="analysis-result-card__run-id">{latestVerification.id}</p>
+              </div>
 
-          <div className="preview-signal-list">
-            {previewSignals.map((signal) => (
-              <article key={signal.title} className="preview-signal-list__item">
-                <div className="preview-signal-list__topline">
-                  <p className="preview-signal-list__title">{signal.title}</p>
-                  <Badge label="Observed" tone={signal.tone} />
+              <div className="analysis-result-card__hero">
+                <ScoreRing
+                  label="Trust score"
+                  riskLevel={latestVerification.riskLevel}
+                  score={latestVerification.score}
+                  size="hero"
+                />
+
+                <div className="analysis-result-card__summary-block">
+                  <p className="preview-card__label">Current posture</p>
+                  <p className="analysis-result-card__headline">{latestVerification.verdict}</p>
+                  <p className="analysis-result-card__copy">{latestVerification.executiveSummary.posture}</p>
+                  <div className="analysis-result-card__actions">
+                    <Button to={`/verifications/${latestVerification.id}`} variant="primary">
+                      Open result
+                    </Button>
+                    <Button to="/dashboard" variant="secondary">
+                      Open review
+                    </Button>
+                  </div>
                 </div>
-                <p className="preview-signal-list__detail">{signal.detail}</p>
-              </article>
-            ))}
-          </div>
+              </div>
 
-          <div className="preview-evidence">
-            <p className="preview-card__label">Evidence summary</p>
-            <p className="preview-evidence__text">
-              Page styling, action language, and redirect behavior collectively suggest a suspicious
-              credential collection flow. Additional infrastructure context would refine confidence.
-            </p>
-          </div>
-        </Card>
-      </section>
-
-      <section className="card-grid card-grid--four">
-        {credibilityPillars.map((item) => (
-          <Card key={item.title} eyebrow="Credibility" title={item.title} description={item.description} />
-        ))}
-      </section>
-
-      <section className="support-grid">
-        <Card
-          eyebrow="How verification works"
-          title="A clear path from input to explainable result"
-          description="The API already carries the core verification and scoring logic. The web workspace is meant to present that logic in a review-friendly form."
-        >
-          <div className="support-list">
-            {verificationSteps.map((step, index) => (
-              <article key={step.title} className="support-list__item">
-                <div className="support-list__index">{index + 1}</div>
-                <div>
-                  <p className="support-list__title">{step.title}</p>
-                  <p className="support-list__description">{step.description}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </Card>
-
-        <Card
-          eyebrow="Why explainability matters"
-          title="Readable reasoning makes verification results usable"
-          description="Verifiko treats explainability as an operational requirement rather than a decorative claim."
-        >
-          <div className="support-list">
-            {explainabilityPoints.map((point) => (
-              <article key={point.title} className="support-list__item support-list__item--plain">
-                <div>
-                  <p className="support-list__title">{point.title}</p>
-                  <p className="support-list__description">{point.description}</p>
-                </div>
-              </article>
-            ))}
-          </div>
+              <div className="analysis-result-card__signals">
+                <p className="preview-card__label">Top signals</p>
+                {latestSignals.map((signal) => (
+                  <article key={signal.id} className="preview-signal-list__item">
+                    <div className="preview-signal-list__topline">
+                      <p className="preview-signal-list__title">{signal.title}</p>
+                      <Badge label={signal.severity} tone={toneForRiskLevel(signal.severity)} />
+                    </div>
+                    <p className="preview-signal-list__detail">{signal.reason}</p>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="analysis-result-card__hero analysis-result-card__hero--empty">
+              <ScoreRing label="Awaiting result" size="hero" state="idle" valueLabel="--" />
+              <div className="analysis-result-card__summary-block">
+                <p className="analysis-result-card__headline">No analysis yet</p>
+                <p className="analysis-result-card__copy">
+                  Paste a URL above and the score will appear here.
+                </p>
+              </div>
+            </div>
+          )}
         </Card>
       </section>
     </PageShell>

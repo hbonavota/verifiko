@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
+import { AnalyzeUrlForm } from "../components/analysis/AnalyzeUrlForm";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
-import { Input } from "../components/ui/Input";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
-import { createVerification, listVerifications } from "../lib/api";
+import { listVerifications } from "../lib/api";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
@@ -19,15 +18,11 @@ function toneForCount(riskLevel: RiskLevel) {
 }
 
 export function DashboardPage() {
-  const navigate = useNavigate();
-  const [analysisTarget, setAnalysisTarget] = useState("");
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
 
   useDocumentMeta(
-    "Verification Dashboard",
-    "Analyst-facing operations dashboard for reviewing suspicious digital content, inspecting evidence, and deciding next actions in Verifiko.",
+    "Review Results",
+    "Review recent Verifiko analyses, inspect retained signals, and continue into detailed evidence.",
   );
 
   useEffect(() => {
@@ -58,180 +53,95 @@ export function DashboardPage() {
   }, []);
 
   const activeVerification = verifications[0] ?? null;
-  const totalVerifications = verifications.length;
-  const completedVerifications = verifications.filter(
-    (verification) => verification.status === "COMPLETED",
-  ).length;
-  const higherRiskVerifications = verifications.filter(
-    (verification) => verification.riskLevel === "HIGH" || verification.riskLevel === "CRITICAL",
-  ).length;
-  const mediumOrHigherVerifications = verifications.filter(
-    (verification) =>
-      verification.riskLevel === "MEDIUM" ||
-      verification.riskLevel === "HIGH" ||
-      verification.riskLevel === "CRITICAL",
-  ).length;
 
   const activeReasons =
     activeVerification && activeVerification.signals.length > 0
       ? activeVerification.signals.slice(0, 3).map((signal) => signal.reason)
-      : ["No verification record is currently available in this runtime."];
-
-  async function handleAnalyze() {
-    const trimmedTarget = analysisTarget.trim();
-    if (!trimmedTarget) {
-      setSubmitError("Enter a suspicious URL to analyze.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitError(null);
-
-      try {
-        const verification = await createVerification({ url: trimmedTarget });
-        navigate(`/verifications/${verification.id}`);
-      } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Verification request failed.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+      : ["No recent analysis is available yet."];
 
   return (
     <PageShell>
       <SectionTitle
-        eyebrow="Operations Overview"
-        title="Verification Dashboard"
-        description="API-backed workspace for creating verifications, reviewing the current runtime records, and inspecting the latest result."
+        eyebrow="Review"
+        title="Latest analyses"
+        description="Open a recent result, inspect the strongest signals, and continue into the full evidence view."
       />
 
       <Card
-        eyebrow="Analysis intake"
-        title="Start a new verification"
-        description="Primary entry point for suspicious URLs or hostnames requiring explainable review."
+        eyebrow="New analysis"
+        title="Start from a suspicious URL"
+        description="Run a new analysis and open the result directly."
         tone="success"
         id="verifications"
         className="dashboard-intake-card"
       >
-        <div className="dashboard-intake">
-          <Input
-            className="dashboard-intake__input-control"
-            hint="Suspicious URL or hostname."
-            label="Analysis target"
-            placeholder="Paste suspicious URL or hostname to analyze"
-            value={analysisTarget}
-            onChange={(event) => setAnalysisTarget(event.target.value)}
-          />
-          <Button variant="primary" onClick={() => void handleAnalyze()} disabled={isSubmitting}>
-            {isSubmitting ? "Analyzing..." : "Analyze now"}
-          </Button>
-        </div>
-        {submitError ? <p className="metric-card__detail">{submitError}</p> : null}
+        <AnalyzeUrlForm
+          buttonLabel="Analyze now"
+          className="dashboard-intake"
+          hint="Suspicious URL or hostname."
+          inputClassName="dashboard-intake__input-control"
+          inputLabel="Analysis target"
+          placeholder="Paste suspicious URL or hostname to analyze"
+        />
       </Card>
 
-      <section className="dashboard-summary-grid">
-        <Card
-          eyebrow="Current assessment"
-          title={activeVerification ? "Latest verification" : "No verifications in current runtime"}
-          description={
-            activeVerification
-              ? activeVerification.summary
-              : "Create a verification to populate the current backend runtime and begin reviewing live results."
-          }
-          tone="warning"
-          className="dashboard-assessment-card"
-        >
-          {activeVerification ? (
-            <div className="dashboard-card-stack">
-              <div className="dashboard-card-headline">
-                <div>
-                  <p className="metric-card__label">Latest assessed target</p>
-                  <p className="dashboard-card__target">{activeVerification.subject}</p>
-                </div>
-                <Badge label={activeVerification.riskLevel} tone={toneForRiskLevel(activeVerification.riskLevel)} />
-              </div>
-
-              <div className="dashboard-card-headline">
-                <div>
-                  <p className="metric-card__label">Risk score</p>
-                  <p className="metric-card__value">{activeVerification.score}</p>
-                </div>
-                <div className="dashboard-card__run">
-                  <p className="metric-card__label">Verdict posture</p>
-                  <p className="dashboard-card__verdict">{activeVerification.verdict}</p>
-                </div>
-              </div>
-
-              <div className="dashboard-card-headline dashboard-card-headline--muted">
-                <div>
-                  <p className="metric-card__label">Verification run</p>
-                  <p className="dashboard-card__run-id">{activeVerification.id}</p>
-                </div>
-                <div className="dashboard-card__next-step">
-                  <p className="metric-card__label">Recommended next step</p>
-                  <p className="dashboard-card__next-step-text">{activeVerification.recommendation.title}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="dashboard-card-stack">
-              <div className="dashboard-card-headline">
-                <div>
-                  <p className="metric-card__label">Runtime status</p>
-                  <p className="dashboard-card__target">No verification records yet</p>
-                </div>
-                <Badge label="EMPTY" tone="neutral" />
-              </div>
-              <p className="metric-card__detail">
-                The current backend runtime has not stored any verification records yet.
-              </p>
-            </div>
-          )}
-        </Card>
-
-        <Card
-          eyebrow="Runtime summary"
-          title="Current in-memory records"
-          description="Counts below are derived from the verifications currently available through the API list route."
-          className="dashboard-summary-card"
-        >
-          <div className="dashboard-card-pills dashboard-card-pills--stack">
-            <StatPill label="Stored records" value={String(totalVerifications)} />
-            <StatPill label="Completed runs" value={String(completedVerifications)} tone="success" />
-            <StatPill label="Medium or higher risk" value={String(mediumOrHigherVerifications)} tone="warning" />
-          </div>
-        </Card>
-
-        <Card
-          eyebrow="Current runtime"
-          title="Session scope"
-          description="This workspace reflects the current backend process only. Records disappear when the in-memory runtime restarts."
-          className="dashboard-summary-card"
-        >
+      <Card
+        eyebrow="Latest result"
+        title={activeVerification ? "Most recent verification" : "No analyses yet"}
+        description={
+          activeVerification
+            ? activeVerification.summary
+            : "Run an analysis to populate the review surface and inspect the retained signals."
+        }
+        tone="warning"
+        className="dashboard-assessment-card"
+      >
+        {activeVerification ? (
           <div className="dashboard-card-stack">
             <div className="dashboard-card-headline">
-              <Badge label="API-backed" tone="success" />
-              <Badge label="In-memory storage" tone="neutral" />
+              <div>
+                <p className="metric-card__label">Target</p>
+                <p className="dashboard-card__target">{activeVerification.subject}</p>
+              </div>
+              <Badge label={activeVerification.riskLevel} tone={toneForRiskLevel(activeVerification.riskLevel)} />
             </div>
+
             <div className="dashboard-card-headline">
               <div>
-                <p className="metric-card__label">Latest runtime record</p>
-                <p className="metric-card__detail">
-                  {activeVerification ? new Date(activeVerification.createdAt).toLocaleString() : "No records yet"}
-                </p>
+                <p className="metric-card__label">Trust score</p>
+                <p className="metric-card__value">{activeVerification.score}</p>
               </div>
-              <p className="metric-card__detail">
-                {higherRiskVerifications} high-risk record{higherRiskVerifications === 1 ? "" : "s"} currently retained
-              </p>
+              <div className="dashboard-card__run">
+                <p className="metric-card__label">Result</p>
+                <p className="dashboard-card__verdict">{activeVerification.verdict}</p>
+              </div>
             </div>
-            <div className="dashboard-card-pills">
-              <Button to="/api-health" variant="ghost">
-                View API health
-              </Button>
+
+            <div className="dashboard-card-headline dashboard-card-headline--muted">
+              <div className="dashboard-card-pills">
+                <StatPill label="Signals" value={String(activeVerification.signals.length)} tone="warning" />
+                <StatPill label="Open questions" value={String(activeVerification.inconclusive.length)} tone="danger" />
+              </div>
+              <div className="dashboard-card-pills">
+                <Button to={`/verifications/${activeVerification.id}`} variant="primary">
+                  Open result
+                </Button>
+              </div>
             </div>
           </div>
-        </Card>
-      </section>
+        ) : (
+          <div className="dashboard-card-stack">
+            <div className="dashboard-card-headline">
+              <div>
+                <p className="metric-card__label">Status</p>
+                <p className="dashboard-card__target">Ready for the first analysis</p>
+              </div>
+              <Badge label="EMPTY" tone="neutral" />
+            </div>
+            <p className="metric-card__detail">Paste a URL above to generate the first result.</p>
+          </div>
+        )}
+      </Card>
 
       <section className="dashboard-grid">
         <div className="dashboard-main">
@@ -283,7 +193,7 @@ export function DashboardPage() {
               </div>
             ) : (
               <p className="metric-card__detail">
-                No live verification is available yet for signal inspection.
+                No analysis is available yet for signal inspection.
               </p>
             )}
           </Card>
@@ -340,7 +250,7 @@ export function DashboardPage() {
                 </div>
               ) : (
                 <p className="metric-card__detail">
-                  Evidence context will appear here once the current runtime contains a verification record.
+                  Evidence context appears after the first analysis is available.
                 </p>
               )}
             </Card>
@@ -367,7 +277,7 @@ export function DashboardPage() {
               </div>
             ) : (
               <p className="metric-card__detail">
-                The current runtime has no verification record yet, so there is no trace sequence to display.
+                The decision trace will appear after the first result is available.
               </p>
             )}
           </Card>
@@ -393,32 +303,9 @@ export function DashboardPage() {
 
         <aside className="dashboard-rail">
           <Card
-            eyebrow="Actions"
-            title="Operational controls"
-            description="Available navigation and review actions for the current runtime."
-            tone="warning"
-            className="dashboard-rail-card dashboard-rail-card--primary"
-          >
-            <div className="action-stack">
-              {activeVerification ? (
-                <Button to={`/verifications/${activeVerification.id}`} variant="primary">
-                  Open live result
-                </Button>
-              ) : (
-                <Button variant="primary" onClick={() => void handleAnalyze()} disabled={isSubmitting}>
-                  Analyze target
-                </Button>
-              )}
-              <Button to="/api-health" variant="secondary">
-                Check API health
-              </Button>
-            </div>
-          </Card>
-
-          <Card
-            eyebrow="Recent records"
-            title="Latest verifications"
-            description="Most recent verification records currently available from the API list route."
+            eyebrow="Recent analyses"
+            title="Latest results"
+            description="Most recent analyses available for review."
             className="dashboard-rail-card"
           >
             {verifications.length > 0 ? (
@@ -440,46 +327,29 @@ export function DashboardPage() {
               </div>
             ) : (
               <p className="metric-card__detail">
-                No verification records are currently available in this backend runtime.
+                No results are available yet.
               </p>
             )}
           </Card>
 
           <Card
-            eyebrow="Assessment note"
-            title="Current result summary"
-            description="Readable interpretation derived from the latest verification record rather than analyst-authored notes."
+            eyebrow="Suggested next step"
+            title="What to do next"
+            description="Recommended action based on the latest result."
             tone="warning"
             className="dashboard-rail-card"
           >
             {activeVerification ? (
               <div className="notes-panel">
-                <p className="notes-panel__text">{activeVerification.analystNote}</p>
+                <p className="recommendation-panel__headline">{activeVerification.recommendation.title}</p>
+                <p className="notes-panel__text">{activeVerification.recommendation.detail}</p>
                 <p className="notes-panel__meta">{activeVerification.executiveSummary.operationalImpact}</p>
               </div>
             ) : (
               <p className="metric-card__detail">
-                Summary notes appear here after the current runtime has a verification result.
+                A recommended next step appears after the first result is available.
               </p>
             )}
-          </Card>
-
-          <Card
-            eyebrow="Runtime context"
-            title="Current scope"
-            description="Compact context card based on the current in-memory runtime instead of broader operational telemetry."
-            id="settings"
-            className="dashboard-rail-card dashboard-rail-card--secondary"
-          >
-            <div className="dashboard-card-pills dashboard-card-pills--stack">
-              <StatPill label="Storage mode" value="In-memory runtime" />
-              <StatPill
-                label="Latest unresolved items"
-                value={String(activeVerification?.inconclusive.length ?? 0)}
-                tone="danger"
-              />
-              <StatPill label="API list records" value={String(totalVerifications)} />
-            </div>
           </Card>
         </aside>
       </section>

@@ -6,7 +6,7 @@ import { PageShell } from "../layouts/PageShell";
 export function NotFoundPage() {
   useDocumentMeta(
     "Not Found",
-    "The requested Verifiko route could not be found in the current demo workspace.",
+    "The requested Verifiko route could not be found.",
   );
 
   return (
@@ -14,7 +14,7 @@ export function NotFoundPage() {
       <SectionTitle
         eyebrow="Route Not Found"
         title="The requested route is not available."
-        description="Return to the product overview or continue into the verification workspace from the dashboard."
+        description="Return to the main analysis flow or open the review screen."
       />
       <Button to="/" variant="secondary">
         Return to home

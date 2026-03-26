@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { ScoreRing } from "../components/analysis/ScoreRing";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
 import { getVerificationById } from "../lib/api";
@@ -47,18 +48,6 @@ function topReasonSummary(verification: VerificationSummary) {
   }
 
   return "The strongest retained reasons are shown first so the result can be understood before opening the full trace.";
-}
-
-function scoreRingClassName(riskLevel: VerificationSummary["riskLevel"]) {
-  if (riskLevel === "CRITICAL" || riskLevel === "HIGH") {
-    return "score-ring score-ring--danger";
-  }
-
-  if (riskLevel === "MEDIUM") {
-    return "score-ring score-ring--warning";
-  }
-
-  return "score-ring score-ring--success";
 }
 
 type VerificationState =
@@ -123,7 +112,7 @@ export function VerificationDetailPage() {
         <SectionTitle
           eyebrow="Verification Detail"
           title="Loading verification result"
-          description="Fetching the backend-backed verification record for this route."
+          description="Loading the verification result for this page."
         />
       </PageShell>
     );
@@ -152,8 +141,6 @@ export function VerificationDetailPage() {
     (left, right) => right.scoreContribution - left.scoreContribution,
   );
   const primaryReasons = topSignals.slice(0, 3);
-  const scoreValue = Math.max(0, Math.min(100, verification.score));
-  const scoreProgress = `${scoreValue} ${100 - scoreValue}`;
 
   const riskTone = toneForRiskLevel(verification.riskLevel);
   const emphasisTone =
@@ -166,7 +153,7 @@ export function VerificationDetailPage() {
           <p className="eyebrow">Verification Detail</p>
           <h1 className="serif-heading verification-detail__title">Verification result</h1>
           <p className="muted-copy verification-detail__summary-copy">
-            Trust score first. Technical detail below.
+            Trust score first. Supporting detail below.
           </p>
         </div>
         <div className="verification-detail-target">
@@ -189,23 +176,7 @@ export function VerificationDetailPage() {
           </div>
 
           <div className="verification-assessment-card__hero">
-            <div className={scoreRingClassName(verification.riskLevel)} aria-hidden="true">
-              <svg viewBox="0 0 120 120" className="score-ring__svg">
-                <circle className="score-ring__track" cx="60" cy="60" r="48" />
-                <circle
-                  className="score-ring__progress"
-                  cx="60"
-                  cy="60"
-                  r="48"
-                  pathLength="100"
-                  strokeDasharray={scoreProgress}
-                />
-              </svg>
-              <div className="score-ring__content">
-                <p className="score-ring__label">Trust score</p>
-                <p className="score-ring__value">{scoreValue}</p>
-              </div>
-            </div>
+            <ScoreRing label="Trust score" riskLevel={verification.riskLevel} score={verification.score} size="hero" />
 
             <div className="verification-assessment-card__verdict-block">
               <p className="metric-card__label">What this means</p>
@@ -260,7 +231,7 @@ export function VerificationDetailPage() {
               <div className="verification-summary-panel">
                 <p className="verification-summary-panel__headline">No major warning reason surfaced</p>
                 <p className="verification-summary-panel__copy">
-                  The current verification did not retain a strong signal, so the technical section below is mainly useful for traceability.
+                  The current verification did not retain a strong signal, so the supporting detail below is mainly useful for context.
                 </p>
               </div>
             )}
@@ -437,18 +408,13 @@ export function VerificationDetailPage() {
             className="verification-action-card"
           >
             <div className="verification-action-card__stack">
-              <Badge label={verification.recommendation.priority} tone={toneForRiskLevel(verification.riskLevel)} />
               <p className="verification-action-card__copy">{verification.recommendation.detail}</p>
-              <div className="verification-action-card__owner">
-                <p className="verification-action-card__label">Suggested owner</p>
-                <p className="verification-action-card__owner-value">{verification.recommendation.owner}</p>
-              </div>
               <div className="action-stack">
-                <Button to="/dashboard#cases" variant="primary">
-                  Return to case queue
+                <Button to="/dashboard" variant="primary">
+                  Back to review
                 </Button>
                 <Button to="/dashboard#signals" variant="ghost">
-                  Review signal workspace
+                  Open signal review
                 </Button>
               </div>
             </div>
