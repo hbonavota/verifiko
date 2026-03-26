@@ -13,7 +13,7 @@
   gap: var(--space-4);
   padding: var(--space-6) var(--space-5);
   border-right: 1px solid var(--color-border);
-  background: rgba(241, 246, 249, 0.9);
+  background: rgba(9, 15, 31, 0.92);
   backdrop-filter: blur(18px);
 }
 
@@ -179,7 +179,7 @@
     padding: var(--space-3) var(--space-6);
     border-right: 0;
     border-bottom: 1px solid var(--color-border);
-    background: rgba(241, 246, 249, 0.96);
+    background: rgba(9, 15, 31, 0.96);
     backdrop-filter: blur(14px);
   }
 
