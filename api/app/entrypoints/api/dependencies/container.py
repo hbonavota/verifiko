@@ -2,8 +2,14 @@ from functools import lru_cache
 
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.infrastructure_signal_analyzer import (
+    InfrastructureSignalAnalyzer,
+)
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
+from app.application.services.resolved_destination_signal_analyzer import (
+    ResolvedDestinationSignalAnalyzer,
+)
 from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
@@ -16,6 +22,9 @@ from app.infrastructure.external_services.blacklist.urlhaus_reputation_client im
     UrlhausReputationClient,
 )
 from app.infrastructure.external_services.domain_age.rdap_domain_age_lookup import RdapDomainAgeLookup
+from app.infrastructure.external_services.dns.socket_infrastructure_lookup import (
+    SocketInfrastructureLookup,
+)
 from app.infrastructure.external_services.html.simple_html_fetcher import SimpleHtmlFetcher
 from app.infrastructure.external_services.redirects.http_redirect_resolver import (
     HttpRedirectResolver,
@@ -98,6 +107,25 @@ def get_reputation_signal_analyzer() -> ReputationSignalAnalyzer:
 
 
 @lru_cache(maxsize=1)
+def get_infrastructure_lookup() -> SocketInfrastructureLookup:
+    return SocketInfrastructureLookup()
+
+
+@lru_cache(maxsize=1)
+def get_infrastructure_signal_analyzer() -> InfrastructureSignalAnalyzer:
+    return InfrastructureSignalAnalyzer(infrastructure_lookup=get_infrastructure_lookup())
+
+
+@lru_cache(maxsize=1)
+def get_resolved_destination_signal_analyzer() -> ResolvedDestinationSignalAnalyzer:
+    return ResolvedDestinationSignalAnalyzer(
+        url_signal_analyzer=get_url_signal_analyzer(),
+        html_fetcher=get_html_fetcher(),
+        html_credential_signal_analyzer=get_html_credential_signal_analyzer(),
+    )
+
+
+@lru_cache(maxsize=1)
 def get_tls_validator() -> SocketTlsValidator:
     return SocketTlsValidator()
 
@@ -116,6 +144,8 @@ def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:
         domain_recency_signal_analyzer=get_domain_recency_signal_analyzer(),
         redirect_signal_analyzer=get_redirect_signal_analyzer(),
         reputation_signal_analyzer=get_reputation_signal_analyzer(),
+        infrastructure_signal_analyzer=get_infrastructure_signal_analyzer(),
+        resolved_destination_signal_analyzer=get_resolved_destination_signal_analyzer(),
         html_fetcher=get_html_fetcher(),
         html_credential_signal_analyzer=get_html_credential_signal_analyzer(),
         transport_security_signal_analyzer=get_transport_security_signal_analyzer(),

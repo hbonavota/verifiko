@@ -24,6 +24,12 @@ from app.application.ports.reputation_lookup import (
     ReputationLookupPort,
     ReputationMatch,
 )
+from app.application.ports.infrastructure_lookup import (
+    InfrastructureLookupError,
+    InfrastructureLookupPort,
+    InfrastructureProfile,
+    ResolvedAddress,
+)
 
 __all__ = [
     "DomainAgeLookupPort",
@@ -42,4 +48,8 @@ __all__ = [
     "ReputationLookupError",
     "ReputationLookupPort",
     "ReputationMatch",
+    "InfrastructureLookupError",
+    "InfrastructureLookupPort",
+    "InfrastructureProfile",
+    "ResolvedAddress",
 ]

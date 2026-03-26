@@ -59,3 +59,34 @@ def test_compound_rule_adds_penalty() -> None:
 
     assert result.score.value < 100
     assert "credential_lure_pattern" in result.summary
+
+
+def test_infrastructure_compound_rule_adds_penalty() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN,
+            category=SignalCategory.DOMAIN_REPUTATION,
+            severity=SignalSeverity.MEDIUM,
+            confidence=ConfidenceScore(82),
+            title="Suspicious infrastructure pattern",
+            description="Reverse DNS points to dynamic residential hosting.",
+            source="infrastructure-intelligence-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN],
+        ),
+        AnalysisSignal.create(
+            signal_type=SignalType.PHISHING_KEYWORDS,
+            category=SignalCategory.CONTENT_BEHAVIOR,
+            severity=SignalSeverity.MEDIUM,
+            confidence=ConfidenceScore(85),
+            title="Phishing keywords",
+            description="Credential lure terms present",
+            source="url-rule-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.PHISHING_KEYWORDS],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.score.value < 100
+    assert "infrastructure_backed_credential_lure" in result.summary

@@ -7,6 +7,12 @@ from app.application.ports.domain_age_lookup import (
     DomainRegistrationLookupError,
 )
 from app.application.ports.html_fetcher import FetchedHtmlDocument, HtmlFetchError, HtmlFetcherPort
+from app.application.ports.infrastructure_lookup import (
+    InfrastructureLookupError,
+    InfrastructureLookupPort,
+    InfrastructureProfile,
+    ResolvedAddress,
+)
 from app.application.ports.redirect_resolver import (
     RedirectHop,
     RedirectResolution,
@@ -25,8 +31,14 @@ from app.application.ports.tls_validator import (
 )
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.infrastructure_signal_analyzer import (
+    InfrastructureSignalAnalyzer,
+)
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
+from app.application.services.resolved_destination_signal_analyzer import (
+    ResolvedDestinationSignalAnalyzer,
+)
 from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
@@ -145,12 +157,32 @@ class FakeReputationLookup(ReputationLookupPort):
         return self._matches.get(hostname)
 
 
+class FakeInfrastructureLookup(InfrastructureLookupPort):
+    def __init__(
+        self,
+        profile: InfrastructureProfile | None = None,
+        fail: bool = False,
+    ) -> None:
+        self._profile = profile or InfrastructureProfile(
+            queried_host="example.test",
+            provider_name="stub-infrastructure",
+            resolved_addresses=(ResolvedAddress(ip_address="203.0.113.10"),),
+        )
+        self._fail = fail
+
+    def lookup(self, hostname: str, port: int | None = None) -> InfrastructureProfile:
+        if self._fail:
+            raise InfrastructureLookupError(f"infrastructure lookup failed for {hostname}:{port}")
+        return self._profile
+
+
 def _build_use_case(
     domain_age_lookup: DomainAgeLookupPort | None = None,
     html_fetcher: HtmlFetcherPort | None = None,
     tls_validator: TlsValidatorPort | None = None,
     redirect_resolver: RedirectResolverPort | None = None,
     reputation_lookup: ReputationLookupPort | None = None,
+    infrastructure_lookup: InfrastructureLookupPort | None = None,
 ) -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=FakeRepository(),
@@ -167,7 +199,15 @@ def _build_use_case(
         reputation_signal_analyzer=ReputationSignalAnalyzer(
             reputation_lookup=reputation_lookup or FakeReputationLookup()
         ),
+        infrastructure_signal_analyzer=InfrastructureSignalAnalyzer(
+            infrastructure_lookup=infrastructure_lookup or FakeInfrastructureLookup()
+        ),
         html_fetcher=html_fetcher or FakeHtmlFetcher(),
+        resolved_destination_signal_analyzer=ResolvedDestinationSignalAnalyzer(
+            url_signal_analyzer=DeterministicUrlSignalAnalyzer(),
+            html_fetcher=html_fetcher or FakeHtmlFetcher(),
+            html_credential_signal_analyzer=HtmlCredentialSignalAnalyzer(),
+        ),
         html_credential_signal_analyzer=HtmlCredentialSignalAnalyzer(),
         transport_security_signal_analyzer=TransportSecuritySignalAnalyzer(
             tls_validator=tls_validator or FakeTlsValidator()
@@ -462,4 +502,108 @@ def test_create_url_verification_use_case_records_degraded_coverage_when_reputat
     assert dto.risk_assessment.risk_level == "LOW"
     assert "Blacklist reputation intelligence was unavailable for this run." in (
         dto.risk_assessment.summary
+    )
+
+
+def test_create_url_verification_use_case_adds_infrastructure_signal_for_suspicious_ptr() -> None:
+    use_case = _build_use_case(
+        infrastructure_lookup=FakeInfrastructureLookup(
+            InfrastructureProfile(
+                queried_host="login.safe-example.test",
+                provider_name="stub-infrastructure",
+                resolved_addresses=(
+                    ResolvedAddress(
+                        ip_address="203.0.113.44",
+                        reverse_hostname="cust-203-0-113-44.no-ip.org",
+                    ),
+                ),
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://login.safe-example.test/verify"))
+
+    assert any(signal.signal_type == "suspicious_infrastructure_pattern" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_records_degraded_coverage_when_infrastructure_is_unavailable() -> None:
+    use_case = _build_use_case(infrastructure_lookup=FakeInfrastructureLookup(fail=True))
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert "Infrastructure intelligence could not be completed for this run." in (
+        dto.risk_assessment.summary
+    )
+
+
+def test_create_url_verification_use_case_analyzes_resolved_destination_url() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://paypal-login-security-check.example.xyz/verify",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link/123",
+                        target_url="https://paypal-login-security-check.example.xyz/verify",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+
+    destination_signals = [
+        signal for signal in dto.signals if signal.source == "resolved-destination-url-analyzer"
+    ]
+
+    assert any(signal.signal_type == "brand_impersonation" for signal in destination_signals)
+    assert any(signal.signal_type == "phishing_keywords" for signal in destination_signals)
+
+
+def test_create_url_verification_use_case_analyzes_resolved_destination_html() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://collector.bad.example/login",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link/123",
+                        target_url="https://collector.bad.example/login",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        ),
+        html_fetcher=FakeHtmlFetcher(
+            FetchedHtmlDocument(
+                content="""
+                <html>
+                  <body>
+                    <h1>Sign in to verify your account</h1>
+                    <form action=\"https://collector.bad.example/submit\">
+                      <input type=\"email\" name=\"email\" />
+                      <input type=\"password\" name=\"password\" />
+                      <button type=\"submit\">Sign in</button>
+                    </form>
+                  </body>
+                </html>
+                """,
+                source_url="https://collector.bad.example/login",
+                content_type="text/html; charset=utf-8",
+            )
+        ),
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+
+    assert any(
+        signal.signal_type == "credential_harvest_form"
+        and signal.source == "resolved-destination-html-analyzer"
+        for signal in dto.signals
     )

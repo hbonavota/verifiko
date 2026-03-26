@@ -3,11 +3,17 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 import pytest
 
+from app.application.ports.infrastructure_lookup import (
+    InfrastructureLookupPort,
+    InfrastructureProfile,
+    ResolvedAddress,
+)
 from app.application.ports.redirect_resolver import (
     RedirectResolution,
     RedirectResolverPort,
 )
 from app.application.ports.reputation_lookup import ReputationLookupPort
+from app.application.services.infrastructure_signal_analyzer import InfrastructureSignalAnalyzer
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 import app.entrypoints.api.dependencies.container as container
@@ -28,6 +34,15 @@ class NoopReputationLookup(ReputationLookupPort):
         return None
 
 
+class NoopInfrastructureLookup(InfrastructureLookupPort):
+    def lookup(self, hostname: str, port: int | None = None) -> InfrastructureProfile:
+        return InfrastructureProfile(
+            queried_host=hostname,
+            provider_name="stub-infrastructure",
+            resolved_addresses=(ResolvedAddress(ip_address="203.0.113.10"),),
+        )
+
+
 @pytest.fixture()
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     database_path = tmp_path / "verifiko-api.sqlite3"
@@ -41,6 +56,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_verification_repository.cache_clear()
     container.get_redirect_signal_analyzer.cache_clear()
     container.get_reputation_signal_analyzer.cache_clear()
+    container.get_infrastructure_signal_analyzer.cache_clear()
+    container.get_resolved_destination_signal_analyzer.cache_clear()
 
     monkeypatch.setattr(
         container,
@@ -51,6 +68,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         container,
         "get_reputation_signal_analyzer",
         lambda: ReputationSignalAnalyzer(reputation_lookup=NoopReputationLookup()),
+    )
+    monkeypatch.setattr(
+        container,
+        "get_infrastructure_signal_analyzer",
+        lambda: InfrastructureSignalAnalyzer(infrastructure_lookup=NoopInfrastructureLookup()),
     )
 
     upgrade_to_head(database_url)

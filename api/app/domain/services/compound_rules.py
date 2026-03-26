@@ -81,5 +81,23 @@ class RedirectedDeceptionPatternRule(CompoundRule):
         return None
 
 
+class InfrastructureBackedCredentialLureRule(CompoundRule):
+    name = "infrastructure_backed_credential_lure"
+
+    def evaluate(self, signal_types: set[SignalType]) -> float | None:
+        if SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN not in signal_types:
+            return None
+        if signal_types.intersection(
+            {
+                SignalType.PHISHING_KEYWORDS,
+                SignalType.BRAND_IMPERSONATION,
+                SignalType.CREDENTIAL_HARVEST_FORM,
+                SignalType.SUSPICIOUS_LOGIN_INTERFACE,
+            }
+        ):
+            return 8
+        return None
+
+
 def detected_types(signals: list[AnalysisSignal]) -> set[SignalType]:
     return {signal.signal_type for signal in signals if signal.detected}

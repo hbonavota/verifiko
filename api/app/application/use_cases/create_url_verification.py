@@ -7,8 +7,14 @@ from app.application.ports.html_fetcher import HtmlFetchError, HtmlFetcherPort
 from app.application.services.analysis_result import SignalAnalysisResult
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.infrastructure_signal_analyzer import (
+    InfrastructureSignalAnalyzer,
+)
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
+from app.application.services.resolved_destination_signal_analyzer import (
+    ResolvedDestinationSignalAnalyzer,
+)
 from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
@@ -33,6 +39,8 @@ class CreateURLVerificationUseCase:
     domain_recency_signal_analyzer: DomainRecencySignalAnalyzer
     redirect_signal_analyzer: RedirectSignalAnalyzer
     reputation_signal_analyzer: ReputationSignalAnalyzer
+    infrastructure_signal_analyzer: InfrastructureSignalAnalyzer
+    resolved_destination_signal_analyzer: ResolvedDestinationSignalAnalyzer
     html_fetcher: HtmlFetcherPort
     html_credential_signal_analyzer: HtmlCredentialSignalAnalyzer
     transport_security_signal_analyzer: TransportSecuritySignalAnalyzer
@@ -65,6 +73,22 @@ class CreateURLVerificationUseCase:
         )
         detected_signals.extend(reputation_result.signals)
         analysis_warnings.extend(reputation_result.warnings)
+
+        infrastructure_result = self.infrastructure_signal_analyzer.analyze_with_context(
+            verification.normalized_input,
+            redirect_resolution=redirect_result.redirect_resolution,
+        )
+        detected_signals.extend(infrastructure_result.signals)
+        analysis_warnings.extend(infrastructure_result.warnings)
+
+        resolved_destination_result = (
+            self.resolved_destination_signal_analyzer.analyze_with_context(
+                verification.normalized_input,
+                redirect_resolution=redirect_result.redirect_resolution,
+            )
+        )
+        detected_signals.extend(resolved_destination_result.signals)
+        analysis_warnings.extend(resolved_destination_result.warnings)
 
         transport_result = self.transport_security_signal_analyzer.analyze_with_context(
             verification.normalized_input
