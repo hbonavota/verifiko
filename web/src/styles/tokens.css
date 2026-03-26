@@ -2,15 +2,15 @@
   --font-heading: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --font-ui: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
 
-  --color-background: #f5f0e6;
-  --color-background-emphasis: #eee8de;
-  --color-surface: rgba(255, 255, 255, 0.74);
-  --color-surface-strong: rgba(255, 255, 255, 0.92);
-  --color-border: rgba(27, 50, 44, 0.12);
-  --color-text: #183029;
-  --color-text-muted: #52655f;
-  --color-primary: #214d42;
-  --color-primary-soft: rgba(33, 77, 66, 0.12);
+  --color-background: #edf2f6;
+  --color-background-emphasis: #e4ebf1;
+  --color-surface: rgba(255, 255, 255, 0.8);
+  --color-surface-strong: rgba(255, 255, 255, 0.96);
+  --color-border: rgba(20, 37, 47, 0.1);
+  --color-text: #14252f;
+  --color-text-muted: #5b6c77;
+  --color-primary: #1f4750;
+  --color-primary-soft: rgba(31, 71, 80, 0.11);
   --color-warning: #b46a12;
   --color-warning-soft: rgba(180, 106, 18, 0.14);
   --color-danger: #b13a31;
@@ -31,16 +31,16 @@
   --radius-lg: 32px;
   --radius-pill: 999px;
 
-  --shadow-soft: 0 18px 40px rgba(48, 55, 51, 0.08);
-  --shadow-strong: 0 22px 64px rgba(48, 55, 51, 0.14);
+  --shadow-soft: 0 18px 40px rgba(22, 33, 43, 0.08);
+  --shadow-strong: 0 24px 64px rgba(22, 33, 43, 0.14);
 
   --content-width: 1180px;
 
   font-family: var(--font-ui);
   color: var(--color-text);
   background:
-    radial-gradient(circle at top left, rgba(112, 145, 134, 0.12), transparent 32%),
-    linear-gradient(180deg, #f8f4ea 0%, #f2ede3 100%);
+    radial-gradient(circle at top left, rgba(90, 123, 140, 0.12), transparent 32%),
+    linear-gradient(180deg, #f5f8fb 0%, #edf2f6 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

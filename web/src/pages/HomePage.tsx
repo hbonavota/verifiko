@@ -115,15 +115,15 @@ export function HomePage() {
             tone={isLoadingAnalysis ? "success" : latestVerification ? cardToneForRiskLevel(latestVerification.riskLevel) : "default"}
             className="analysis-hero__result"
           >
-          {isLoadingAnalysis ? (
-            <div className="analysis-result-card__hero">
-              <ScoreRing label="Analyzing" size="hero" state="loading" valueLabel="..." />
-              <div className="analysis-result-card__summary-block">
-                <p className="analysis-result-card__headline">Scanning for risk signals</p>
-                <p className="analysis-result-card__copy">Checking signals.</p>
-                <div className="analysis-result-card__loading-stack" aria-hidden="true">
-                  <span className="analysis-result-card__loading-line analysis-result-card__loading-line--strong" />
-                  <span className="analysis-result-card__loading-line" />
+            {isLoadingAnalysis ? (
+              <div className="analysis-result-card__hero">
+                <ScoreRing label="Analyzing" size="hero" state="loading" valueLabel="..." />
+                <div className="analysis-result-card__summary-block">
+                  <p className="analysis-result-card__headline">Scanning for risk signals</p>
+                  <p className="analysis-result-card__copy">Checking signals.</p>
+                  <div className="analysis-result-card__loading-stack" aria-hidden="true">
+                    <span className="analysis-result-card__loading-line analysis-result-card__loading-line--strong" />
+                    <span className="analysis-result-card__loading-line" />
                     <span className="analysis-result-card__loading-line analysis-result-card__loading-line--short" />
                   </div>
                 </div>

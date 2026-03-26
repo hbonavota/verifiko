@@ -138,7 +138,9 @@ export function VerificationDetailPage() {
         </div>
         <div className="verification-detail-target">
           <p className="verification-detail-target__label">Target</p>
-          <p className="verification-detail-target__value">{verification.subject}</p>
+          <p className="verification-detail-target__value" title={verification.subject}>
+            {verification.subject}
+          </p>
         </div>
       </section>
 
