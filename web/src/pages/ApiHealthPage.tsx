@@ -19,7 +19,7 @@ export function ApiHealthPage() {
   const [healthState, setHealthState] = useState<HealthState>({ status: "idle" });
 
   useDocumentMeta(
-    "API Health",
+    "Status",
     "Check whether the Verifiko application can reach its analysis API.",
   );
 
@@ -30,7 +30,7 @@ export function ApiHealthPage() {
       const payload = await fetchApiHealth();
       setHealthState({ status: "ready", payload });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Health probe failed.";
+      const message = error instanceof Error ? error.message : "Status check failed.";
       setHealthState({ status: "error", message });
     }
   }
@@ -42,15 +42,15 @@ export function ApiHealthPage() {
   return (
     <PageShell>
       <SectionTitle
-        eyebrow="Connection"
-        title="API connection status"
-        description="A simple check to confirm that Verifiko can reach its analysis service."
+        eyebrow="Status"
+        title="API status"
+        description="Confirm that Verifiko can reach its analysis service."
       />
 
       <Card
-        eyebrow="Health check"
+        eyebrow="Service check"
         title="API status"
-        description="Check whether the analysis service is reachable."
+        description="Verify that the analysis service is reachable."
         action={
           <Button onClick={() => void runHealthCheck()} variant="secondary">
             Refresh
@@ -58,14 +58,14 @@ export function ApiHealthPage() {
         }
       >
         <Input
-          hint="Configured for this application."
+          hint="Configured backend endpoint."
           label="Service URL"
           readOnly
           value={getApiBaseUrl()}
         />
 
         {healthState.status === "loading" || healthState.status === "idle" ? (
-          <p className="api-health__message">Checking service connection…</p>
+          <p className="api-health__message">Checking service reachability…</p>
         ) : null}
 
         {healthState.status === "ready" ? (
