@@ -205,13 +205,14 @@
 .analysis-form-shell {
   display: grid;
   gap: var(--space-2);
+  width: 100%;
 }
 
 .analysis-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
   gap: var(--space-3);
-  align-items: end;
+  align-items: stretch;
 }
 
 .analysis-form__input-control,
@@ -221,7 +222,8 @@
 }
 
 .analysis-form__button {
-  min-height: 76px;
+  width: 100%;
+  min-height: 72px;
   padding-inline: 1.6rem;
   border-radius: 24px;
 }
@@ -406,6 +408,10 @@
   font-size: clamp(1.85rem, 3vw, 2.5rem);
   font-weight: 700;
   line-height: 1.02;
+  max-width: 12ch;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-wrap: balance;
 }
 
 .dashboard-card__run {
@@ -932,6 +938,10 @@
   font-weight: 600;
   line-height: 1.02;
   font-family: var(--font-heading);
+  max-width: 12ch;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-wrap: balance;
 }
 
 .verification-assessment-card__explanation,
@@ -1356,7 +1366,7 @@
 }
 
 .analysis-form--hero {
-  grid-template-columns: minmax(0, 1fr) minmax(148px, 168px);
+  grid-template-columns: 1fr;
   gap: 0.85rem;
   align-items: stretch;
 }
@@ -1377,7 +1387,7 @@
 
 .analysis-form__button--hero {
   width: 100%;
-  min-width: 148px;
+  min-width: 0;
   height: 74px;
   min-height: 74px;
   padding-inline: 1.35rem;
@@ -1476,6 +1486,8 @@
   line-height: 1.02;
   font-family: var(--font-heading);
   max-width: 10.5ch;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   text-wrap: balance;
 }
 

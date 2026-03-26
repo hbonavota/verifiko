@@ -7,6 +7,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { listVerifications } from "../lib/api";
+import { formatVerdict } from "../lib/formatVerdict";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { toneForRiskLevel } from "../lib/risk";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
@@ -147,7 +148,9 @@ export function HomePage() {
                       {latestVerification.subject}
                     </p>
                     <p className="preview-card__label">Verdict</p>
-                    <p className="analysis-result-card__headline">{latestVerification.verdict}</p>
+                    <p className="analysis-result-card__headline" title={latestVerification.verdict}>
+                      {formatVerdict(latestVerification.verdict)}
+                    </p>
                     <p className="analysis-result-card__copy">{latestVerification.executiveSummary.posture}</p>
                     <div className="analysis-result-card__actions">
                       <Button to={`/verifications/${latestVerification.id}`} variant="primary">

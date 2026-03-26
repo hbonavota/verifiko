@@ -8,6 +8,7 @@ import { ScoreRing } from "../components/analysis/ScoreRing";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
 import { getVerificationById } from "../lib/api";
+import { formatVerdict } from "../lib/formatVerdict";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
@@ -162,7 +163,9 @@ export function VerificationDetailPage() {
 
             <div className="verification-assessment-card__verdict-block">
               <p className="metric-card__label">Verdict</p>
-              <p className="verification-assessment-card__verdict">{verification.verdict}</p>
+              <p className="verification-assessment-card__verdict" title={verification.verdict}>
+                {formatVerdict(verification.verdict)}
+              </p>
               <p className="verification-assessment-card__posture">{verification.executiveSummary.posture}</p>
               <p className="verification-assessment-card__explanation">
                 {shortResultExplanation(verification)}

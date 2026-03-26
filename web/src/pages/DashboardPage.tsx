@@ -8,6 +8,7 @@ import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
 import { listVerifications } from "../lib/api";
+import { formatVerdict } from "../lib/formatVerdict";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
@@ -110,7 +111,9 @@ export function DashboardPage() {
                   <Badge label={activeVerification.riskLevel} tone={toneForRiskLevel(activeVerification.riskLevel)} />
                 </div>
                 <p className="metric-card__label">Verdict</p>
-                <p className="dashboard-card__verdict">{activeVerification.verdict}</p>
+                <p className="dashboard-card__verdict" title={activeVerification.verdict}>
+                  {formatVerdict(activeVerification.verdict)}
+                </p>
                 <p className="dashboard-card__posture">{activeVerification.executiveSummary.posture}</p>
                 <div className="dashboard-assessment-card__actions">
                   <Button to={`/verifications/${activeVerification.id}`} variant="primary">
