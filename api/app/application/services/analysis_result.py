@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from app.application.ports.redirect_resolver import RedirectResolution
 from app.domain.entities.analysis_signal import AnalysisSignal
 
 
@@ -7,3 +8,4 @@ from app.domain.entities.analysis_signal import AnalysisSignal
 class SignalAnalysisResult:
     signals: tuple[AnalysisSignal, ...] = ()
     warnings: tuple[str, ...] = ()
+    redirect_resolution: RedirectResolution | None = None

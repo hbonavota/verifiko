@@ -3,11 +3,29 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 import pytest
 
+from app.application.ports.redirect_resolver import (
+    RedirectResolution,
+    RedirectResolverPort,
+)
+from app.application.ports.reputation_lookup import ReputationLookupPort
+from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
+from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
+import app.entrypoints.api.dependencies.container as container
 from app.entrypoints.api.dependencies.container import get_verification_repository
 from app.entrypoints.api.main import app
 from app.infrastructure.config.settings import get_settings
 from app.infrastructure.persistence.database import drop_db, get_engine, get_session_factory
 from tests.integration.alembic_helpers import upgrade_to_head
+
+
+class NoopRedirectResolver(RedirectResolverPort):
+    def resolve(self, url: str) -> RedirectResolution:
+        return RedirectResolution(final_url=url, hops=(), provider_name="stub-redirect")
+
+
+class NoopReputationLookup(ReputationLookupPort):
+    def lookup(self, hostname: str):
+        return None
 
 
 @pytest.fixture()
@@ -21,6 +39,19 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_engine.cache_clear()
     get_session_factory.cache_clear()
     get_verification_repository.cache_clear()
+    container.get_redirect_signal_analyzer.cache_clear()
+    container.get_reputation_signal_analyzer.cache_clear()
+
+    monkeypatch.setattr(
+        container,
+        "get_redirect_signal_analyzer",
+        lambda: RedirectSignalAnalyzer(redirect_resolver=NoopRedirectResolver()),
+    )
+    monkeypatch.setattr(
+        container,
+        "get_reputation_signal_analyzer",
+        lambda: ReputationSignalAnalyzer(reputation_lookup=NoopReputationLookup()),
+    )
 
     upgrade_to_head(database_url)
 

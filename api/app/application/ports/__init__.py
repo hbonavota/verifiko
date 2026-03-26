@@ -13,6 +13,17 @@ from app.application.ports.tls_validator import (
     TlsValidationResult,
     TlsValidatorPort,
 )
+from app.application.ports.redirect_resolver import (
+    RedirectHop,
+    RedirectResolution,
+    RedirectResolutionError,
+    RedirectResolverPort,
+)
+from app.application.ports.reputation_lookup import (
+    ReputationLookupError,
+    ReputationLookupPort,
+    ReputationMatch,
+)
 
 __all__ = [
     "DomainAgeLookupPort",
@@ -24,4 +35,11 @@ __all__ = [
     "TlsValidationError",
     "TlsValidationResult",
     "TlsValidatorPort",
+    "RedirectHop",
+    "RedirectResolution",
+    "RedirectResolutionError",
+    "RedirectResolverPort",
+    "ReputationLookupError",
+    "ReputationLookupPort",
+    "ReputationMatch",
 ]

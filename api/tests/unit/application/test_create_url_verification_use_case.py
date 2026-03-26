@@ -7,6 +7,17 @@ from app.application.ports.domain_age_lookup import (
     DomainRegistrationLookupError,
 )
 from app.application.ports.html_fetcher import FetchedHtmlDocument, HtmlFetchError, HtmlFetcherPort
+from app.application.ports.redirect_resolver import (
+    RedirectHop,
+    RedirectResolution,
+    RedirectResolutionError,
+    RedirectResolverPort,
+)
+from app.application.ports.reputation_lookup import (
+    ReputationLookupError,
+    ReputationLookupPort,
+    ReputationMatch,
+)
 from app.application.ports.tls_validator import (
     TlsValidationError,
     TlsValidationResult,
@@ -14,6 +25,8 @@ from app.application.ports.tls_validator import (
 )
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
+from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
@@ -98,10 +111,46 @@ class FakeTlsValidator(TlsValidatorPort):
         return self._result
 
 
+class FakeRedirectResolver(RedirectResolverPort):
+    def __init__(
+        self,
+        result: RedirectResolution | None = None,
+        fail: bool = False,
+    ) -> None:
+        self._result = result or RedirectResolution(
+            final_url="https://example.test/",
+            hops=(),
+            provider_name="stub-redirect",
+        )
+        self._fail = fail
+
+    def resolve(self, url: str) -> RedirectResolution:
+        if self._fail:
+            raise RedirectResolutionError(f"redirect resolution failed for {url}")
+        return self._result
+
+
+class FakeReputationLookup(ReputationLookupPort):
+    def __init__(
+        self,
+        matches: dict[str, ReputationMatch] | None = None,
+        fail: bool = False,
+    ) -> None:
+        self._matches = matches or {}
+        self._fail = fail
+
+    def lookup(self, hostname: str) -> ReputationMatch | None:
+        if self._fail:
+            raise ReputationLookupError(f"reputation lookup failed for {hostname}")
+        return self._matches.get(hostname)
+
+
 def _build_use_case(
     domain_age_lookup: DomainAgeLookupPort | None = None,
     html_fetcher: HtmlFetcherPort | None = None,
     tls_validator: TlsValidatorPort | None = None,
+    redirect_resolver: RedirectResolverPort | None = None,
+    reputation_lookup: ReputationLookupPort | None = None,
 ) -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=FakeRepository(),
@@ -111,6 +160,12 @@ def _build_use_case(
         domain_recency_signal_analyzer=DomainRecencySignalAnalyzer(
             domain_age_lookup=domain_age_lookup or FakeDomainAgeLookup(),
             current_time_provider=lambda: datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc),
+        ),
+        redirect_signal_analyzer=RedirectSignalAnalyzer(
+            redirect_resolver=redirect_resolver or FakeRedirectResolver()
+        ),
+        reputation_signal_analyzer=ReputationSignalAnalyzer(
+            reputation_lookup=reputation_lookup or FakeReputationLookup()
         ),
         html_fetcher=html_fetcher or FakeHtmlFetcher(),
         html_credential_signal_analyzer=HtmlCredentialSignalAnalyzer(),
@@ -337,3 +392,74 @@ def test_create_url_verification_use_case_caps_safe_result_when_coverage_is_degr
     assert dto.risk_assessment.risk_level == "LOW"
     assert dto.risk_assessment.verdict == "CAUTION"
     assert "Analysis coverage degraded:" in dto.risk_assessment.summary
+
+
+def test_create_url_verification_use_case_adds_redirect_signal_for_cross_domain_chain() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://collector.bad.example/login",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://short.example/r/abc",
+                        target_url="https://collector.bad.example/login",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://short.example/r/abc"))
+
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_uses_blacklist_match_from_redirect_target() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://collector.bad.example/login",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link",
+                        target_url="https://collector.bad.example/login",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        ),
+        reputation_lookup=FakeReputationLookup(
+            {
+                "collector.bad.example": ReputationMatch(
+                    queried_value="collector.bad.example",
+                    provider_name="stub-feed",
+                    confidence=99.0,
+                    reference_count=3,
+                    match_scope="host",
+                    description="Known malicious redirect destination.",
+                )
+            }
+        ),
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link"))
+
+    assert any(signal.signal_type == "blacklist_match" for signal in dto.signals)
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.terminal_override is True
+    assert dto.risk_assessment.verdict == "CONFIRMED_MALICIOUS"
+
+
+def test_create_url_verification_use_case_records_degraded_coverage_when_reputation_is_unavailable() -> None:
+    use_case = _build_use_case(reputation_lookup=FakeReputationLookup(fail=True))
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert "Blacklist reputation intelligence was unavailable for this run." in (
+        dto.risk_assessment.summary
+    )

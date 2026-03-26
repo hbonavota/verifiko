@@ -3,9 +3,16 @@ from datetime import datetime, timezone
 from app.application.commands.create_verification_command import CreateVerificationCommand
 from app.application.ports.domain_age_lookup import DomainAgeLookupPort
 from app.application.ports.html_fetcher import HtmlFetcherPort
+from app.application.ports.redirect_resolver import (
+    RedirectResolution,
+    RedirectResolverPort,
+)
+from app.application.ports.reputation_lookup import ReputationLookupPort
 from app.application.ports.tls_validator import TlsValidationResult, TlsValidatorPort
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
+from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
@@ -49,6 +56,16 @@ class ValidTlsValidator(TlsValidatorPort):
         return TlsValidationResult(is_valid=True, provider_name="stub-tls")
 
 
+class NoopRedirectResolver(RedirectResolverPort):
+    def resolve(self, url: str) -> RedirectResolution:
+        return RedirectResolution(final_url=url, hops=(), provider_name="stub-redirect")
+
+
+class NoopReputationLookup(ReputationLookupPort):
+    def lookup(self, hostname: str):
+        return None
+
+
 def _build_use_case() -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=FakeRepository(),
@@ -58,6 +75,12 @@ def _build_use_case() -> CreateURLVerificationUseCase:
         domain_recency_signal_analyzer=DomainRecencySignalAnalyzer(
             domain_age_lookup=NullDomainAgeLookup(),
             current_time_provider=lambda: datetime(2026, 3, 17, tzinfo=timezone.utc),
+        ),
+        redirect_signal_analyzer=RedirectSignalAnalyzer(
+            redirect_resolver=NoopRedirectResolver()
+        ),
+        reputation_signal_analyzer=ReputationSignalAnalyzer(
+            reputation_lookup=NoopReputationLookup()
         ),
         html_fetcher=NullHtmlFetcher(),
         html_credential_signal_analyzer=HtmlCredentialSignalAnalyzer(),

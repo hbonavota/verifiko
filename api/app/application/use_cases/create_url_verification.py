@@ -7,6 +7,8 @@ from app.application.ports.html_fetcher import HtmlFetchError, HtmlFetcherPort
 from app.application.services.analysis_result import SignalAnalysisResult
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
+from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
@@ -29,6 +31,8 @@ class CreateURLVerificationUseCase:
     scoring_service: ScoringService
     signal_analyzer: DeterministicUrlSignalAnalyzer
     domain_recency_signal_analyzer: DomainRecencySignalAnalyzer
+    redirect_signal_analyzer: RedirectSignalAnalyzer
+    reputation_signal_analyzer: ReputationSignalAnalyzer
     html_fetcher: HtmlFetcherPort
     html_credential_signal_analyzer: HtmlCredentialSignalAnalyzer
     transport_security_signal_analyzer: TransportSecuritySignalAnalyzer
@@ -48,6 +52,19 @@ class CreateURLVerificationUseCase:
         )
         detected_signals.extend(domain_recency_result.signals)
         analysis_warnings.extend(domain_recency_result.warnings)
+
+        redirect_result = self.redirect_signal_analyzer.analyze_with_context(
+            verification.normalized_input
+        )
+        detected_signals.extend(redirect_result.signals)
+        analysis_warnings.extend(redirect_result.warnings)
+
+        reputation_result = self.reputation_signal_analyzer.analyze_with_context(
+            verification.normalized_input,
+            redirect_resolution=redirect_result.redirect_resolution,
+        )
+        detected_signals.extend(reputation_result.signals)
+        analysis_warnings.extend(reputation_result.warnings)
 
         transport_result = self.transport_security_signal_analyzer.analyze_with_context(
             verification.normalized_input
