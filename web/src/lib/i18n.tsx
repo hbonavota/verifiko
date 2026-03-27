@@ -61,6 +61,9 @@ const translations = {
       serviceEndpoint: "Service endpoint",
       lastChecked: "Last checked",
     },
+    footer: {
+      developedBy: "Developed by",
+    },
     verdicts: {
       safe: "Safe",
       suspicious: "Suspicious",
@@ -331,6 +334,9 @@ const translations = {
       noResultsYet: "Todavía no hay resultados disponibles.",
       serviceEndpoint: "Endpoint del servicio",
       lastChecked: "Última comprobación",
+    },
+    footer: {
+      developedBy: "Desarrollado por",
     },
     verdicts: {
       safe: "Seguro",
