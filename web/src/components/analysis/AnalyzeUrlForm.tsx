@@ -5,6 +5,33 @@ import { createVerification } from "../../lib/api";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 
+function PasteIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="analysis-form__paste-icon"
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M7.5 4.16667H6.16667C5.24619 4.16667 4.5 4.91286 4.5 5.83333V14.1667C4.5 15.0871 5.24619 15.8333 6.16667 15.8333H12.8333C13.7538 15.8333 14.5 15.0871 14.5 14.1667V12.8333"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M8.83333 10.8333L14.9167 4.75M14.9167 4.75H10.5M14.9167 4.75V9.16667"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
 interface AnalyzeUrlFormProps {
   buttonLabel?: string;
   buttonClassName?: string;
@@ -34,6 +61,27 @@ export function AnalyzeUrlForm({
   const [analysisTarget, setAnalysisTarget] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handlePaste() {
+    if (!navigator.clipboard?.readText) {
+      setSubmitError("Clipboard access is not available in this browser.");
+      return;
+    }
+
+    try {
+      const clipboardValue = (await navigator.clipboard.readText()).trim();
+      if (!clipboardValue) {
+        setSubmitError("Clipboard does not contain a link to verify.");
+        return;
+      }
+
+      setAnalysisTarget(clipboardValue);
+      setSubmitError(null);
+      onStateChange?.("idle");
+    } catch {
+      setSubmitError("Clipboard access was blocked.");
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,6 +116,18 @@ export function AnalyzeUrlForm({
     <div className="analysis-form-shell">
       <form className={formClassName} onSubmit={(event) => void handleSubmit(event)}>
         <Input
+          action={
+            <Button
+              className="analysis-form__paste"
+              disabled={isSubmitting}
+              leadingIcon={<PasteIcon />}
+              onClick={() => void handlePaste()}
+              title="Paste a link from the clipboard"
+              variant="secondary"
+            >
+              Paste
+            </Button>
+          }
           autoComplete="off"
           className={inputClassName}
           hint={hint}

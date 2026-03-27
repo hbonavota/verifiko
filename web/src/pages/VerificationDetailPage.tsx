@@ -31,6 +31,26 @@ function shortResultExplanation(verification: VerificationSummary) {
   return "No strong warning signal was retained in this result.";
 }
 
+const SCORE_ZONE_LEGEND = [
+  { label: "High danger", range: "0-40", tone: "danger" },
+  { label: "Dangerous / strong caution", range: "41-60", tone: "warning-strong" },
+  { label: "Proceed with caution", range: "61-80", tone: "warning-soft" },
+  { label: "No strong insecurity detected", range: "81-100", tone: "success" },
+] as const;
+
+function scoreInterpretationCopy(score: number) {
+  if (score <= 40) {
+    return "This score falls in the highest-danger band and should not be treated as safe.";
+  }
+  if (score <= 60) {
+    return "This score sits in a dangerous band and needs careful review before trust.";
+  }
+  if (score <= 80) {
+    return "This score suggests caution. Review the retained signals before relying on it.";
+  }
+  return "No strong insecurity was retained in this check, but the result is still not a guarantee.";
+}
+
 type VerificationState =
   | { status: "loading" }
   | { status: "ready"; verification: VerificationSummary }
@@ -39,6 +59,7 @@ type VerificationState =
 export function VerificationDetailPage() {
   const { id } = useParams();
   const [verificationState, setVerificationState] = useState<VerificationState>({ status: "loading" });
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -77,6 +98,23 @@ export function VerificationDetailPage() {
       isMounted = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!isDisclaimerOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsDisclaimerOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isDisclaimerOpen]);
 
   const verification = verificationState.status === "ready" ? verificationState.verification : null;
 
@@ -122,6 +160,7 @@ export function VerificationDetailPage() {
     (left, right) => right.scoreContribution - left.scoreContribution,
   );
   const primaryReasons = topSignals.slice(0, 3);
+  const clampedScore = Math.max(0, Math.min(100, Number(verification.score) || 0));
 
   const riskTone = toneForRiskLevel(verification.riskLevel);
   const emphasisTone =
@@ -181,6 +220,45 @@ export function VerificationDetailPage() {
                   Back to review
                 </Button>
               </div>
+            </div>
+          </div>
+
+          <div className="verification-score-guide" aria-label="Score interpretation guide">
+            <div className="verification-score-guide__header">
+              <p className="metric-card__label">Score interpretation</p>
+              <p className="verification-score-guide__copy">{scoreInterpretationCopy(clampedScore)}</p>
+            </div>
+            <div className="verification-score-guide__scale" aria-hidden="true">
+              <div className="verification-score-guide__track">
+                <span className="verification-score-guide__zone verification-score-guide__zone--danger" />
+                <span className="verification-score-guide__zone verification-score-guide__zone--warning-strong" />
+                <span className="verification-score-guide__zone verification-score-guide__zone--warning-soft" />
+                <span className="verification-score-guide__zone verification-score-guide__zone--success" />
+              </div>
+              <div className="verification-score-guide__ticks">
+                <span>0</span>
+                <span>40</span>
+                <span>60</span>
+                <span>80</span>
+                <span>100</span>
+              </div>
+              <div
+                className="verification-score-guide__marker"
+                style={{ left: `${clampedScore}%` }}
+              >
+                <span className="verification-score-guide__marker-value">{Math.round(clampedScore)}</span>
+              </div>
+            </div>
+            <div className="verification-score-guide__legend" role="list">
+              {SCORE_ZONE_LEGEND.map((item) => (
+                <article key={item.range} className="verification-score-guide__legend-item" role="listitem">
+                  <span className="verification-score-guide__legend-swatch" data-tone={item.tone} />
+                  <div className="verification-score-guide__legend-copy">
+                    <p className="verification-score-guide__range">{item.range}</p>
+                    <p className="verification-score-guide__label">{item.label}</p>
+                  </div>
+                </article>
+              ))}
             </div>
           </div>
 
@@ -430,6 +508,89 @@ export function VerificationDetailPage() {
           </Card>
         </aside>
       </section>
+
+      <section className="verification-detail-footer-note">
+        <Card
+          action={
+            <Button onClick={() => setIsDisclaimerOpen(true)} variant="secondary">
+              Learn more
+            </Button>
+          }
+          eyebrow="Important"
+          title="A clean result is still not a guarantee"
+          description="This verification reflects the checks completed at one moment in time."
+          className="verification-disclaimer-card"
+        >
+          <p className="verification-disclaimer-card__copy">
+            A stronger score means the completed checks did not retain major warning signals. It does not prove ownership,
+            future safety, or that broader context is complete.
+          </p>
+        </Card>
+      </section>
+
+      {!isDisclaimerOpen ? (
+        <Button className="verification-disclaimer-float" onClick={() => setIsDisclaimerOpen(true)} variant="secondary">
+          Analysis has limits. Learn more
+        </Button>
+      ) : null}
+
+      {isDisclaimerOpen ? (
+        <div
+          className="verification-modal"
+          role="dialog"
+          aria-label="Why a high score is not a guarantee of safety"
+          aria-modal="true"
+        >
+          <button
+            aria-label="Close explanation"
+            className="verification-modal__backdrop"
+            onClick={() => setIsDisclaimerOpen(false)}
+            type="button"
+          />
+          <Card
+            eyebrow="How to read this result"
+            title="Why a high score is not a guarantee of safety"
+            description="This result should guide your decision, not replace judgment."
+            action={
+              <Button onClick={() => setIsDisclaimerOpen(false)} variant="ghost">
+                Close
+              </Button>
+            }
+            className="verification-modal__panel"
+          >
+            <div className="verification-modal__content">
+              <article className="verification-modal__point">
+                <p className="verification-modal__point-title">This result is a technical snapshot</p>
+                <p className="verification-modal__point-copy">
+                  The score summarizes what the engine retained during this verification run. It does not represent the
+                  full history of the domain or every possible risk.
+                </p>
+              </article>
+              <article className="verification-modal__point">
+                <p className="verification-modal__point-title">Some threats change behavior over time</p>
+                <p className="verification-modal__point-copy">
+                  A link can look clean during one check and behave differently later because the destination, payload, or
+                  infrastructure changes.
+                </p>
+              </article>
+              <article className="verification-modal__point">
+                <p className="verification-modal__point-title">Dynamic delivery can hide risk</p>
+                <p className="verification-modal__point-copy">
+                  Some pages use cloaking, conditional redirects, or dynamic content, so they may present differently to
+                  different users or at different times.
+                </p>
+              </article>
+              <article className="verification-modal__point">
+                <p className="verification-modal__point-title">Use the score to support judgment, not replace it</p>
+                <p className="verification-modal__point-copy">
+                  The most reliable interpretation comes from the score, retained signals, and confidence limits taken
+                  together with normal human review.
+                </p>
+              </article>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </PageShell>
   );
 }
