@@ -179,6 +179,16 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
             "description": "La URL enviada se resolvió mediante una o más redirecciones antes de alcanzar su destino final.",
         },
     },
+    "signal.questionable_destination_tld_after_redirect": {
+        "en": {
+            "title": "Questionable destination TLD after redirect",
+            "description": "The redirect chain resolves to a final destination that uses a more suspicious top-level domain.",
+        },
+        "es": {
+            "title": "TLD de destino cuestionable tras la redirección",
+            "description": "La cadena de redirección resuelve a un destino final que utiliza un dominio de nivel superior más sospechoso.",
+        },
+    },
     "signal.credential_capture_form_detected": {
         "en": {
             "title": "Credential capture form detected",
@@ -341,6 +351,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "The engine produced a {verdict} outcome supported by {drivers}.",
         "es": "El motor produjo un resultado {verdict} respaldado por {drivers}.",
     },
+    "explanation.headline.primary_concern": {
+        "en": "The engine produced a {verdict} outcome. Primary concern: {reason}.",
+        "es": "El motor produjo un resultado {verdict}. Principal riesgo: {reason}.",
+    },
     "explanation.headline.driven_by": {
         "en": "The engine produced a {verdict} outcome driven by {drivers}.",
         "es": "El motor produjo un resultado {verdict} impulsado por {drivers}.",
@@ -348,6 +362,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
     "explanation.decision_basis.with_trust_context": {
         "en": "Score {score} mapped to {risk_level} risk with {category_summary}. Supporting trust context: {drivers}.",
         "es": "La puntuación {score} se asignó al nivel de riesgo {risk_level} con {category_summary}. Contexto de confianza de apoyo: {drivers}.",
+    },
+    "explanation.decision_basis.primary_reason": {
+        "en": "This result is mainly driven by {reason}. Score {score} mapped to {risk_level} risk. Main contributing categories: {category_summary}.",
+        "es": "Este resultado está impulsado principalmente por {reason}. La puntuación {score} se asignó al nivel de riesgo {risk_level}. Principales categorías contribuyentes: {category_summary}.",
     },
     "explanation.decision_basis.no_primary_factors": {
         "en": "Score {score} mapped to {risk_level} risk with {category_summary}.",

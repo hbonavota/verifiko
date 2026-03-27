@@ -21,6 +21,7 @@ class SignalType(str, Enum):
     TLD_TYPOSQUATTING = "tld_typosquatting"
     SHORTENED_URL = "shortened_url"
     SUSPICIOUS_REDIRECT_CHAIN = "suspicious_redirect_chain"
+    QUESTIONABLE_DESTINATION_TLD = "questionable_destination_tld"
     SUSPICIOUS_INFRASTRUCTURE_PATTERN = "suspicious_infrastructure_pattern"
     PHISHING_KEYWORDS = "phishing_keywords"
     LOW_INFORMATION_PAGE = "low_information_page"
