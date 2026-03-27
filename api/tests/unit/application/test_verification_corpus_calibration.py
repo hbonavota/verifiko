@@ -11,6 +11,7 @@ from app.application.ports.infrastructure_lookup import (
     ResolvedAddress,
 )
 from app.application.ports.redirect_resolver import (
+    RedirectHop,
     RedirectResolution,
     RedirectResolverPort,
 )
@@ -107,6 +108,7 @@ class NoopInfrastructureLookup(InfrastructureLookupPort):
 def _build_use_case(
     public_target_validator=None,
     html_fetcher: HtmlFetcherPort | None = None,
+    redirect_resolver: RedirectResolverPort | None = None,
 ) -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=FakeRepository(),
@@ -118,7 +120,7 @@ def _build_use_case(
             current_time_provider=lambda: datetime(2026, 3, 17, tzinfo=timezone.utc),
         ),
         redirect_signal_analyzer=RedirectSignalAnalyzer(
-            redirect_resolver=NoopRedirectResolver()
+            redirect_resolver=redirect_resolver or NoopRedirectResolver()
         ),
         reputation_signal_analyzer=ReputationSignalAnalyzer(
             reputation_lookup=NoopReputationLookup()
@@ -261,3 +263,64 @@ def test_manual_corpus_calibration_marks_empty_root_pages_as_ambiguous_not_prist
     assert result.risk_assessment is not None
     assert result.risk_assessment.score < 100
     assert any(signal.signal_type == "low_information_page" for signal in result.signals)
+
+
+def test_manual_corpus_calibration_treats_clean_shortener_redirects_as_safe() -> None:
+    class ShortenerRedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            return RedirectResolution(
+                final_url="https://openai.com/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://g.co/openai",
+                        target_url="https://openai.com/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+
+    use_case = _build_use_case(redirect_resolver=ShortenerRedirectResolver())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://g.co/openai"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level == RiskLevel.SAFE.value
+    assert {signal.signal_type for signal in result.signals} == {"shortened_url"}
+
+
+def test_manual_corpus_calibration_keeps_shortener_to_low_information_targets_in_caution() -> None:
+    class ShortenerRedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            return RedirectResolution(
+                final_url="https://thin-example.test/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/abcd",
+                        target_url="https://thin-example.test/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+
+    use_case = _build_use_case(
+        redirect_resolver=ShortenerRedirectResolver(),
+        html_fetcher=StaticHtmlFetcher(
+            """
+            <html>
+              <body>
+                <h1>Welcome</h1>
+              </body>
+            </html>
+            """
+        ),
+    )
+
+    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/abcd"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level == RiskLevel.LOW.value
+    assert any(signal.signal_type == "shortened_url" for signal in result.signals)
+    assert any(signal.signal_type == "low_information_page" for signal in result.signals)
+    assert all(signal.signal_type != "suspicious_redirect_chain" for signal in result.signals)

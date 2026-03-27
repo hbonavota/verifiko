@@ -100,6 +100,29 @@ def test_redirect_signal_analyzer_skips_clean_single_hop_interstitial_redirect()
     assert result.redirect_resolution is not None
 
 
+def test_redirect_signal_analyzer_skips_clean_single_hop_shortener_redirect() -> None:
+    analyzer = RedirectSignalAnalyzer(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://openai.com/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://g.co/openai",
+                        target_url="https://openai.com/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://g.co/openai"))
+
+    assert result.signals == ()
+    assert result.redirect_resolution is not None
+
+
 def test_redirect_signal_analyzer_records_warning_when_resolution_fails() -> None:
     analyzer = RedirectSignalAnalyzer(redirect_resolver=FakeRedirectResolver(fail=True))
 

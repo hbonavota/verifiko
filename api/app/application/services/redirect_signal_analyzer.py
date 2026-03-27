@@ -40,6 +40,20 @@ _PHISHING_LURE_TOKENS = {
     "wallet",
     "webmail",
 }
+_SHORTENER_DOMAINS = {
+    "amzn.to",
+    "bit.ly",
+    "cutt.ly",
+    "g.co",
+    "goo.gl",
+    "is.gd",
+    "lnkd.in",
+    "ow.ly",
+    "rebrand.ly",
+    "rb.gy",
+    "t.co",
+    "tinyurl.com",
+}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
@@ -66,7 +80,7 @@ class RedirectSignalAnalyzer:
             NormalizedUrl.from_raw(hop.target_url).ascii_host for hop in resolution.hops
         )
         scheme_downgrade = normalized_url.scheme == "https" and resolved_final.scheme == "http"
-        clean_interstitial_redirect = self._is_clean_interstitial_redirect(
+        clean_single_hop_redirect = self._is_clean_single_hop_redirect(
             normalized_url=normalized_url,
             resolved_final=resolved_final,
             resolution=resolution,
@@ -80,7 +94,7 @@ class RedirectSignalAnalyzer:
             or len(distinct_hosts) >= 3
             or (
                 resolved_final.registered_domain != normalized_url.registered_domain
-                and not clean_interstitial_redirect
+                and not clean_single_hop_redirect
             )
         )
 
@@ -148,7 +162,7 @@ class RedirectSignalAnalyzer:
                 current_domain = target_domain
         return crossings
 
-    def _is_clean_interstitial_redirect(
+    def _is_clean_single_hop_redirect(
         self,
         normalized_url: NormalizedUrl,
         resolved_final: NormalizedUrl,
@@ -164,7 +178,9 @@ class RedirectSignalAnalyzer:
         if self._has_phishing_like_final_cues(resolved_final):
             return False
         final_tokens = self._text_tokens(resolved_final)
-        return bool(_INTERSTITIAL_REDIRECT_TOKENS.intersection(final_tokens))
+        if _INTERSTITIAL_REDIRECT_TOKENS.intersection(final_tokens):
+            return True
+        return normalized_url.registered_domain in _SHORTENER_DOMAINS
 
     def _has_phishing_like_final_cues(self, resolved_final: NormalizedUrl) -> bool:
         return bool(_PHISHING_LURE_TOKENS.intersection(self._text_tokens(resolved_final)))

@@ -606,6 +606,32 @@ def test_create_url_verification_use_case_strengthens_branded_shortener_lures() 
     assert "shortened_credential_lure_pattern" in dto.risk_assessment.summary
 
 
+def test_create_url_verification_use_case_keeps_clean_shortener_redirects_safe() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://openai.com/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://g.co/openai",
+                        target_url="https://openai.com/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://g.co/openai"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "SAFE"
+    assert dto.risk_assessment.verdict == "TRUSTED"
+    assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
+    assert all(signal.signal_type != "suspicious_redirect_chain" for signal in dto.signals)
+
+
 @pytest.mark.parametrize("url", ("https://google.com", "https://www.verifiko.es/"))
 def test_create_url_verification_use_case_keeps_benign_targets_safe_under_minor_warnings(
     url: str,
