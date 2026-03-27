@@ -80,6 +80,14 @@ class RiskExplanationBuilder:
             return "The result was forced to a terminal malicious outcome by trusted backend intelligence."
         if not primary_factors:
             return f"The engine produced a {assessment.verdict.value.lower()} outcome without high-confidence driver signals."
+        trust_context_factors = tuple(
+            factor for factor in primary_factors if factor.score_contribution == 0
+        )
+        if assessment.risk_level.value == "SAFE" and trust_context_factors:
+            drivers = ", ".join(factor.title for factor in trust_context_factors[:2])
+            return (
+                f"The engine produced a {assessment.verdict.value.lower()} outcome supported by {drivers}."
+            )
 
         drivers = ", ".join(factor.title for factor in primary_factors[:2])
         return (
@@ -91,6 +99,9 @@ class RiskExplanationBuilder:
         assessment: RiskAssessment,
         primary_factors: tuple[ExplanationFactor, ...],
     ) -> str:
+        trust_context_factors = tuple(
+            factor for factor in primary_factors if factor.score_contribution == 0
+        )
         category_summary = ", ".join(
             f"{category}={penalty:.2f}"
             for category, penalty in sorted(
@@ -102,6 +113,12 @@ class RiskExplanationBuilder:
         )
         if not category_summary:
             category_summary = "no category penalties recorded"
+        if trust_context_factors and category_summary == "no category penalties recorded":
+            return (
+                f"Score {assessment.score.rounded()} mapped to {assessment.risk_level.value.lower()} "
+                f"risk with {category_summary}. Supporting trust context: "
+                f"{', '.join(factor.title for factor in trust_context_factors[:2])}."
+            )
 
         if not primary_factors:
             return (

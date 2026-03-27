@@ -51,7 +51,7 @@ def test_domain_recency_signal_analyzer_skips_older_domain() -> None:
     analyzer = DomainRecencySignalAnalyzer(
         domain_age_lookup=StubDomainAgeLookup(
             DomainRegistrationInfo(
-                registered_at=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+                registered_at=datetime(2025, 12, 1, 12, 0, tzinfo=timezone.utc),
                 provider_name="stub-rdap",
             )
         ),

@@ -259,7 +259,7 @@ class CreateURLVerificationUseCase:
             deduplicated_warnings
             and not risk_assessment.terminal_override
             and risk_assessment.score.value > 80
-            and bool(risk_assessment.top_signals)
+            and any(value > 0 for value in risk_assessment.category_breakdown.values())
         ):
             adjusted_score = ConfidenceScore(80)
             adjusted_risk_level = risk_level_for_score(adjusted_score.value)

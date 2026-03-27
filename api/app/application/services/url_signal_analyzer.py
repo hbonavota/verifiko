@@ -91,6 +91,13 @@ _SHORTENER_DOMAINS = {
     "t.co",
     "tinyurl.com",
 }
+_REPUTABLE_REGISTERED_DOMAINS = {
+    "github.com",
+    "google.com",
+    "mozilla.org",
+    "openai.com",
+    "python.org",
+}
 _UNCOMMON_BRANDISH_TLDS = {"buzz", "click", "gq", "info", "link", "live", "rest", "shop", "top", "xyz"}
 _COMMON_DOMAIN_SUFFIXES = {"ac", "app", "biz", "co", "com", "dev", "edu", "gov", "info", "io", "net", "org"}
 _OFFICIAL_INSTITUTION_SUFFIXES = (".gov", ".gov.uk", ".gob.es", ".gov.es", ".gc.ca")
@@ -355,6 +362,22 @@ class DeterministicUrlSignalAnalyzer:
                 )
             )
 
+        if self._is_recognized_reputable_domain(normalized_url):
+            signals.append(
+                self._signal(
+                    signal_type=SignalType.RECOGNIZED_REPUTABLE_DOMAIN,
+                    severity=SignalSeverity.LOW,
+                    confidence=96,
+                    title="Recognized reputable domain",
+                    description=(
+                        "The registered domain matches a conservative curated set of widely used "
+                        "reputable destinations."
+                    ),
+                    evidence=(f"Registered domain observed: {normalized_url.registered_domain}.",),
+                    tags=("trust-context", normalized_url.registered_domain),
+                )
+            )
+
         return signals
 
     def _signal(
@@ -468,6 +491,15 @@ class DeterministicUrlSignalAnalyzer:
             return False
 
         return set(keyword_matches).issubset(_GENERIC_AUTH_KEYWORDS)
+
+    def _is_recognized_reputable_domain(self, normalized_url: NormalizedUrl) -> bool:
+        if normalized_url.registered_domain not in _REPUTABLE_REGISTERED_DOMAINS:
+            return False
+        if normalized_url.is_ip_address:
+            return False
+        if normalized_url.contains_unicode or normalized_url.contains_punycode:
+            return False
+        return True
 
     def _deceptive_brand_subdomain_pattern(self, subdomain_labels: list[str]) -> str | None:
         if len(subdomain_labels) < 2:

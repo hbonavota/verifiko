@@ -197,7 +197,9 @@ def test_manual_corpus_calibration_reduces_known_false_positive_patterns() -> No
     google_auth_result = use_case.execute(
         CreateVerificationCommand(url="https://accounts.google.com/signin")
     )
-    assert not google_auth_result.signals
+    assert {signal.signal_type for signal in google_auth_result.signals} == {
+        "recognized_reputable_domain"
+    }
 
     microsoft_auth_result = use_case.execute(
         CreateVerificationCommand(url="https://login.microsoftonline.com/")
@@ -286,7 +288,10 @@ def test_manual_corpus_calibration_treats_clean_shortener_redirects_as_safe() ->
 
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level == RiskLevel.SAFE.value
-    assert {signal.signal_type for signal in result.signals} == {"shortened_url"}
+    assert {signal.signal_type for signal in result.signals} == {
+        "recognized_reputable_domain",
+        "shortened_url",
+    }
 
 
 def test_manual_corpus_calibration_keeps_shortener_to_low_information_targets_in_caution() -> None:
@@ -324,3 +329,26 @@ def test_manual_corpus_calibration_keeps_shortener_to_low_information_targets_in
     assert any(signal.signal_type == "shortened_url" for signal in result.signals)
     assert any(signal.signal_type == "low_information_page" for signal in result.signals)
     assert all(signal.signal_type != "suspicious_redirect_chain" for signal in result.signals)
+
+
+def test_manual_corpus_calibration_distinguishes_trusted_clean_from_unknown_clean() -> None:
+    trusted_result = _build_use_case().execute(
+        CreateVerificationCommand(url="https://openai.com/research")
+    )
+
+    unknown_result = _build_use_case().execute(
+        CreateVerificationCommand(url="https://unknown-clean.example/")
+    )
+
+    assert trusted_result.risk_assessment is not None
+    assert trusted_result.risk_assessment.risk_level == RiskLevel.SAFE.value
+    assert trusted_result.risk_assessment.score > unknown_result.risk_assessment.score
+    assert {
+        signal.signal_type for signal in trusted_result.signals
+    } == {"recognized_reputable_domain"}
+    assert "Supporting trust context" in trusted_result.risk_assessment.summary
+
+    assert unknown_result.risk_assessment is not None
+    assert unknown_result.risk_assessment.risk_level == RiskLevel.SAFE.value
+    assert unknown_result.signals == ()
+    assert "evidence_light_clean_result" in unknown_result.risk_assessment.summary

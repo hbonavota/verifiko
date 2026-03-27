@@ -8,9 +8,11 @@ from app.domain.services.compound_rules import (
     CompoundRule,
     CredentialLurePatternRule,
     DeceptiveBrandSubdomainRule,
+    EvidenceLightCleanResultRule,
     EmailFraudStagingPatternRule,
     InfrastructureBackedCredentialLureRule,
     LowInformationLandingPageRule,
+    ReputableDomainSupportRule,
     RedirectedDeceptionPatternRule,
     ShortenedCredentialLureRule,
     ShortenedRedirectedLureRule,
@@ -34,6 +36,8 @@ class RiskScoringEngine(ScoringService):
             ShortenedRedirectedLureRule(),
             InfrastructureBackedCredentialLureRule(),
             LowInformationLandingPageRule(),
+            EvidenceLightCleanResultRule(),
+            ReputableDomainSupportRule(),
         ]
 
     def calculate(self, signals: list[AnalysisSignal], calculation_version: str) -> RiskAssessment:
@@ -59,10 +63,14 @@ class RiskScoringEngine(ScoringService):
 
         raw_category_penalties: dict[str, float] = {}
         signal_penalties: list[tuple[str, float]] = []
+        informational_signals: list[AnalysisSignal] = []
 
         for signal in active_signals:
             signal_penalty = _signal_penalty(signal)
             signal_penalties.append((signal.title, signal_penalty))
+            if signal_penalty == 0:
+                informational_signals.append(signal)
+                continue
             key = signal.category.value
             raw_category_penalties[key] = raw_category_penalties.get(key, 0.0) + signal_penalty
 
@@ -81,21 +89,29 @@ class RiskScoringEngine(ScoringService):
         verdict = verdict_for_level(risk_level)
 
         summary = (
-            f"Detected {len(active_signals)} signal(s) with {risk_level.value.lower()} risk output. "
+            f"Detected {len(active_signals) - len(informational_signals)} risk signal(s) with {risk_level.value.lower()} risk output. "
             f"Category penalties totaled {category_total_penalty:.2f} and compound penalties totaled {compound_penalty:.2f}."
         )
         top_signal_titles = _top_signal_titles_from_penalties(signal_penalties, max_items=3)
+        if not top_signal_titles and informational_signals:
+            top_signal_titles = tuple(signal.title for signal in informational_signals[:3])
         if top_signal_titles:
             summary = f"{summary} Main drivers: {', '.join(top_signal_titles)}."
         if triggered_rules:
             summary = f"{summary} Rules: {', '.join(triggered_rules)}."
+        if informational_signals:
+            summary = (
+                f"{summary} Supporting trust context: "
+                f"{', '.join(signal.title for signal in informational_signals[:2])}."
+            )
 
         return RiskAssessment(
             score=final_score,
             risk_level=risk_level,
             verdict=verdict,
             summary=summary,
-            top_signals=_top_signal_titles_from_penalties(signal_penalties),
+            top_signals=_top_signal_titles_from_penalties(signal_penalties)
+            or tuple(signal.title for signal in informational_signals[:5]),
             category_breakdown=capped_category_penalties,
             terminal_override=False,
             terminal_reason=None,

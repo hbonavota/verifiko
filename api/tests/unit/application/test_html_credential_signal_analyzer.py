@@ -47,7 +47,8 @@ def test_html_credential_signal_analyzer_skips_pages_without_login_patterns() ->
             <html>
               <body>
                 <h1>About our company</h1>
-                <p>Read the latest platform updates and product news.</p>
+                <p>Read the latest platform updates, product news, developer documentation,
+                support resources, release notes, service information, and company background.</p>
               </body>
             </html>
             """,

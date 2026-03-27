@@ -147,5 +147,30 @@ class LowInformationLandingPageRule(CompoundRule):
         return None
 
 
+class EvidenceLightCleanResultRule(CompoundRule):
+    name = "evidence_light_clean_result"
+
+    def evaluate(self, signal_types: set[SignalType]) -> float | None:
+        if not signal_types:
+            return 2
+        return None
+
+
+class ReputableDomainSupportRule(CompoundRule):
+    name = "recognized_reputable_domain_bonus"
+
+    def evaluate(self, signal_types: set[SignalType]) -> float | None:
+        if SignalType.RECOGNIZED_REPUTABLE_DOMAIN not in signal_types:
+            return None
+        if signal_types == {SignalType.RECOGNIZED_REPUTABLE_DOMAIN}:
+            return -2
+        if signal_types == {
+            SignalType.RECOGNIZED_REPUTABLE_DOMAIN,
+            SignalType.SHORTENED_URL,
+        }:
+            return -2
+        return None
+
+
 def detected_types(signals: list[AnalysisSignal]) -> set[SignalType]:
     return {signal.signal_type for signal in signals if signal.detected}

@@ -213,3 +213,67 @@ def test_low_information_landing_page_rule_adds_penalty() -> None:
         entry.rule_name == "low_information_landing_page"
         for entry in result.score_breakdown.compound_rules_applied
     )
+
+
+def test_recognized_reputable_domain_bonus_improves_clean_score() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.RECOGNIZED_REPUTABLE_DOMAIN,
+            category=SignalCategory.DOMAIN_REPUTATION,
+            severity=SignalSeverity.LOW,
+            confidence=ConfidenceScore(96),
+            title="Recognized reputable domain",
+            description="Conservative curated reputable domain match.",
+            source="url-rule-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.RECOGNIZED_REPUTABLE_DOMAIN],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.score.value == 100
+    assert result.top_signals == ("Recognized reputable domain",)
+    assert "Detected 0 risk signal(s)" in result.summary
+    assert "Supporting trust context" in result.summary
+    assert "recognized_reputable_domain_bonus" in result.summary
+
+
+def test_evidence_light_clean_result_penalizes_zero_signal_unknowns() -> None:
+    engine = RiskScoringEngine()
+
+    result = engine.calculate([], calculation_version="v1")
+
+    assert result.score.value == 98
+    assert "evidence_light_clean_result" in result.summary
+
+
+def test_reputable_domain_bonus_does_not_override_suspicious_signals() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.RECOGNIZED_REPUTABLE_DOMAIN,
+            category=SignalCategory.DOMAIN_REPUTATION,
+            severity=SignalSeverity.LOW,
+            confidence=ConfidenceScore(96),
+            title="Recognized reputable domain",
+            description="Conservative curated reputable domain match.",
+            source="url-rule-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.RECOGNIZED_REPUTABLE_DOMAIN],
+        ),
+        AnalysisSignal.create(
+            signal_type=SignalType.PHISHING_KEYWORDS,
+            category=SignalCategory.CONTENT_BEHAVIOR,
+            severity=SignalSeverity.MEDIUM,
+            confidence=ConfidenceScore(85),
+            title="Credential lure wording in URL",
+            description="Credential lure terms present.",
+            source="url-rule-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.PHISHING_KEYWORDS],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.score.value < 100
+    assert "recognized_reputable_domain_bonus" not in result.summary

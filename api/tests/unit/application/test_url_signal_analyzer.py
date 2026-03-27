@@ -45,7 +45,9 @@ def test_url_signal_analyzer_does_not_flag_official_auth_hosts_with_generic_logi
     google_signals = analyzer.analyze(NormalizedUrl.from_raw("https://accounts.google.com/signin"))
     microsoft_signals = analyzer.analyze(NormalizedUrl.from_raw("https://login.microsoftonline.com/"))
 
-    assert google_signals == []
+    assert {signal.signal_type for signal in google_signals} == {
+        SignalType.RECOGNIZED_REPUTABLE_DOMAIN
+    }
     assert microsoft_signals == []
 
 
@@ -90,3 +92,13 @@ def test_url_signal_analyzer_flags_branded_shorteners() -> None:
     signal_types = {signal.signal_type for signal in signals}
     assert SignalType.SHORTENED_URL in signal_types
     assert SignalType.PHISHING_KEYWORDS in signal_types
+
+
+def test_url_signal_analyzer_flags_recognized_reputable_domains() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(NormalizedUrl.from_raw("https://docs.python.org/3/library"))
+
+    assert {signal.signal_type for signal in signals} == {
+        SignalType.RECOGNIZED_REPUTABLE_DOMAIN
+    }

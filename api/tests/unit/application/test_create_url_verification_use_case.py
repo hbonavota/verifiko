@@ -629,7 +629,9 @@ def test_create_url_verification_use_case_keeps_clean_shortener_redirects_safe()
     assert dto.risk_assessment.risk_level == "SAFE"
     assert dto.risk_assessment.verdict == "TRUSTED"
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
+    assert any(signal.signal_type == "recognized_reputable_domain" for signal in dto.signals)
     assert all(signal.signal_type != "suspicious_redirect_chain" for signal in dto.signals)
+    assert "recognized_reputable_domain_bonus" in dto.risk_assessment.summary
 
 
 @pytest.mark.parametrize("url", ("https://google.com", "https://www.verifiko.es/"))
@@ -646,8 +648,35 @@ def test_create_url_verification_use_case_keeps_benign_targets_safe_under_minor_
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "SAFE"
     assert dto.risk_assessment.verdict == "TRUSTED"
-    assert dto.risk_assessment.score == 100
+    expected_score = 100 if url == "https://google.com" else 98
+    assert dto.risk_assessment.score == expected_score
     assert dto.risk_assessment.analysis_warnings
+
+
+def test_create_url_verification_use_case_surfaces_supporting_trust_context() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://openai.com/research"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "SAFE"
+    assert "Supporting trust context" in dto.risk_assessment.summary
+    assert dto.risk_assessment.explanation is not None
+    assert "supported by" in dto.risk_assessment.explanation.headline.lower()
+    assert {signal.signal_type for signal in dto.signals} == {"recognized_reputable_domain"}
+
+
+def test_create_url_verification_use_case_does_not_let_reputable_domains_override_risky_signals() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(CreateVerificationCommand(url="http://openai.com:8080/reset"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+    assert any(signal.signal_type == "recognized_reputable_domain" for signal in dto.signals)
+    assert any(signal.signal_type == "insecure_transport" for signal in dto.signals)
+    assert any(signal.signal_type == "non_standard_port_usage" for signal in dto.signals)
+    assert "recognized_reputable_domain_bonus" not in dto.risk_assessment.summary
 
 
 def test_create_url_verification_use_case_strengthens_shortener_redirected_lures() -> None:
@@ -799,4 +828,4 @@ def test_create_url_verification_use_case_skips_benign_redirect_interstitial_htm
     assert dto.risk_assessment.risk_level == "SAFE"
     assert dto.trace is not None
     assert dto.trace.total_signals == len(dto.signals) == 0
-    assert dto.risk_assessment.summary.startswith("Detected 0 signal(s)")
+    assert dto.risk_assessment.summary.startswith("Detected 0 risk signal(s)")
