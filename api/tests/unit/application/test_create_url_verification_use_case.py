@@ -738,6 +738,26 @@ def test_create_url_verification_use_case_surfaces_supporting_trust_context() ->
     assert {signal.signal_type for signal in dto.signals} == {"recognized_reputable_domain"}
 
 
+def test_create_url_verification_use_case_uses_primary_reason_explanation_for_suspicious_urls() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://paypal-login-security-check.example.xyz/verify")
+    )
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.explanation.headline == (
+        "The engine produced a suspicious outcome. Primary concern: "
+        "brand or institution impersonation cues."
+    )
+    assert dto.risk_assessment.explanation.decision_basis.startswith(
+        "This result is mainly driven by brand or institution impersonation cues."
+    )
+    assert "content behavior=" in dto.risk_assessment.explanation.decision_basis
+    assert "content_behavior=" not in dto.risk_assessment.explanation.decision_basis
+
+
 def test_create_url_verification_use_case_does_not_let_reputable_domains_override_risky_signals() -> None:
     use_case = _build_use_case()
 

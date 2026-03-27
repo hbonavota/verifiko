@@ -198,6 +198,8 @@ _DOMINANT_SUMMARY_REASON_KEYS = {
     SignalType.BRAND_IMPERSONATION.value: "summary.reason.brand_impersonation",
     SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN.value: "summary.reason.suspicious_infrastructure_pattern",
 }
+_DOMINANT_EXPLANATION_CATEGORIES = _DOMINANT_SUMMARY_CATEGORIES
+_DOMINANT_EXPLANATION_REASON_KEYS = _DOMINANT_SUMMARY_REASON_KEYS
 
 _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^Host resolves to raw IP (.+)\.$"), "El host apunta directamente a la IP {0}."),
@@ -386,6 +388,7 @@ def _localize_assessment(
     localized_explanation = _localize_explanation(
         assessment,
         assessment.explanation,
+        localized_signals,
     )
 
     summary = _build_spanish_summary(
@@ -408,6 +411,7 @@ def _localize_assessment(
 def _localize_explanation(
     assessment: RiskAssessmentDTO,
     explanation: RiskExplanationDTO,
+    localized_signals: tuple[AnalysisSignalDTO, ...],
 ) -> RiskExplanationDTO:
     localized_primary_factors = tuple(
         _localize_factor(factor)
@@ -418,8 +422,16 @@ def _localize_explanation(
 
     return replace(
         explanation,
-        headline=_build_spanish_headline(assessment, localized_primary_factors),
-        decision_basis=_build_spanish_decision_basis(assessment, localized_primary_factors),
+        headline=_build_spanish_headline(
+            assessment,
+            localized_primary_factors,
+            localized_signals,
+        ),
+        decision_basis=_build_spanish_decision_basis(
+            assessment,
+            localized_primary_factors,
+            localized_signals,
+        ),
         primary_factors=localized_primary_factors,
         analysis_trace=localized_trace,
         coverage_warnings=localized_coverage_warnings,
@@ -578,9 +590,24 @@ def _select_dominant_summary_signal_dto(
 def _build_spanish_headline(
     assessment: RiskAssessmentDTO,
     primary_factors: tuple[ExplanationFactorDTO, ...],
+    localized_signals: tuple[AnalysisSignalDTO, ...],
 ) -> str:
     if assessment.terminal_override:
         return resolve_message("explanation.headline.terminal_override", language="es")
+    dominant_signal = _select_dominant_explanation_signal_dto(localized_signals)
+    if dominant_signal is not None and assessment.risk_level != "SAFE":
+        return resolve_message(
+            "explanation.headline.primary_concern",
+            {
+                "verdict": _verdict_lower(assessment.verdict),
+                "reason": resolve_message(
+                    _DOMINANT_EXPLANATION_REASON_KEYS[dominant_signal.signal_type],
+                    language="es",
+                ),
+            },
+            language="es",
+        )
+
     if not primary_factors:
         return resolve_message(
             "explanation.headline.no_high_confidence",
@@ -616,6 +643,7 @@ def _build_spanish_headline(
 def _build_spanish_decision_basis(
     assessment: RiskAssessmentDTO,
     primary_factors: tuple[ExplanationFactorDTO, ...],
+    localized_signals: tuple[AnalysisSignalDTO, ...],
 ) -> str:
     trust_context_factors = tuple(
         factor for factor in primary_factors if factor.score_contribution == 0
@@ -647,6 +675,22 @@ def _build_spanish_decision_basis(
             language="es",
         )
 
+    dominant_signal = _select_dominant_explanation_signal_dto(localized_signals)
+    if dominant_signal is not None and assessment.risk_level != "SAFE":
+        return resolve_message(
+            "explanation.decision_basis.primary_reason",
+            {
+                "reason": resolve_message(
+                    _DOMINANT_EXPLANATION_REASON_KEYS[dominant_signal.signal_type],
+                    language="es",
+                ),
+                "score": assessment.score,
+                "risk_level": _risk_level_lower(assessment.risk_level),
+                "category_summary": category_summary,
+            },
+            language="es",
+        )
+
     if not primary_factors:
         return resolve_message(
             "explanation.decision_basis.no_primary_factors",
@@ -667,6 +711,24 @@ def _build_spanish_decision_basis(
         },
         language="es",
     )
+
+
+def _select_dominant_explanation_signal_dto(
+    signals: tuple[AnalysisSignalDTO, ...],
+) -> AnalysisSignalDTO | None:
+    eligible = [
+        signal
+        for signal in signals
+        if signal.detected
+        and signal.severity in {SignalSeverity.HIGH.value, SignalSeverity.CRITICAL.value}
+        and signal.confidence > 80
+        and signal.category in _DOMINANT_EXPLANATION_CATEGORIES
+        and signal.signal_type in _DOMINANT_EXPLANATION_REASON_KEYS
+        and signal.score_contribution > 0
+    ]
+    if not eligible:
+        return None
+    return max(eligible, key=lambda signal: signal.score_contribution)
 
 
 def _localized_top_signal_titles(

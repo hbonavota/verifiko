@@ -157,6 +157,9 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
         "La inteligencia de registro del dominio no estuvo disponible en esta ejecución.",
     )
     assert localized.risk_assessment.explanation.headline.startswith("El motor produjo")
+    assert localized.risk_assessment.explanation.decision_basis.startswith(
+        "La puntuación 74.89 se asignó al nivel de riesgo bajo"
+    )
     assert localized.risk_assessment.explanation.primary_factors[0].title == (
         "Registro de dominio muy reciente"
     )
@@ -297,6 +300,13 @@ def test_verification_text_localizer_leads_with_primary_concern_for_risky_result
     assert localized.risk_assessment is not None
     assert localized.risk_assessment.summary.startswith(
         "Principal riesgo: indicios de suplantación de marca o institución."
+    )
+    assert localized.risk_assessment.explanation.headline == (
+        "El motor produjo un resultado sospechoso. "
+        "Principal riesgo: indicios de suplantación de marca o institución."
+    )
+    assert localized.risk_assessment.explanation.decision_basis.startswith(
+        "Este resultado está impulsado principalmente por indicios de suplantación de marca o institución."
     )
     assert "También se detectaron otros indicadores de riesgo." not in localized.risk_assessment.summary
 
