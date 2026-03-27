@@ -77,6 +77,30 @@ def test_redirect_signal_analyzer_flags_cross_domain_chain() -> None:
     assert result.signals[0].severity.value == "HIGH"
 
 
+def test_redirect_signal_analyzer_treats_reset_destinations_as_strong_redirect_cues() -> None:
+    analyzer = RedirectSignalAnalyzer(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://collector.bad.example/reset",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link",
+                        target_url="https://collector.bad.example/reset",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://safe.example/link"))
+
+    assert len(result.signals) == 1
+    assert result.signals[0].signal_type.value == "suspicious_redirect_chain"
+    assert result.signals[0].severity.value == "HIGH"
+
+
 def test_redirect_signal_analyzer_skips_clean_single_hop_interstitial_redirect() -> None:
     analyzer = RedirectSignalAnalyzer(
         redirect_resolver=FakeRedirectResolver(
@@ -121,6 +145,38 @@ def test_redirect_signal_analyzer_skips_clean_single_hop_shortener_redirect() ->
 
     assert result.signals == ()
     assert result.redirect_resolution is not None
+
+
+def test_redirect_signal_analyzer_flags_shortener_redirect_to_questionable_tld() -> None:
+    analyzer = RedirectSignalAnalyzer(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://portal-example.top/landing",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/abcd",
+                        target_url="https://portal-example.top/landing",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://bit.ly/abcd"))
+
+    assert len(result.signals) == 2
+    redirect_signal = next(
+        signal for signal in result.signals if signal.signal_type.value == "suspicious_redirect_chain"
+    )
+    tld_signal = next(
+        signal for signal in result.signals if signal.signal_type.value == "questionable_destination_tld"
+    )
+    assert redirect_signal.severity.value == "HIGH"
+    assert "Final destination uses a questionable TLD: .top." in redirect_signal.evidence
+    assert tld_signal.severity.value == "MEDIUM"
+    assert "Final destination uses a questionable TLD: .top." in tld_signal.evidence
 
 
 def test_redirect_signal_analyzer_records_warning_when_resolution_fails() -> None:

@@ -28,6 +28,7 @@ _PHISHING_LURE_TOKENS = {
     "password",
     "payment",
     "penalty",
+    "reset",
     "secure",
     "signin",
     "ticket",
@@ -55,6 +56,7 @@ _SHORTENER_DOMAINS = {
     "t.co",
     "tinyurl.com",
 }
+_QUESTIONABLE_DESTINATION_TLDS = {"buzz", "click", "gq", "info", "link", "live", "rest", "shop", "top", "xyz"}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
@@ -81,6 +83,9 @@ class RedirectSignalAnalyzer:
             NormalizedUrl.from_raw(hop.target_url).ascii_host for hop in resolution.hops
         )
         scheme_downgrade = normalized_url.scheme == "https" and resolved_final.scheme == "http"
+        questionable_destination_structure = self._has_questionable_destination_structure(
+            resolved_final
+        )
         clean_single_hop_redirect = self._is_clean_single_hop_redirect(
             normalized_url=normalized_url,
             resolved_final=resolved_final,
@@ -88,6 +93,7 @@ class RedirectSignalAnalyzer:
             domain_crossings=domain_crossings,
             distinct_hosts=distinct_hosts,
             scheme_downgrade=scheme_downgrade,
+            questionable_destination_structure=questionable_destination_structure,
         )
         suspicious_chain = (
             scheme_downgrade
@@ -114,12 +120,20 @@ class RedirectSignalAnalyzer:
 
         if scheme_downgrade:
             evidence.append("Redirect chain downgraded transport from HTTPS to HTTP.")
+        if questionable_destination_structure:
+            evidence.append(
+                resolve_message(
+                    "evidence.final_destination_uses_questionable_tld",
+                    {"tld": self._registered_tld(resolved_final)},
+                )
+            )
 
         strong_redirect_cues = (
             len(resolution.hops) >= 2
             or len(domain_crossings) >= 2
             or len(distinct_hosts) >= 3
             or scheme_downgrade
+            or questionable_destination_structure
             or self._has_phishing_like_final_cues(resolved_final)
         )
         severity = SignalSeverity.HIGH if strong_redirect_cues else SignalSeverity.MEDIUM
@@ -128,28 +142,60 @@ class RedirectSignalAnalyzer:
         else:
             confidence = min(82, 64 + len(domain_crossings) * 6)
 
-        return SignalAnalysisResult(
-            signals=(
-                build_localized_signal(
-                    signal_type=SignalType.SUSPICIOUS_REDIRECT_CHAIN,
-                    category=SIGNAL_CATEGORY_MAP[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
-                    severity=severity,
-                    confidence=ConfidenceScore(confidence),
-                    source=self.source,
-                    base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
-                    message_key="signal.observed_redirect_chain",
-                    message_params={
-                        "evidence": _build_redirect_evidence_refs(
-                            hop_count=len(resolution.hops),
-                            final_url=resolution.final_url,
-                            provider_name=resolution.provider_name,
-                            domain_crossings=domain_crossings,
-                            scheme_downgrade=scheme_downgrade,
+        signals = [
+            build_localized_signal(
+                signal_type=SignalType.SUSPICIOUS_REDIRECT_CHAIN,
+                category=SIGNAL_CATEGORY_MAP[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
+                severity=severity,
+                confidence=ConfidenceScore(confidence),
+                source=self.source,
+                base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
+                message_key="signal.observed_redirect_chain",
+                message_params={
+                    "evidence": _build_redirect_evidence_refs(
+                        hop_count=len(resolution.hops),
+                        final_url=resolution.final_url,
+                        provider_name=resolution.provider_name,
+                        domain_crossings=domain_crossings,
+                        scheme_downgrade=scheme_downgrade,
+                        questionable_destination_tld=(
+                            self._registered_tld(resolved_final)
+                            if questionable_destination_structure
+                            else None
                         ),
+                    ),
+                },
+                tags=("redirect-chain", resolved_final.registered_domain),
+            )
+        ]
+        if questionable_destination_structure:
+            signals.append(
+                build_localized_signal(
+                    signal_type=SignalType.QUESTIONABLE_DESTINATION_TLD,
+                    category=SIGNAL_CATEGORY_MAP[SignalType.QUESTIONABLE_DESTINATION_TLD],
+                    severity=SignalSeverity.MEDIUM,
+                    confidence=ConfidenceScore(84),
+                    source=self.source,
+                    base_weight=BASE_SIGNAL_WEIGHTS[SignalType.QUESTIONABLE_DESTINATION_TLD],
+                    message_key="signal.questionable_destination_tld_after_redirect",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.final_destination_uses_questionable_tld",
+                                tld=self._registered_tld(resolved_final),
+                            ),
+                            evidence_ref(
+                                "evidence.final_url_after_redirects",
+                                final_url=resolution.final_url,
+                            ),
+                        ]
                     },
-                    tags=("redirect-chain", resolved_final.registered_domain),
-                ),
-            ),
+                    tags=("redirect-chain", "questionable-tld", resolved_final.registered_domain),
+                )
+            )
+
+        return SignalAnalysisResult(
+            signals=tuple(signals),
             redirect_resolution=resolution,
         )
 
@@ -175,12 +221,15 @@ class RedirectSignalAnalyzer:
         domain_crossings: list[str],
         distinct_hosts: set[str],
         scheme_downgrade: bool,
+        questionable_destination_structure: bool,
     ) -> bool:
         if len(resolution.hops) != 1 or scheme_downgrade:
             return False
         if len(domain_crossings) != 1 or len(distinct_hosts) > 2:
             return False
         if self._has_phishing_like_final_cues(resolved_final):
+            return False
+        if questionable_destination_structure:
             return False
         final_tokens = self._text_tokens(resolved_final)
         if _INTERSTITIAL_REDIRECT_TOKENS.intersection(final_tokens):
@@ -201,6 +250,13 @@ class RedirectSignalAnalyzer:
         ).lower()
         return {match.group(0) for match in _TOKEN_PATTERN.finditer(combined)}
 
+    def _has_questionable_destination_structure(self, normalized_url: NormalizedUrl) -> bool:
+        return self._registered_tld(normalized_url) in _QUESTIONABLE_DESTINATION_TLDS
+
+    def _registered_tld(self, normalized_url: NormalizedUrl) -> str:
+        labels = [label for label in normalized_url.registered_domain.split(".") if label]
+        return labels[-1].lower() if len(labels) >= 2 else ""
+
 
 def _build_redirect_evidence_refs(
     hop_count: int,
@@ -208,6 +264,7 @@ def _build_redirect_evidence_refs(
     provider_name: str,
     domain_crossings: list[str],
     scheme_downgrade: bool,
+    questionable_destination_tld: str | None,
 ) -> list[dict[str, object]]:
     evidence = [
         evidence_ref("evidence.redirect_hops_observed", hop_count=hop_count),
@@ -223,4 +280,11 @@ def _build_redirect_evidence_refs(
         )
     if scheme_downgrade:
         evidence.append(evidence_ref("evidence.redirect_chain_downgraded_transport"))
+    if questionable_destination_tld:
+        evidence.append(
+            evidence_ref(
+                "evidence.final_destination_uses_questionable_tld",
+                tld=questionable_destination_tld,
+            )
+        )
     return evidence

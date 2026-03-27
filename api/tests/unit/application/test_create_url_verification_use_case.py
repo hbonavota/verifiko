@@ -659,6 +659,7 @@ def test_create_url_verification_use_case_flags_shortener_redirects_to_questiona
     assert dto.risk_assessment.risk_level in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
     assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(signal.signal_type == "questionable_destination_tld" for signal in dto.signals)
     assert any(
         signal.signal_type == "suspicious_redirect_chain"
         and "Final destination uses a questionable TLD: .top." in signal.evidence
@@ -845,6 +846,36 @@ def test_create_url_verification_use_case_marks_redirected_login_style_destinati
     )
 
 
+def test_create_url_verification_use_case_marks_redirected_reset_destinations_as_caution() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://collector.bad.example/reset",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link/123",
+                        target_url="https://collector.bad.example/reset",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert dto.risk_assessment.verdict == "CAUTION"
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "phishing_keywords"
+        and signal.source == "resolved-destination-url-analyzer"
+        for signal in dto.signals
+    )
+
+
 def test_create_url_verification_use_case_analyzes_resolved_destination_html() -> None:
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
@@ -943,6 +974,31 @@ def test_create_url_verification_use_case_keeps_safe_redirect_mismatch_summaries
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
+                final_url="https://destination.example/welcome",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link/123",
+                        target_url="https://destination.example/welcome",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "SAFE"
+    assert dto.risk_assessment.summary.startswith("Detected 1 risk signal(s)")
+    assert "Primary concern:" not in dto.risk_assessment.summary
+
+
+def test_create_url_verification_use_case_marks_redirects_to_questionable_tlds_as_caution() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
                 final_url="https://portal-example.top/",
                 hops=(
                     RedirectHop(
@@ -959,6 +1015,7 @@ def test_create_url_verification_use_case_keeps_safe_redirect_mismatch_summaries
     dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
 
     assert dto.risk_assessment is not None
-    assert dto.risk_assessment.risk_level == "SAFE"
-    assert dto.risk_assessment.summary.startswith("Detected 1 risk signal(s)")
-    assert "Primary concern:" not in dto.risk_assessment.summary
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert dto.risk_assessment.verdict == "CAUTION"
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(signal.signal_type == "questionable_destination_tld" for signal in dto.signals)
