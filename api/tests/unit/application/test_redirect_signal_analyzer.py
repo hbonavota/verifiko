@@ -74,6 +74,30 @@ def test_redirect_signal_analyzer_flags_cross_domain_chain() -> None:
     assert "Final URL after redirects: https://collector.bad.example/login." in (
         result.signals[0].evidence
     )
+    assert result.signals[0].severity.value == "HIGH"
+
+
+def test_redirect_signal_analyzer_skips_clean_single_hop_interstitial_redirect() -> None:
+    analyzer = RedirectSignalAnalyzer(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://www.encurtador.dev/redirecionamento/7k3qpqd",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://sl1nk.com/7k3qpqd",
+                        target_url="https://www.encurtador.dev/redirecionamento/7k3qpqd",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://sl1nk.com/7k3qpqd"))
+
+    assert result.signals == ()
+    assert result.redirect_resolution is not None
 
 
 def test_redirect_signal_analyzer_records_warning_when_resolution_fails() -> None:

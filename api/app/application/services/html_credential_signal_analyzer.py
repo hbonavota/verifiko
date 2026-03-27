@@ -70,10 +70,13 @@ class HtmlCredentialSignalAnalyzer:
         ]
 
         signals: list[AnalysisSignal] = []
+        strong_credential_cues = (
+            bool(account_hints) or len(matched_login_terms) >= 2 or bool(suspicious_actions)
+        )
         has_credential_harvest_form = (
             form_count > 0
             and password_field_count > 0
-            and bool(account_hints or matched_login_terms or suspicious_actions)
+            and strong_credential_cues
         )
 
         if has_credential_harvest_form:

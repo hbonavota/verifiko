@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import re
 
 from app.application.ports.redirect_resolver import (
     RedirectResolution,
@@ -12,6 +13,34 @@ from app.domain.enums.signal_type import SignalType
 from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
+
+_INTERSTITIAL_REDIRECT_TOKENS = {"continue", "out", "away", "redirect", "redirecionamento"}
+_PHISHING_LURE_TOKENS = {
+    "account",
+    "auth",
+    "billing",
+    "confirm",
+    "fine",
+    "invoice",
+    "login",
+    "notice",
+    "password",
+    "payment",
+    "penalty",
+    "secure",
+    "signin",
+    "ticket",
+    "toll",
+    "traffic",
+    "unlock",
+    "update",
+    "validate",
+    "verify",
+    "violation",
+    "wallet",
+    "webmail",
+}
+_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
 @dataclass(slots=True)
@@ -37,11 +66,22 @@ class RedirectSignalAnalyzer:
             NormalizedUrl.from_raw(hop.target_url).ascii_host for hop in resolution.hops
         )
         scheme_downgrade = normalized_url.scheme == "https" and resolved_final.scheme == "http"
+        clean_interstitial_redirect = self._is_clean_interstitial_redirect(
+            normalized_url=normalized_url,
+            resolved_final=resolved_final,
+            resolution=resolution,
+            domain_crossings=domain_crossings,
+            distinct_hosts=distinct_hosts,
+            scheme_downgrade=scheme_downgrade,
+        )
         suspicious_chain = (
-            resolved_final.registered_domain != normalized_url.registered_domain
-            or len(domain_crossings) >= 1
+            scheme_downgrade
+            or len(domain_crossings) >= 2
             or len(distinct_hosts) >= 3
-            or scheme_downgrade
+            or (
+                resolved_final.registered_domain != normalized_url.registered_domain
+                and not clean_interstitial_redirect
+            )
         )
 
         if not suspicious_chain:
@@ -60,8 +100,18 @@ class RedirectSignalAnalyzer:
         if scheme_downgrade:
             evidence.append("Redirect chain downgraded transport from HTTPS to HTTP.")
 
-        severity = SignalSeverity.HIGH
-        confidence = min(94, 72 + len(resolution.hops) * 6 + len(domain_crossings) * 7)
+        strong_redirect_cues = (
+            len(resolution.hops) >= 2
+            or len(domain_crossings) >= 2
+            or len(distinct_hosts) >= 3
+            or scheme_downgrade
+            or self._has_phishing_like_final_cues(resolved_final)
+        )
+        severity = SignalSeverity.HIGH if strong_redirect_cues else SignalSeverity.MEDIUM
+        if strong_redirect_cues:
+            confidence = min(94, 72 + len(resolution.hops) * 6 + len(domain_crossings) * 7)
+        else:
+            confidence = min(82, 64 + len(domain_crossings) * 6)
 
         return SignalAnalysisResult(
             signals=(
@@ -97,3 +147,35 @@ class RedirectSignalAnalyzer:
                 crossings.append(f"{current_domain} -> {target_domain}")
                 current_domain = target_domain
         return crossings
+
+    def _is_clean_interstitial_redirect(
+        self,
+        normalized_url: NormalizedUrl,
+        resolved_final: NormalizedUrl,
+        resolution: RedirectResolution,
+        domain_crossings: list[str],
+        distinct_hosts: set[str],
+        scheme_downgrade: bool,
+    ) -> bool:
+        if len(resolution.hops) != 1 or scheme_downgrade:
+            return False
+        if len(domain_crossings) != 1 or len(distinct_hosts) > 2:
+            return False
+        if self._has_phishing_like_final_cues(resolved_final):
+            return False
+        final_tokens = self._text_tokens(resolved_final)
+        return bool(_INTERSTITIAL_REDIRECT_TOKENS.intersection(final_tokens))
+
+    def _has_phishing_like_final_cues(self, resolved_final: NormalizedUrl) -> bool:
+        return bool(_PHISHING_LURE_TOKENS.intersection(self._text_tokens(resolved_final)))
+
+    def _text_tokens(self, normalized_url: NormalizedUrl) -> set[str]:
+        combined = " ".join(
+            [
+                normalized_url.host,
+                normalized_url.decoded_path.replace("/", " "),
+                normalized_url.decoded_query.replace("&", " "),
+                normalized_url.decoded_fragment.replace("/", " "),
+            ]
+        ).lower()
+        return {match.group(0) for match in _TOKEN_PATTERN.finditer(combined)}

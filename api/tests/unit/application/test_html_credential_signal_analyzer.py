@@ -111,3 +111,29 @@ def test_html_credential_signal_analyzer_emits_signal_for_suspicious_login_ui() 
 
     assert len(signals) == 1
     assert signals[0].signal_type == SignalType.SUSPICIOUS_LOGIN_INTERFACE
+
+
+def test_html_credential_signal_analyzer_skips_same_site_redirect_interstitial_with_weak_terms() -> None:
+    analyzer = HtmlCredentialSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://www.encurtador.dev/redirecionamento/7k3qpqd"),
+        FetchedHtmlDocument(
+            content="""
+            <html>
+              <body>
+                <h1>Verify redirect</h1>
+                <p>Before continuing, complete this redirect check.</p>
+                <form action="/redirecionamento/7k3qpqd">
+                  <input type="password" name="access_code" />
+                  <button type="submit">Continue</button>
+                </form>
+              </body>
+            </html>
+            """,
+            source_url="https://www.encurtador.dev/redirecionamento/7k3qpqd",
+            content_type="text/html",
+        ),
+    )
+
+    assert signals == []

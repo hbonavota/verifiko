@@ -163,3 +163,44 @@ def test_resolved_destination_signal_analyzer_records_warning_on_fetch_failure()
     )
 
     assert result.warnings == ("resolved destination fetch failed",)
+
+
+def test_resolved_destination_signal_analyzer_skips_benign_redirect_interstitial_html() -> None:
+    analyzer = _build_analyzer(
+        html_fetcher=FakeHtmlFetcher(
+            FetchedHtmlDocument(
+                content="""
+                <html>
+                  <body>
+                    <h1>Verify redirect</h1>
+                    <p>Before continuing, complete this redirect check.</p>
+                    <form action="/redirecionamento/7k3qpqd">
+                      <input type="password" name="access_code" />
+                      <button type="submit">Continue</button>
+                    </form>
+                  </body>
+                </html>
+                """,
+                source_url="https://www.encurtador.dev/redirecionamento/7k3qpqd",
+                content_type="text/html; charset=utf-8",
+            )
+        )
+    )
+    resolution = RedirectResolution(
+        final_url="https://www.encurtador.dev/redirecionamento/7k3qpqd",
+        hops=(
+            RedirectHop(
+                status_code=302,
+                source_url="https://sl1nk.com/7k3qpqd",
+                target_url="https://www.encurtador.dev/redirecionamento/7k3qpqd",
+            ),
+        ),
+        provider_name="stub-redirect",
+    )
+
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://sl1nk.com/7k3qpqd"),
+        redirect_resolution=resolution,
+    )
+
+    assert all(signal.signal_type.value != "credential_harvest_form" for signal in result.signals)

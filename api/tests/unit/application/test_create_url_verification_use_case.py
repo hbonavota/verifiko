@@ -647,6 +647,7 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_lures
     assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
     assert dto.risk_assessment.score < 61
     assert "shortened_redirected_lure_pattern" in dto.risk_assessment.summary
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
     assert any(
         signal.signal_type == "brand_impersonation"
         and signal.title == "Institution-style payment or penalty lure"
@@ -723,3 +724,53 @@ def test_create_url_verification_use_case_analyzes_resolved_destination_html() -
         and signal.source == "resolved-destination-html-analyzer"
         for signal in dto.signals
     )
+
+
+def test_create_url_verification_use_case_skips_benign_redirect_interstitial_html() -> None:
+    class FinalOnlyHtmlFetcher(HtmlFetcherPort):
+        def fetch(self, url: str) -> FetchedHtmlDocument | None:
+            if url != "https://www.encurtador.dev/redirecionamento/7k3qpqd":
+                return None
+            return FetchedHtmlDocument(
+                content="""
+                <html>
+                  <body>
+                    <h1>Verify redirect</h1>
+                    <p>Before continuing, complete this redirect check.</p>
+                    <form action="/redirecionamento/7k3qpqd">
+                      <input type="password" name="access_code" />
+                      <button type="submit">Continue</button>
+                    </form>
+                  </body>
+                </html>
+                """,
+                source_url="https://www.encurtador.dev/redirecionamento/7k3qpqd",
+                content_type="text/html; charset=utf-8",
+            )
+
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://www.encurtador.dev/redirecionamento/7k3qpqd",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://sl1nk.com/7k3qpqd",
+                        target_url="https://www.encurtador.dev/redirecionamento/7k3qpqd",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        ),
+        html_fetcher=FinalOnlyHtmlFetcher(),
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://sl1nk.com/7k3qpqd"))
+
+    assert dto.risk_assessment is not None
+    assert all(signal.signal_type != "credential_harvest_form" for signal in dto.signals)
+    assert all(signal.signal_type != "suspicious_redirect_chain" for signal in dto.signals)
+    assert dto.risk_assessment.risk_level == "SAFE"
+    assert dto.trace is not None
+    assert dto.trace.total_signals == len(dto.signals) == 0
+    assert dto.risk_assessment.summary.startswith("Detected 0 signal(s)")
