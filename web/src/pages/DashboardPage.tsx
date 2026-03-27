@@ -8,7 +8,8 @@ import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
 import { listVerifications } from "../lib/api";
-import { formatVerdict } from "../lib/formatVerdict";
+import { formatRiskLevel, formatVerdict } from "../lib/formatVerdict";
+import { useI18n } from "../lib/i18n";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
@@ -20,11 +21,12 @@ function toneForCount(riskLevel: RiskLevel) {
 }
 
 export function DashboardPage() {
+  const { copy, language, locale } = useI18n();
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
 
   useDocumentMeta(
-    "Review Results",
-    "Review recent Verifiko results and open the full verification record.",
+    copy.dashboard.metaTitle,
+    copy.dashboard.metaDescription,
   );
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function DashboardPage() {
           return;
         }
 
-        setVerifications(payload.map(adaptApiVerification));
+        setVerifications(payload.map((verification) => adaptApiVerification(verification, language)));
       } catch {
         if (!isMounted) {
           return;
@@ -52,44 +54,44 @@ export function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [language]);
 
   const activeVerification = verifications[0] ?? null;
 
   const activeReasons =
     activeVerification && activeVerification.signals.length > 0
       ? activeVerification.signals.slice(0, 3).map((signal) => signal.reason)
-      : ["No recent analysis is available yet."];
+      : [copy.dashboard.noRecentAnalysis];
 
   return (
     <PageShell>
       <SectionTitle
-        eyebrow="Review"
-        title="Review results"
-        description="Open a result or verify another link."
+        eyebrow={copy.dashboard.eyebrow}
+        title={copy.dashboard.title}
+        description={copy.dashboard.description}
       />
 
       <Card
-        eyebrow="New verification"
-        title="Verify another link"
+        eyebrow={copy.dashboard.newVerification}
+        title={copy.dashboard.verifyAnotherLink}
         description={undefined}
         tone="success"
         id="verifications"
         className="dashboard-intake-card"
       >
         <AnalyzeUrlForm
-          buttonLabel="Verify this link"
+          buttonLabel={copy.analyzeForm.buttonLabel}
           className="dashboard-intake"
-          hint="Paste a link to verify its safety."
+          hint={copy.analyzeForm.hint}
           inputClassName="dashboard-intake__input-control"
-          inputLabel="Link"
-          placeholder="Paste a link to verify its safety"
+          inputLabel={copy.dashboard.link}
+          placeholder={copy.analyzeForm.placeholder}
         />
       </Card>
 
       <Card
-        eyebrow="Latest result"
-        title={activeVerification ? "Trust score" : "No analyses yet"}
+        eyebrow={copy.dashboard.latestResult}
+        title={activeVerification ? copy.common.trustScore : copy.dashboard.noAnalysesYet}
         description={undefined}
         tone="warning"
         className="dashboard-assessment-card"
@@ -98,7 +100,7 @@ export function DashboardPage() {
           <div className="dashboard-card-stack">
             <div className="dashboard-assessment-card__hero">
               <ScoreRing
-                label="Trust score"
+                label={copy.common.trustScore}
                 riskLevel={activeVerification.riskLevel}
                 score={activeVerification.score}
                 size="hero"
@@ -108,16 +110,19 @@ export function DashboardPage() {
                   {activeVerification.subject}
                 </p>
                 <div className="dashboard-card__status-row">
-                  <Badge label={activeVerification.riskLevel} tone={toneForRiskLevel(activeVerification.riskLevel)} />
+                  <Badge
+                    label={formatRiskLevel(activeVerification.riskLevel, language)}
+                    tone={toneForRiskLevel(activeVerification.riskLevel)}
+                  />
                 </div>
-                <p className="metric-card__label">Verdict</p>
+                <p className="metric-card__label">{copy.dashboard.verdict}</p>
                 <p className="dashboard-card__verdict" title={activeVerification.verdict}>
-                  {formatVerdict(activeVerification.verdict)}
+                  {formatVerdict(activeVerification.verdict, language)}
                 </p>
                 <p className="dashboard-card__posture">{activeVerification.executiveSummary.posture}</p>
                 <div className="dashboard-assessment-card__actions">
                   <Button to={`/verifications/${activeVerification.id}`} variant="primary">
-                    View result
+                    {copy.common.viewResult}
                   </Button>
                 </div>
               </div>
@@ -125,8 +130,8 @@ export function DashboardPage() {
 
             <div className="dashboard-card-headline dashboard-card-headline--muted">
               <div className="dashboard-card-pills">
-                <StatPill label="Signals" value={String(activeVerification.signals.length)} tone="warning" />
-                <StatPill label="Open questions" value={String(activeVerification.inconclusive.length)} tone="danger" />
+                <StatPill label={copy.dashboard.signalsCount} value={String(activeVerification.signals.length)} tone="warning" />
+                <StatPill label={copy.dashboard.openQuestions} value={String(activeVerification.inconclusive.length)} tone="danger" />
               </div>
             </div>
           </div>
@@ -134,10 +139,10 @@ export function DashboardPage() {
           <div className="dashboard-card-stack">
             <div className="dashboard-card-headline">
               <div>
-                <p className="metric-card__label">Status</p>
-                <p className="dashboard-card__target">Ready for the first verification</p>
+                <p className="metric-card__label">{copy.dashboard.status}</p>
+                <p className="dashboard-card__target">{copy.dashboard.readyForFirstVerification}</p>
               </div>
-              <Badge label="EMPTY" tone="neutral" />
+              <Badge label={copy.dashboard.empty.toUpperCase()} tone="neutral" />
             </div>
           </div>
         )}
@@ -146,8 +151,8 @@ export function DashboardPage() {
       <section className="dashboard-grid">
         <div className="dashboard-main">
           <Card
-            eyebrow="Signal breakdown"
-            title={activeVerification ? "Signals in this result" : "Signals unavailable"}
+            eyebrow={copy.dashboard.signalBreakdown}
+            title={activeVerification ? copy.dashboard.signalsInThisResult : copy.dashboard.signalsUnavailable}
             description={undefined}
             id="signals"
           >
@@ -155,12 +160,12 @@ export function DashboardPage() {
               <div className="signal-table-wrap">
                 <div className="signal-table">
                   <div className="signal-table__header">
-                    <span>Signal name</span>
-                    <span>Category</span>
-                    <span>Severity</span>
-                    <span>Confidence</span>
-                    <span>Score contribution</span>
-                    <span>Status</span>
+                    <span>{copy.dashboard.signalName}</span>
+                    <span>{copy.dashboard.category}</span>
+                    <span>{copy.dashboard.severity}</span>
+                    <span>{copy.dashboard.confidence}</span>
+                    <span>{copy.dashboard.scoreContribution}</span>
+                    <span>{copy.dashboard.status}</span>
                   </div>
                   {activeVerification.signals.map((signal) => (
                     <article key={signal.id} className="signal-table__row">
@@ -168,19 +173,19 @@ export function DashboardPage() {
                         <p className="signal-table__name">{signal.title}</p>
                         <p className="signal-table__subcopy">{signal.description}</p>
                       </div>
-                      <span className="signal-table__value" data-label="Category">
+                      <span className="signal-table__value" data-label={copy.dashboard.category}>
                         {signal.category}
                       </span>
-                      <div className="signal-table__cell" data-label="Severity">
+                      <div className="signal-table__cell" data-label={copy.dashboard.severity}>
                         <Badge label={signal.severity} tone={toneForRiskLevel(signal.severity)} />
                       </div>
-                      <span className="signal-table__value" data-label="Confidence">
+                      <span className="signal-table__value" data-label={copy.dashboard.confidence}>
                         {signal.confidence}%
                       </span>
-                      <span className="signal-table__value" data-label="Score contribution">
+                      <span className="signal-table__value" data-label={copy.dashboard.scoreContribution}>
                         -{signal.scoreContribution}
                       </span>
-                      <div className="signal-table__cell" data-label="Status">
+                      <div className="signal-table__cell" data-label={copy.dashboard.status}>
                         <Badge label={signal.status} tone={toneForRiskLevel(signal.severity)} />
                       </div>
                     </article>
@@ -188,23 +193,21 @@ export function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <p className="metric-card__detail">
-                No result is available yet.
-              </p>
+              <p className="metric-card__detail">{copy.dashboard.noResultAvailableYet}</p>
             )}
           </Card>
 
           <section className="dashboard-inspection-grid">
             <Card
-              eyebrow="Why this was flagged"
-              title="Most influential signals"
+              eyebrow={copy.dashboard.whyFlagged}
+              title={copy.dashboard.mostInfluentialSignals}
               description={undefined}
             >
               <div className="support-list">
                 {activeReasons.map((reason, index) => (
                   <article key={reason} className="support-list__item support-list__item--plain">
                     <div>
-                      <p className="support-list__title">Material factor {index + 1}</p>
+                      <p className="support-list__title">{`${copy.dashboard.materialFactor} ${index + 1}`}</p>
                       <p className="support-list__description">{reason}</p>
                     </div>
                   </article>
@@ -213,14 +216,14 @@ export function DashboardPage() {
             </Card>
 
             <Card
-              eyebrow="Evidence snapshot"
-              title="Observed, sourced, and unresolved context"
+              eyebrow={copy.dashboard.evidenceSnapshot}
+              title={copy.dashboard.evidenceSnapshotTitle}
               description={undefined}
             >
               {activeVerification ? (
                 <div className="evidence-grid">
                   <div className="evidence-block">
-                    <p className="evidence-block__label">Observed</p>
+                    <p className="evidence-block__label">{copy.dashboard.observed}</p>
                     <ul className="evidence-block__list">
                       {activeVerification.evidenceSummary.observed.map((item) => (
                         <li key={item}>{item}</li>
@@ -228,7 +231,7 @@ export function DashboardPage() {
                     </ul>
                   </div>
                   <div className="evidence-block">
-                    <p className="evidence-block__label">Sources</p>
+                    <p className="evidence-block__label">{copy.dashboard.sources}</p>
                     <ul className="evidence-block__list">
                       {activeVerification.evidenceSummary.sources.map((item) => (
                         <li key={item}>{item}</li>
@@ -236,7 +239,7 @@ export function DashboardPage() {
                     </ul>
                   </div>
                   <div className="evidence-block">
-                    <p className="evidence-block__label">Unresolved</p>
+                    <p className="evidence-block__label">{copy.dashboard.unresolved}</p>
                     <ul className="evidence-block__list">
                       {activeVerification.evidenceSummary.unresolved.map((item) => (
                         <li key={item}>{item}</li>
@@ -245,16 +248,14 @@ export function DashboardPage() {
                   </div>
                 </div>
               ) : (
-              <p className="metric-card__detail">
-                  Evidence appears after the first result is available.
-                </p>
+                <p className="metric-card__detail">{copy.dashboard.evidenceAppearsLater}</p>
               )}
             </Card>
           </section>
 
           <Card
-            eyebrow="Decision trace"
-            title="Score generation sequence"
+            eyebrow={copy.dashboard.decisionTrace}
+            title={copy.dashboard.scoreGenerationSequence}
             description={undefined}
             id="cases"
           >
@@ -272,15 +273,13 @@ export function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="metric-card__detail">
-                The decision trace appears after the first result is available.
-              </p>
+              <p className="metric-card__detail">{copy.dashboard.decisionTraceAppearsLater}</p>
             )}
           </Card>
 
           <Card
-            eyebrow="Case recommendation"
-            title="Suggested next action"
+            eyebrow={copy.dashboard.caseRecommendation}
+            title={copy.dashboard.suggestedNextAction}
             description={undefined}
             tone="warning"
           >
@@ -290,17 +289,15 @@ export function DashboardPage() {
                 <p className="recommendation-panel__copy">{activeVerification.recommendation.detail}</p>
               </div>
             ) : (
-              <p className="metric-card__detail">
-                A recommended action appears after the first result is available.
-              </p>
+              <p className="metric-card__detail">{copy.dashboard.recommendationAppearsLater}</p>
             )}
           </Card>
         </div>
 
         <aside className="dashboard-rail">
           <Card
-            eyebrow="Recent analyses"
-            title="Latest results"
+            eyebrow={copy.dashboard.recentAnalyses}
+            title={copy.dashboard.latestResults}
             description={undefined}
             className="dashboard-rail-card"
           >
@@ -311,26 +308,24 @@ export function DashboardPage() {
                     <div className="activity-feed__row">
                       <p className="activity-feed__title" title={verification.subject}>{verification.subject}</p>
                       <span className={`activity-feed__actor activity-feed__actor--${toneForCount(verification.riskLevel)}`}>
-                        {verification.riskLevel}
+                        {formatRiskLevel(verification.riskLevel, language)}
                       </span>
                     </div>
                     <p className="activity-feed__detail">{verification.summary}</p>
                     <p className="activity-feed__timestamp">
-                      {new Date(verification.createdAt).toLocaleString()}
+                      {new Date(verification.createdAt).toLocaleString(locale)}
                     </p>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="metric-card__detail">
-                No results are available yet.
-              </p>
+              <p className="metric-card__detail">{copy.common.noResultsYet}</p>
             )}
           </Card>
 
           <Card
-            eyebrow="Suggested next step"
-            title="What to do next"
+            eyebrow={copy.dashboard.suggestedNextStep}
+            title={copy.dashboard.whatToDoNext}
             description={undefined}
             tone="warning"
             className="dashboard-rail-card"
@@ -342,9 +337,7 @@ export function DashboardPage() {
                 <p className="notes-panel__meta">{activeVerification.executiveSummary.operationalImpact}</p>
               </div>
             ) : (
-              <p className="metric-card__detail">
-                A next step appears after the first result is available.
-              </p>
+              <p className="metric-card__detail">{copy.dashboard.nextStepAppearsLater}</p>
             )}
           </Card>
         </aside>

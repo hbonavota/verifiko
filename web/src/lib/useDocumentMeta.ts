@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 
-const DEFAULT_DESCRIPTION =
-  "Verifiko verifies links with clear risk scoring and evidence-led results.";
+import { useI18n } from "./i18n";
 
-export function useDocumentMeta(title: string, description = DEFAULT_DESCRIPTION) {
+export function useDocumentMeta(title: string, description?: string) {
+  const { copy } = useI18n();
+  const resolvedDescription = description ?? copy.document.defaultDescription;
+
   useEffect(() => {
     const previousTitle = document.title;
     const descriptionTag = document.querySelector('meta[name="description"]');
@@ -12,7 +14,7 @@ export function useDocumentMeta(title: string, description = DEFAULT_DESCRIPTION
     document.title = `${title} | Verifiko`;
 
     if (descriptionTag) {
-      descriptionTag.setAttribute("content", description);
+      descriptionTag.setAttribute("content", resolvedDescription);
     }
 
     return () => {
@@ -22,5 +24,5 @@ export function useDocumentMeta(title: string, description = DEFAULT_DESCRIPTION
         descriptionTag.setAttribute("content", previousDescription);
       }
     };
-  }, [description, title]);
+  }, [resolvedDescription, title]);
 }

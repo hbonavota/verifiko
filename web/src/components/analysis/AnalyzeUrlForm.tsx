@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { createVerification } from "../../lib/api";
+import { useI18n } from "../../lib/i18n";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 
@@ -46,32 +47,39 @@ interface AnalyzeUrlFormProps {
 }
 
 export function AnalyzeUrlForm({
-  buttonLabel = "Verify this link",
+  buttonLabel,
   buttonClassName,
   className,
   errorClassName,
-  hint = "Paste a link to verify its safety.",
+  hint,
   inputClassName,
-  inputLabel = "Link",
+  inputLabel,
   onStateChange,
-  placeholder = "Paste a link to verify its safety",
-  submittingLabel = "Verifying...",
+  placeholder,
+  submittingLabel,
 }: AnalyzeUrlFormProps) {
+  const { copy } = useI18n();
   const navigate = useNavigate();
   const [analysisTarget, setAnalysisTarget] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const resolvedButtonLabel = buttonLabel ?? copy.analyzeForm.buttonLabel;
+  const resolvedHint = hint ?? copy.analyzeForm.hint;
+  const resolvedInputLabel = inputLabel ?? copy.analyzeForm.inputLabel;
+  const resolvedPlaceholder = placeholder ?? copy.analyzeForm.placeholder;
+  const resolvedSubmittingLabel = submittingLabel ?? copy.analyzeForm.submittingLabel;
+
   async function handlePaste() {
     if (!navigator.clipboard?.readText) {
-      setSubmitError("Clipboard access is not available in this browser.");
+      setSubmitError(copy.analyzeForm.errors.clipboardUnavailable);
       return;
     }
 
     try {
       const clipboardValue = (await navigator.clipboard.readText()).trim();
       if (!clipboardValue) {
-        setSubmitError("Clipboard does not contain a link to verify.");
+        setSubmitError(copy.analyzeForm.errors.clipboardEmpty);
         return;
       }
 
@@ -79,7 +87,7 @@ export function AnalyzeUrlForm({
       setSubmitError(null);
       onStateChange?.("idle");
     } catch {
-      setSubmitError("Clipboard access was blocked.");
+      setSubmitError(copy.analyzeForm.errors.clipboardBlocked);
     }
   }
 
@@ -88,7 +96,7 @@ export function AnalyzeUrlForm({
 
     const trimmedTarget = analysisTarget.trim();
     if (!trimmedTarget) {
-      setSubmitError("Enter a URL to verify.");
+      setSubmitError(copy.analyzeForm.errors.enterUrl);
       onStateChange?.("error");
       return;
     }
@@ -101,7 +109,7 @@ export function AnalyzeUrlForm({
       const verification = await createVerification({ url: trimmedTarget });
       navigate(`/verifications/${verification.id}`);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Verification failed.");
+      setSubmitError(error instanceof Error ? error.message : copy.analyzeForm.errors.verificationFailed);
       onStateChange?.("error");
     } finally {
       setIsSubmitting(false);
@@ -118,11 +126,11 @@ export function AnalyzeUrlForm({
         <Input
           action={
             <button
-              aria-label="Paste a link from the clipboard"
+              aria-label={copy.analyzeForm.pasteAriaLabel}
               className="analysis-form__paste"
               disabled={isSubmitting}
               onClick={() => void handlePaste()}
-              title="Paste a link from the clipboard"
+              title={copy.analyzeForm.pasteTitle}
               type="button"
             >
               <PasteIcon />
@@ -130,22 +138,22 @@ export function AnalyzeUrlForm({
           }
           autoComplete="off"
           className={inputClassName}
-          hint={hint}
+          hint={resolvedHint}
           inputMode="url"
-          label={inputLabel}
-          placeholder={placeholder}
-          title="Analyze this link for potential security risks"
+          label={resolvedInputLabel}
+          placeholder={resolvedPlaceholder}
+          title={copy.analyzeForm.analyzeTitle}
           value={analysisTarget}
           onChange={(event) => setAnalysisTarget(event.target.value)}
         />
         <Button
           className={resolvedButtonClassName}
           disabled={isSubmitting}
-          title="Analyze this link for potential security risks"
+          title={copy.analyzeForm.analyzeTitle}
           type="submit"
           variant="primary"
         >
-          {isSubmitting ? submittingLabel : buttonLabel}
+          {isSubmitting ? resolvedSubmittingLabel : resolvedButtonLabel}
         </Button>
       </form>
       {submitError ? <p className={messageClassName}>{submitError}</p> : null}

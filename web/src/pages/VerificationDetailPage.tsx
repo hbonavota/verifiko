@@ -8,47 +8,56 @@ import { ScoreRing } from "../components/analysis/ScoreRing";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
 import { getVerificationById } from "../lib/api";
-import { formatVerdict } from "../lib/formatVerdict";
+import { formatRiskLevel, formatVerdict, formatVerificationStatus } from "../lib/formatVerdict";
+import { useI18n } from "../lib/i18n";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
 import { toneForRiskLevel } from "../lib/risk";
 import type { VerificationSummary } from "../types/verification";
 
-function formatTimestamp(value: string) {
-  return new Date(value).toLocaleString();
+function formatTimestamp(value: string, locale: string) {
+  return new Date(value).toLocaleString(locale);
 }
 
-function shortResultExplanation(verification: VerificationSummary) {
+function shortResultExplanation(
+  verification: VerificationSummary,
+  explanations: {
+    severe: string;
+    medium: string;
+    low: string;
+  },
+) {
   if (verification.riskLevel === "CRITICAL" || verification.riskLevel === "HIGH") {
-    return "Do not trust this link until it is reviewed.";
+    return explanations.severe;
   }
 
   if (verification.riskLevel === "MEDIUM") {
-    return "Review this link before treating it as safe.";
+    return explanations.medium;
   }
 
-  return "No strong warning signal was retained in this result.";
+  return explanations.low;
 }
 
-const SCORE_ZONE_LEGEND = [
-  { label: "High danger", range: "0-40", tone: "danger" },
-  { label: "Dangerous / strong caution", range: "41-60", tone: "warning-strong" },
-  { label: "Proceed with caution", range: "61-80", tone: "warning-soft" },
-  { label: "No strong insecurity detected", range: "81-100", tone: "success" },
-] as const;
-
-function scoreInterpretationCopy(score: number) {
+function scoreInterpretationCopy(
+  score: number,
+  copy: {
+    highDanger: string;
+    strongCaution: string;
+    caution: string;
+    safe: string;
+  },
+) {
   if (score <= 40) {
-    return "This score falls in the highest-danger band and should not be treated as safe.";
+    return copy.highDanger;
   }
   if (score <= 60) {
-    return "This score sits in a dangerous band and needs careful review before trust.";
+    return copy.strongCaution;
   }
   if (score <= 80) {
-    return "This score suggests caution. Review the retained signals before relying on it.";
+    return copy.caution;
   }
-  return "No strong insecurity was retained in this check, but the result is still not a guarantee.";
+  return copy.safe;
 }
 
 type VerificationState =
@@ -57,13 +66,14 @@ type VerificationState =
   | { status: "error"; message: string };
 
 export function VerificationDetailPage() {
+  const { copy, language, locale } = useI18n();
   const { id } = useParams();
   const [verificationState, setVerificationState] = useState<VerificationState>({ status: "loading" });
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
 
   useEffect(() => {
     if (!id) {
-      setVerificationState({ status: "error", message: "Verification id is required." });
+      setVerificationState({ status: "error", message: copy.detail.verificationIdRequired });
       return;
     }
 
@@ -79,7 +89,7 @@ export function VerificationDetailPage() {
           return;
         }
 
-        setVerificationState({ status: "ready", verification: adaptApiVerification(payload) });
+        setVerificationState({ status: "ready", verification: adaptApiVerification(payload, language) });
       } catch (error) {
         if (!isMounted) {
           return;
@@ -87,7 +97,7 @@ export function VerificationDetailPage() {
 
         setVerificationState({
           status: "error",
-          message: error instanceof Error ? error.message : "Verification lookup failed.",
+          message: error instanceof Error ? error.message : copy.common.resultUnavailable,
         });
       }
     }
@@ -97,7 +107,7 @@ export function VerificationDetailPage() {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [copy.common.resultUnavailable, copy.detail.verificationIdRequired, id, language]);
 
   useEffect(() => {
     if (!isDisclaimerOpen) {
@@ -119,19 +129,19 @@ export function VerificationDetailPage() {
   const verification = verificationState.status === "ready" ? verificationState.verification : null;
 
   useDocumentMeta(
-    verification ? verification.subject : "Verification Detail",
+    verification ? verification.subject : copy.detail.metaTitleFallback,
     verification
-      ? `Review the verification result for ${verification.subject}, including score, signals, and next action.`
-      : "Review score, signals, and next action for a verification result.",
+      ? `${copy.detail.metaDescriptionLoaded} ${verification.subject}.`
+      : copy.detail.metaDescriptionFallback,
   );
 
   if (verificationState.status === "loading") {
     return (
       <PageShell>
         <SectionTitle
-          eyebrow="Verification Detail"
-          title="Loading result"
-          description="Preparing the verification result."
+          eyebrow={copy.detail.eyebrow}
+          title={copy.common.loadingResult}
+          description={copy.detail.preparingResult}
         />
       </PageShell>
     );
@@ -141,16 +151,16 @@ export function VerificationDetailPage() {
     return (
       <PageShell>
         <SectionTitle
-          eyebrow="Verification Detail"
-          title="Result unavailable"
+          eyebrow={copy.detail.eyebrow}
+          title={copy.common.resultUnavailable}
           description={
             verificationState.status === "error"
               ? verificationState.message
-              : "The requested result could not be loaded."
+              : copy.detail.requestedResultUnavailable
           }
         />
         <Button to="/dashboard" variant="secondary">
-          Return to review
+          {copy.common.backToReview}
         </Button>
       </PageShell>
     );
@@ -170,14 +180,14 @@ export function VerificationDetailPage() {
     <PageShell>
       <section className="verification-detail-header">
         <div className="verification-detail-header__copy">
-          <p className="eyebrow">Verification Detail</p>
-          <h1 className="serif-heading verification-detail__title">Verification result</h1>
+          <p className="eyebrow">{copy.detail.eyebrow}</p>
+          <h1 className="serif-heading verification-detail__title">{copy.detail.title}</h1>
           <p className="muted-copy verification-detail__summary-copy">
-            Verdict first. Evidence below.
+            {copy.detail.summaryCopy}
           </p>
         </div>
         <div className="verification-detail-target">
-          <p className="verification-detail-target__label">Target</p>
+          <p className="verification-detail-target__label">{copy.detail.target}</p>
           <p className="verification-detail-target__value" title={verification.subject}>
             {verification.subject}
           </p>
@@ -186,47 +196,50 @@ export function VerificationDetailPage() {
 
       <section className="verification-detail-primary">
         <Card
-          eyebrow="Result"
+          eyebrow={copy.detail.result}
           title={undefined}
           description={undefined}
           tone={emphasisTone}
           className="verification-assessment-card"
         >
           <div className="verification-assessment-card__topline">
-            <Badge label={`${verification.riskLevel} RISK`} tone={toneForRiskLevel(verification.riskLevel)} />
-            <p className="verification-assessment-card__status">{verification.status}</p>
+            <Badge
+              label={`${formatRiskLevel(verification.riskLevel, language)} ${copy.common.risk}`}
+              tone={toneForRiskLevel(verification.riskLevel)}
+            />
+            <p className="verification-assessment-card__status">{formatVerificationStatus(verification.status, language)}</p>
           </div>
 
           <div className="verification-assessment-card__hero">
-            <ScoreRing label="Trust score" riskLevel={verification.riskLevel} score={verification.score} size="hero" />
+            <ScoreRing label={copy.common.trustScore} riskLevel={verification.riskLevel} score={verification.score} size="hero" />
 
             <div className="verification-assessment-card__verdict-block">
-              <p className="metric-card__label">Verdict</p>
+              <p className="metric-card__label">{copy.common.verdict}</p>
               <p
                 className="verification-assessment-card__verdict"
-                title={`Verification result: ${formatVerdict(verification.verdict)}`}
+                title={`${copy.common.verificationResult}: ${formatVerdict(verification.verdict, language)}`}
               >
-                {formatVerdict(verification.verdict)}
+                {formatVerdict(verification.verdict, language)}
               </p>
               <p className="verification-assessment-card__posture">{verification.executiveSummary.posture}</p>
               <p className="verification-assessment-card__explanation">
-                {shortResultExplanation(verification)}
+                {shortResultExplanation(verification, copy.detail.resultExplanations)}
               </p>
               <div className="verification-assessment-card__actions">
                 <Button to="/dashboard" variant="primary">
-                  Verify another link
+                  {copy.common.verifyAnotherLink}
                 </Button>
                 <Button to="/dashboard" variant="secondary">
-                  Back to review
+                  {copy.common.backToReview}
                 </Button>
               </div>
             </div>
           </div>
 
-          <div className="verification-score-guide" aria-label="Score interpretation guide">
+          <div className="verification-score-guide" aria-label={copy.detail.scoreInterpretation}>
             <div className="verification-score-guide__header">
-              <p className="metric-card__label">Score interpretation</p>
-              <p className="verification-score-guide__copy">{scoreInterpretationCopy(clampedScore)}</p>
+              <p className="metric-card__label">{copy.detail.scoreInterpretation}</p>
+              <p className="verification-score-guide__copy">{scoreInterpretationCopy(clampedScore, copy.detail.scoreGuide)}</p>
             </div>
             <div className="verification-score-guide__scale" aria-hidden="true">
               <div className="verification-score-guide__track">
@@ -250,7 +263,7 @@ export function VerificationDetailPage() {
               </div>
             </div>
             <div className="verification-score-guide__legend" role="list">
-              {SCORE_ZONE_LEGEND.map((item) => (
+              {copy.detail.scoreGuide.legend.map((item) => (
                 <article key={item.range} className="verification-score-guide__legend-item" role="listitem">
                   <span className="verification-score-guide__legend-swatch" data-tone={item.tone} />
                   <div className="verification-score-guide__legend-copy">
@@ -263,9 +276,9 @@ export function VerificationDetailPage() {
           </div>
 
           <div className="verification-assessment-card__pills">
-            <StatPill label="Signals retained" value={String(verification.signals.length)} tone="warning" />
+            <StatPill label={copy.detail.signalsRetained} value={String(verification.signals.length)} tone="warning" />
             <StatPill
-              label="Unresolved items"
+              label={copy.detail.openQuestions}
               value={String(verification.inconclusive.length)}
               tone={verification.inconclusive.length > 0 ? "danger" : "success"}
             />
@@ -276,8 +289,8 @@ export function VerificationDetailPage() {
       <section className="verification-detail-grid">
         <div className="verification-detail-main">
           <Card
-            eyebrow="Main reasons"
-            title="Why this result was flagged"
+            eyebrow={copy.detail.mainReasons}
+            title={copy.detail.whyFlagged}
             description={undefined}
           >
             {primaryReasons.length > 0 ? (
@@ -295,52 +308,50 @@ export function VerificationDetailPage() {
               </div>
             ) : (
               <div className="verification-summary-panel">
-                <p className="verification-summary-panel__headline">No major warning reason surfaced</p>
-                <p className="verification-summary-panel__copy">
-                  The supporting detail below is mainly useful for context.
-                </p>
+                <p className="verification-summary-panel__headline">{copy.detail.noMajorReason}</p>
+                <p className="verification-summary-panel__copy">{copy.detail.noMajorReasonCopy}</p>
               </div>
             )}
           </Card>
 
           <Card
-            eyebrow="Result context"
-            title="Record details"
+            eyebrow={copy.detail.resultContext}
+            title={copy.detail.recordDetails}
             description={undefined}
             className="verification-detail-meta-card"
           >
             <div className="verification-detail-meta-grid verification-detail-meta-grid--compact">
               <article className="verification-detail-meta-item">
-                <p className="verification-detail-meta-item__label">Verification ID</p>
+                <p className="verification-detail-meta-item__label">{copy.detail.verificationId}</p>
                 <p className="verification-detail-meta-item__value">{verification.id}</p>
               </article>
               <article className="verification-detail-meta-item">
-                <p className="verification-detail-meta-item__label">Verified target</p>
+                <p className="verification-detail-meta-item__label">{copy.detail.verifiedTarget}</p>
                 <p className="verification-detail-meta-item__value">{verification.normalizedInput}</p>
               </article>
               <article className="verification-detail-meta-item">
-                <p className="verification-detail-meta-item__label">Executed at</p>
-                <p className="verification-detail-meta-item__value">{formatTimestamp(verification.createdAt)}</p>
+                <p className="verification-detail-meta-item__label">{copy.detail.executedAt}</p>
+                <p className="verification-detail-meta-item__value">{formatTimestamp(verification.createdAt, locale)}</p>
               </article>
               <article className="verification-detail-meta-item">
-                <p className="verification-detail-meta-item__label">Current status</p>
-                <p className="verification-detail-meta-item__value">{verification.status}</p>
+                <p className="verification-detail-meta-item__label">{copy.detail.currentStatus}</p>
+                <p className="verification-detail-meta-item__value">{formatVerificationStatus(verification.status, language)}</p>
               </article>
             </div>
           </Card>
 
           <section className="technical-analysis-section">
             <div className="technical-analysis-section__header">
-              <p className="eyebrow">Evidence</p>
-              <h2 className="serif-heading technical-analysis-section__title">Detailed signal review</h2>
+              <p className="eyebrow">{copy.detail.evidenceEyebrow}</p>
+              <h2 className="serif-heading technical-analysis-section__title">{copy.detail.detailedReviewTitle}</h2>
               <p className="muted-copy technical-analysis-section__copy">
-                Full evidence and the decision path are shown below.
+                {copy.detail.detailedReviewCopy}
               </p>
             </div>
 
             <Card
-              eyebrow="Signal review"
-              title="Signals shaping the current verdict"
+              eyebrow={copy.detail.signalReview}
+              title={copy.detail.signalReviewTitle}
               description={undefined}
             >
               <div className="signal-review-list">
@@ -352,7 +363,7 @@ export function VerificationDetailPage() {
                         <p className="signal-review-card__description">{signal.description}</p>
                       </div>
                       <div className="signal-review-card__score">
-                        <p className="signal-review-card__score-label">Contribution</p>
+                        <p className="signal-review-card__score-label">{copy.detail.contribution}</p>
                         <p className="signal-review-card__score-value">-{signal.scoreContribution}</p>
                       </div>
                     </div>
@@ -360,17 +371,17 @@ export function VerificationDetailPage() {
                     <div className="signal-review-card__meta">
                       <Badge label={signal.severity} tone={toneForRiskLevel(signal.severity)} />
                       <span className="signal-review-card__meta-item">{signal.category}</span>
-                      <span className="signal-review-card__meta-item">{signal.confidence}% confidence</span>
+                      <span className="signal-review-card__meta-item">{`${signal.confidence}${copy.detail.confidenceSuffix}`}</span>
                       <span className="signal-review-card__meta-item">{signal.source}</span>
                     </div>
 
                     <div className="signal-review-card__reasoning">
                       <div>
-                        <p className="signal-review-card__label">Why it mattered</p>
+                        <p className="signal-review-card__label">{copy.detail.whyItMattered}</p>
                         <p className="signal-review-card__reason">{signal.reason}</p>
                       </div>
                       <div>
-                        <p className="signal-review-card__label">Supporting observation</p>
+                        <p className="signal-review-card__label">{copy.detail.supportingObservation}</p>
                         <ul className="signal-review-card__evidence">
                           {signal.evidence.map((item) => (
                             <li key={item}>{item}</li>
@@ -385,13 +396,13 @@ export function VerificationDetailPage() {
 
             <section className="verification-detail-analysis-grid">
               <Card
-                eyebrow="Evidence used"
-                title="Observed facts"
+                eyebrow={copy.detail.evidenceUsed}
+                title={copy.detail.observedFacts}
                 description={undefined}
               >
                 <div className="evidence-grid">
                   <div className="evidence-block">
-                    <p className="evidence-block__label">Observations</p>
+                    <p className="evidence-block__label">{copy.detail.observations}</p>
                     <ul className="evidence-block__list">
                       {verification.evidenceSummary.observed.map((item) => (
                         <li key={item}>{item}</li>
@@ -400,7 +411,7 @@ export function VerificationDetailPage() {
                   </div>
 
                   <div className="evidence-block">
-                    <p className="evidence-block__label">Sources</p>
+                    <p className="evidence-block__label">{copy.dashboard.sources}</p>
                     <ul className="evidence-block__list">
                       {verification.evidenceSummary.sources.map((item) => (
                         <li key={item}>{item}</li>
@@ -409,7 +420,7 @@ export function VerificationDetailPage() {
                   </div>
 
                   <div className="evidence-block">
-                    <p className="evidence-block__label">Supporting context</p>
+                    <p className="evidence-block__label">{copy.detail.supportingContext}</p>
                     <ul className="evidence-block__list">
                       {verification.evidenceSummary.supportingContext.map((item) => (
                         <li key={item}>{item}</li>
@@ -420,8 +431,8 @@ export function VerificationDetailPage() {
               </Card>
 
               <Card
-                eyebrow="What remains uncertain"
-                title="Confidence limits"
+                eyebrow={copy.detail.uncertaintyEyebrow}
+                title={copy.detail.confidenceLimits}
                 description={undefined}
               >
                 <div className="inconclusive-list">
@@ -430,7 +441,7 @@ export function VerificationDetailPage() {
                       <p className="inconclusive-card__title">{item.title}</p>
                       <p className="inconclusive-card__detail">{item.detail}</p>
                       <div className="inconclusive-card__next">
-                        <p className="inconclusive-card__label">What would improve certainty</p>
+                        <p className="inconclusive-card__label">{copy.detail.whatImprovesCertainty}</p>
                         <p className="inconclusive-card__next-copy">{item.nextEvidence}</p>
                       </div>
                     </article>
@@ -440,8 +451,8 @@ export function VerificationDetailPage() {
             </section>
 
             <Card
-              eyebrow="Decision trace"
-              title="Decision path"
+              eyebrow={copy.detail.decisionTrace}
+              title={copy.detail.decisionPath}
               description={undefined}
             >
               <div className="decision-trace">
@@ -452,7 +463,7 @@ export function VerificationDetailPage() {
                       <div className="decision-trace__header">
                         <p className="decision-trace__label">{step.label}</p>
                         {step.timestamp ? (
-                          <p className="decision-trace__timestamp">{formatTimestamp(step.timestamp)}</p>
+                          <p className="decision-trace__timestamp">{formatTimestamp(step.timestamp, locale)}</p>
                         ) : null}
                       </div>
                       <p className="decision-trace__detail">{step.detail}</p>
@@ -467,7 +478,7 @@ export function VerificationDetailPage() {
 
         <aside className="verification-detail-rail">
           <Card
-            eyebrow="Recommended action"
+            eyebrow={copy.detail.recommendedAction}
             title={verification.recommendation.title}
             description={undefined}
             tone={emphasisTone}
@@ -477,32 +488,32 @@ export function VerificationDetailPage() {
               <p className="verification-action-card__copy">{verification.recommendation.detail}</p>
               <div className="action-stack">
                 <Button to="/dashboard" variant="primary">
-                  Back to review
+                  {copy.common.backToReview}
                 </Button>
                 <Button to="/dashboard#signals" variant="ghost">
-                  View signals
+                  {copy.common.viewSignals}
                 </Button>
               </div>
             </div>
           </Card>
 
           <Card
-            eyebrow="Context"
-            title="Result context"
+            eyebrow={copy.common.context}
+            title={copy.detail.contextCardTitle}
             description={undefined}
             className="verification-context-card"
           >
             <div className="verification-context-card__stack">
-              <StatPill label="Evidence sources" value={String(verification.evidenceSummary.sources.length)} />
-              <StatPill label="Observed findings" value={String(verification.evidenceSummary.observed.length)} />
+              <StatPill label={copy.detail.evidenceSources} value={String(verification.evidenceSummary.sources.length)} />
+              <StatPill label={copy.detail.observedFindings} value={String(verification.evidenceSummary.observed.length)} />
               <StatPill
-                label="Open questions"
+                label={copy.detail.openQuestions}
                 value={String(verification.inconclusive.length)}
                 tone={verification.inconclusive.length > 0 ? "warning" : "success"}
               />
             </div>
             <div className="verification-context-card__notes">
-              <p className="verification-action-card__label">Assessment note</p>
+              <p className="verification-action-card__label">{copy.detail.assessmentNote}</p>
               <p className="notes-panel__text">{verification.analystNote}</p>
             </div>
           </Card>
@@ -513,24 +524,21 @@ export function VerificationDetailPage() {
         <Card
           action={
             <Button onClick={() => setIsDisclaimerOpen(true)} variant="secondary">
-              Learn more
+              {copy.common.learnMore}
             </Button>
           }
-          eyebrow="Important"
-          title="A clean result is still not a guarantee"
-          description="This verification reflects the checks completed at one moment in time."
+          eyebrow={copy.common.important}
+          title={copy.detail.disclaimerTitle}
+          description={copy.detail.disclaimerDescription}
           className="verification-disclaimer-card"
         >
-          <p className="verification-disclaimer-card__copy">
-            A stronger score means the completed checks did not retain major warning signals. It does not prove ownership,
-            future safety, or that broader context is complete.
-          </p>
+          <p className="verification-disclaimer-card__copy">{copy.detail.disclaimerCopy}</p>
         </Card>
       </section>
 
       {!isDisclaimerOpen ? (
         <Button className="verification-disclaimer-float" onClick={() => setIsDisclaimerOpen(true)} variant="secondary">
-          Analysis has limits. Learn more
+          {copy.detail.disclaimerFloat}
         </Button>
       ) : null}
 
@@ -538,55 +546,33 @@ export function VerificationDetailPage() {
         <div
           className="verification-modal"
           role="dialog"
-          aria-label="Why a high score is not a guarantee of safety"
+          aria-label={copy.detail.modalLabel}
           aria-modal="true"
         >
           <button
-            aria-label="Close explanation"
+            aria-label={copy.common.close}
             className="verification-modal__backdrop"
             onClick={() => setIsDisclaimerOpen(false)}
             type="button"
           />
           <Card
-            eyebrow="How to read this result"
-            title="Why a high score is not a guarantee of safety"
-            description="This result should guide your decision, not replace judgment."
+            eyebrow={copy.detail.modalEyebrow}
+            title={copy.detail.modalTitle}
+            description={copy.detail.modalDescription}
             action={
               <Button onClick={() => setIsDisclaimerOpen(false)} variant="ghost">
-                Close
+                {copy.common.close}
               </Button>
             }
             className="verification-modal__panel"
           >
             <div className="verification-modal__content">
-              <article className="verification-modal__point">
-                <p className="verification-modal__point-title">This result is a technical snapshot</p>
-                <p className="verification-modal__point-copy">
-                  The score summarizes what the engine retained during this verification run. It does not represent the
-                  full history of the domain or every possible risk.
-                </p>
-              </article>
-              <article className="verification-modal__point">
-                <p className="verification-modal__point-title">Some threats change behavior over time</p>
-                <p className="verification-modal__point-copy">
-                  A link can look clean during one check and behave differently later because the destination, payload, or
-                  infrastructure changes.
-                </p>
-              </article>
-              <article className="verification-modal__point">
-                <p className="verification-modal__point-title">Dynamic delivery can hide risk</p>
-                <p className="verification-modal__point-copy">
-                  Some pages use cloaking, conditional redirects, or dynamic content, so they may present differently to
-                  different users or at different times.
-                </p>
-              </article>
-              <article className="verification-modal__point">
-                <p className="verification-modal__point-title">Use the score to support judgment, not replace it</p>
-                <p className="verification-modal__point-copy">
-                  The most reliable interpretation comes from the score, retained signals, and confidence limits taken
-                  together with normal human review.
-                </p>
-              </article>
+              {copy.detail.modalPoints.map((point) => (
+                <article key={point.title} className="verification-modal__point">
+                  <p className="verification-modal__point-title">{point.title}</p>
+                  <p className="verification-modal__point-copy">{point.copy}</p>
+                </article>
+              ))}
             </div>
           </Card>
         </div>

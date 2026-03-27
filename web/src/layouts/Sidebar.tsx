@@ -1,10 +1,13 @@
 import { NavLink, useLocation } from "react-router-dom";
 
 import brandMark from "../assets/verifiko-mark.svg";
+import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { primaryNavigation } from "../data/navigation";
+import { useI18n } from "../lib/i18n";
 
 export function Sidebar() {
   const location = useLocation();
+  const { copy } = useI18n();
 
   function isActiveItem(href: string): boolean {
     const currentPath = `${location.pathname}${location.hash}`;
@@ -29,17 +32,19 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav aria-label="Primary" className="sidebar-nav">
+      <nav aria-label={copy.navigation.primaryLabel} className="sidebar-nav">
         {primaryNavigation.map((item) => (
           <NavLink
             key={item.href}
             to={item.href}
             className={isActiveItem(item.href) ? "sidebar-nav__link sidebar-nav__link--active" : "sidebar-nav__link"}
           >
-            {item.label}
+            {copy.navigation[item.labelKey]}
           </NavLink>
         ))}
       </nav>
+
+      <LanguageSwitcher className="sidebar__language" />
     </aside>
   );
 }

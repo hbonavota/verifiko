@@ -7,7 +7,8 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { listVerifications } from "../lib/api";
-import { formatVerdict } from "../lib/formatVerdict";
+import { formatRiskLevel, formatVerdict } from "../lib/formatVerdict";
+import { useI18n } from "../lib/i18n";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { toneForRiskLevel } from "../lib/risk";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
@@ -20,9 +21,11 @@ function cardToneForRiskLevel(riskLevel: VerificationSummary["riskLevel"]) {
 }
 
 export function HomePage() {
+  const { copy, language } = useI18n();
+
   useDocumentMeta(
-    "Verify Link",
-    "Verify a link and review the latest result in Verifiko.",
+    copy.home.metaTitle,
+    copy.home.metaDescription,
   );
 
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
@@ -39,7 +42,7 @@ export function HomePage() {
           return;
         }
 
-        setVerifications(payload.map(adaptApiVerification));
+        setVerifications(payload.map((verification) => adaptApiVerification(verification, language)));
       } catch {
         if (!isMounted) {
           return;
@@ -54,7 +57,7 @@ export function HomePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     if (analysisState !== "submitting") {
@@ -83,19 +86,19 @@ export function HomePage() {
       <section className="analysis-hero">
         <div className="analysis-hero__content" id="analyze-url">
           <SectionTitle
-            eyebrow="Verifiko"
-            title="Verify links before you trust them."
-            description="Get a clear security verdict."
+            eyebrow={copy.home.eyebrow}
+            title={copy.home.title}
+            description={copy.home.description}
           />
 
           <Card className="analysis-hero__panel" tone="success">
-            <p className="hero-panel__eyebrow">Start verification</p>
+            <p className="hero-panel__eyebrow">{copy.home.startVerification}</p>
 
             <AnalyzeUrlForm
-              buttonLabel="Verify this link"
+              buttonLabel={copy.analyzeForm.buttonLabel}
               buttonClassName="analysis-form__button analysis-form__button--hero"
               className="analysis-form--hero"
-              hint="Paste a link to verify its safety."
+              hint={copy.analyzeForm.hint}
               inputClassName="analysis-form__input-control"
               onStateChange={setAnalysisState}
             />
@@ -104,13 +107,13 @@ export function HomePage() {
 
         <div ref={resultCardRef}>
           <Card
-            eyebrow={isLoadingAnalysis ? "Verifying" : latestVerification ? "Latest result" : "Result"}
+            eyebrow={isLoadingAnalysis ? copy.home.verifying : latestVerification ? copy.home.latestResult : copy.home.result}
             title={
               isLoadingAnalysis
-                ? "Verification in progress"
+                ? copy.home.verificationInProgress
                 : latestVerification
-                  ? "Verification result"
-                  : "Ready to verify"
+                  ? copy.home.verificationResult
+                  : copy.home.readyToVerify
             }
             description={undefined}
             tone={isLoadingAnalysis ? "success" : latestVerification ? cardToneForRiskLevel(latestVerification.riskLevel) : "default"}
@@ -118,10 +121,10 @@ export function HomePage() {
           >
             {isLoadingAnalysis ? (
               <div className="analysis-result-card__hero">
-                <ScoreRing label="Verifying" size="hero" state="loading" valueLabel="..." />
+                <ScoreRing label={copy.home.verifying} size="hero" state="loading" valueLabel="..." />
                 <div className="analysis-result-card__summary-block">
-                  <p className="analysis-result-card__headline">Verifying target</p>
-                  <p className="analysis-result-card__copy">Collecting signals.</p>
+                  <p className="analysis-result-card__headline">{copy.home.verifyingTarget}</p>
+                  <p className="analysis-result-card__copy">{copy.home.collectingSignals}</p>
                   <div className="analysis-result-card__loading-stack" aria-hidden="true">
                     <span className="analysis-result-card__loading-line analysis-result-card__loading-line--strong" />
                     <span className="analysis-result-card__loading-line" />
@@ -132,12 +135,15 @@ export function HomePage() {
             ) : latestVerification ? (
               <>
                 <div className="analysis-result-card__topline">
-                  <Badge label={latestVerification.riskLevel} tone={toneForRiskLevel(latestVerification.riskLevel)} />
+                  <Badge
+                    label={formatRiskLevel(latestVerification.riskLevel, language)}
+                    tone={toneForRiskLevel(latestVerification.riskLevel)}
+                  />
                 </div>
 
                 <div className="analysis-result-card__hero">
                   <ScoreRing
-                    label="Trust score"
+                    label={copy.common.trustScore}
                     riskLevel={latestVerification.riskLevel}
                     score={latestVerification.score}
                     size="hero"
@@ -147,27 +153,27 @@ export function HomePage() {
                     <p className="analysis-result-card__subject" title={latestVerification.subject}>
                       {latestVerification.subject}
                     </p>
-                    <p className="preview-card__label">Result</p>
+                    <p className="preview-card__label">{copy.common.result}</p>
                     <p
                       className="analysis-result-card__headline"
-                      title={`Verification result: ${formatVerdict(latestVerification.verdict)}`}
+                      title={`${copy.common.verificationResult}: ${formatVerdict(latestVerification.verdict, language)}`}
                     >
-                      {formatVerdict(latestVerification.verdict)}
+                      {formatVerdict(latestVerification.verdict, language)}
                     </p>
                     <p className="analysis-result-card__copy">{latestVerification.executiveSummary.posture}</p>
                     <div className="analysis-result-card__actions">
                       <Button to={`/verifications/${latestVerification.id}`} variant="primary">
-                        View result
+                        {copy.common.viewResult}
                       </Button>
                       <Button to="/dashboard" variant="secondary">
-                        Review signals
+                        {copy.common.reviewSignals}
                       </Button>
                     </div>
                   </div>
                 </div>
 
                 <div className="analysis-result-card__signals">
-                  <p className="preview-card__label">Signals</p>
+                  <p className="preview-card__label">{copy.common.signals}</p>
                   {latestSignals.map((signal) => (
                     <article key={signal.id} className="preview-signal-list__item">
                       <div className="preview-signal-list__topline">
@@ -181,12 +187,10 @@ export function HomePage() {
               </>
             ) : (
               <div className="analysis-result-card__hero analysis-result-card__hero--empty">
-                <ScoreRing label="Awaiting result" size="hero" state="idle" valueLabel="--" />
+                <ScoreRing label={copy.common.ready} size="hero" state="idle" valueLabel="--" />
                 <div className="analysis-result-card__summary-block">
-                  <p className="analysis-result-card__headline">No result yet</p>
-                  <p className="analysis-result-card__copy">
-                    Enter a link to check if it&apos;s safe or potentially malicious.
-                  </p>
+                  <p className="analysis-result-card__headline">{copy.home.noResultYet}</p>
+                  <p className="analysis-result-card__copy">{copy.home.emptyCopy}</p>
                 </div>
               </div>
             )}

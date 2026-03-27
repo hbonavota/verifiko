@@ -1,23 +1,26 @@
 import { Button } from "../components/ui/Button";
 import { SectionTitle } from "../components/ui/SectionTitle";
+import { useI18n } from "../lib/i18n";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
 
 export function NotFoundPage() {
+  const { copy } = useI18n();
+
   useDocumentMeta(
-    "Not Found",
-    "The requested Verifiko route could not be found.",
+    copy.notFound.metaTitle,
+    copy.notFound.metaDescription,
   );
 
   return (
     <PageShell>
       <SectionTitle
-        eyebrow="Route Not Found"
-        title="The requested route is not available."
-        description="Return to the main analysis flow or open the review screen."
+        eyebrow={copy.notFound.eyebrow}
+        title={copy.notFound.title}
+        description={copy.notFound.description}
       />
       <Button to="/" variant="secondary">
-        Return to home
+        {copy.notFound.returnHome}
       </Button>
     </PageShell>
   );
