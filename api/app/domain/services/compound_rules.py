@@ -120,6 +120,27 @@ class ShortenedRedirectedLureRule(CompoundRule):
         return None
 
 
+class RedirectedCredentialLureRule(CompoundRule):
+    name = "redirected_credential_lure_pattern"
+
+    def evaluate(self, signal_types: set[SignalType]) -> float | None:
+        if SignalType.SHORTENED_URL in signal_types:
+            return None
+        if SignalType.SUSPICIOUS_REDIRECT_CHAIN not in signal_types:
+            return None
+        if signal_types.intersection(
+            {
+                SignalType.PHISHING_KEYWORDS,
+                SignalType.BRAND_IMPERSONATION,
+                SignalType.DECEPTIVE_BRAND_SUBDOMAIN,
+                SignalType.CREDENTIAL_HARVEST_FORM,
+                SignalType.SUSPICIOUS_LOGIN_INTERFACE,
+            }
+        ):
+            return 4
+        return None
+
+
 class InfrastructureBackedCredentialLureRule(CompoundRule):
     name = "infrastructure_backed_credential_lure"
 

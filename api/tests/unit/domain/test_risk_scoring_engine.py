@@ -195,6 +195,43 @@ def test_shortened_redirected_lure_rule_adds_penalty() -> None:
     )
 
 
+def test_redirected_credential_lure_rule_adds_penalty_without_shortener() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.SUSPICIOUS_REDIRECT_CHAIN,
+            category=SignalCategory.NAVIGATION_BEHAVIOR,
+            severity=SignalSeverity.HIGH,
+            confidence=ConfidenceScore(85),
+            title="Observed redirect chain",
+            description="Observed redirect chain changed domains.",
+            source="redirect-chain-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
+        ),
+        AnalysisSignal.create(
+            signal_type=SignalType.PHISHING_KEYWORDS,
+            category=SignalCategory.CONTENT_BEHAVIOR,
+            severity=SignalSeverity.MEDIUM,
+            confidence=ConfidenceScore(69),
+            title="Credential lure wording in URL",
+            description="Credential lure terms present.",
+            source="resolved-destination-url-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.PHISHING_KEYWORDS],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.score.value == 78.42
+    assert result.risk_level.value == "LOW"
+    assert "redirected_credential_lure_pattern" not in result.summary
+    assert result.score_breakdown is not None
+    assert any(
+        entry.rule_name == "redirected_credential_lure_pattern"
+        for entry in result.score_breakdown.compound_rules_applied
+    )
+
+
 def test_low_information_landing_page_rule_adds_penalty() -> None:
     engine = RiskScoringEngine()
     signals = [
@@ -313,6 +350,28 @@ def test_summary_falls_back_when_no_dominant_mapped_signal_exists() -> None:
 
     result = engine.calculate(signals, calculation_version="v1")
 
+    assert result.summary.startswith("Detected 1 risk signal(s)")
+    assert "Primary concern:" not in result.summary
+
+
+def test_safe_result_does_not_lead_with_primary_concern_even_with_dominant_signal() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.SUSPICIOUS_REDIRECT_CHAIN,
+            category=SignalCategory.NAVIGATION_BEHAVIOR,
+            severity=SignalSeverity.HIGH,
+            confidence=ConfidenceScore(85),
+            title="Observed redirect chain",
+            description="Observed redirect chain changed domains.",
+            source="redirect-chain-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.risk_level.value == "SAFE"
     assert result.summary.startswith("Detected 1 risk signal(s)")
     assert "Primary concern:" not in result.summary
 

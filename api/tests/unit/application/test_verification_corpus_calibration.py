@@ -164,6 +164,35 @@ def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse(
         }
 
 
+def test_manual_corpus_calibration_marks_redirected_login_style_destinations_as_caution() -> None:
+    class RedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            return RedirectResolution(
+                final_url="https://collector.bad.example/login",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link/123",
+                        target_url="https://collector.bad.example/login",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+
+    use_case = _build_use_case(redirect_resolver=RedirectResolver())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level == RiskLevel.LOW.value
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+    assert any(
+        signal.signal_type == "phishing_keywords"
+        and signal.source == "resolved-destination-url-analyzer"
+        for signal in result.signals
+    )
+
+
 def test_manual_corpus_calibration_benign_urls_remain_safe() -> None:
     use_case = _build_use_case()
     benign_urls = (

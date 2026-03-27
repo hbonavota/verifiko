@@ -16,6 +16,7 @@ from app.domain.services.compound_rules import (
     InfrastructureBackedCredentialLureRule,
     LowInformationLandingPageRule,
     RedirectedLowInformationDestinationRule,
+    RedirectedCredentialLureRule,
     ReputableDomainSupportRule,
     RedirectedDeceptionPatternRule,
     ShortenedCredentialLureRule,
@@ -55,6 +56,7 @@ class RiskScoringEngine(ScoringService):
             RedirectedDeceptionPatternRule(),
             ShortenedCredentialLureRule(),
             ShortenedRedirectedLureRule(),
+            RedirectedCredentialLureRule(),
             InfrastructureBackedCredentialLureRule(),
             LowInformationLandingPageRule(),
             RedirectedLowInformationDestinationRule(),
@@ -123,7 +125,7 @@ class RiskScoringEngine(ScoringService):
         top_signal_titles = _top_signal_titles_from_penalties(signal_penalties, max_items=3)
         if not top_signal_titles and informational_signals:
             top_signal_titles = tuple(signal.title for signal in informational_signals[:3])
-        if dominant_signal is not None:
+        if dominant_signal is not None and risk_level is not RiskLevel.SAFE:
             summary = resolve_message(
                 "summary.primary_concern",
                 {
