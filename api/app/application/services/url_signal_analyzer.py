@@ -96,6 +96,7 @@ _COMMON_DOMAIN_SUFFIXES = {"ac", "app", "biz", "co", "com", "dev", "edu", "gov",
 _OFFICIAL_INSTITUTION_SUFFIXES = (".gov", ".gov.uk", ".gob.es", ".gov.es", ".gc.ca")
 _REDIRECT_KEYS = {"continue", "next", "redirect", "return", "target", "url"}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+_GENERIC_AUTH_KEYWORDS = {"account", "auth", "login", "secure", "signin", "verify"}
 
 
 @dataclass(slots=True)
@@ -214,7 +215,7 @@ class DeterministicUrlSignalAnalyzer:
                 )
             )
 
-        if keyword_matches:
+        if keyword_matches and not self._is_official_auth_flow(normalized_url, keyword_matches):
             keyword_sample = ", ".join(keyword_matches[:4])
             signals.append(
                 self._signal(
@@ -303,7 +304,11 @@ class DeterministicUrlSignalAnalyzer:
                 )
             )
 
-        if deceptive_brand_pattern is None and self._misleading_subdomain(subdomain_labels, keyword_matches):
+        if (
+            deceptive_brand_pattern is None
+            and not self._is_official_brand_target(normalized_url)
+            and self._misleading_subdomain(subdomain_labels, keyword_matches)
+        ):
             signals.append(
                 self._signal(
                     signal_type=SignalType.MISLEADING_SUBDOMAIN,
@@ -333,7 +338,11 @@ class DeterministicUrlSignalAnalyzer:
                 )
             )
 
-        if tld in _UNCOMMON_BRANDISH_TLDS and (brand_matches or keyword_matches):
+        if tld in _UNCOMMON_BRANDISH_TLDS and (
+            brand_matches
+            or keyword_matches
+            or (institution_context_matches and institution_demand_matches)
+        ):
             signals.append(
                 self._signal(
                     signal_type=SignalType.TLD_TYPOSQUATTING,
@@ -427,6 +436,7 @@ class DeterministicUrlSignalAnalyzer:
             "instagram.com",
             "irs.gov",
             "microsoft.com",
+            "microsoftonline.com",
             "netflix.com",
             "openai.com",
             "onedrive.live.com",
@@ -448,6 +458,16 @@ class DeterministicUrlSignalAnalyzer:
             return True
 
         return normalized_url.ascii_host.endswith(_OFFICIAL_INSTITUTION_SUFFIXES)
+
+    def _is_official_auth_flow(
+        self,
+        normalized_url: NormalizedUrl,
+        keyword_matches: list[str],
+    ) -> bool:
+        if not self._is_official_brand_target(normalized_url):
+            return False
+
+        return set(keyword_matches).issubset(_GENERIC_AUTH_KEYWORDS)
 
     def _deceptive_brand_subdomain_pattern(self, subdomain_labels: list[str]) -> str | None:
         if len(subdomain_labels) < 2:

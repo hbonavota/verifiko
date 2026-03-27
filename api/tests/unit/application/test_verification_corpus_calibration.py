@@ -131,6 +131,7 @@ def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse(
         "https://outlook.office365.mailbox-auth.example.click/reset",
         "https://appleid-confirm-billing.example.info/signin",
         "https://g.co/account/security",
+        "https://gov-traffic-fine.example.click/pay",
     )
 
     for url in suspicious_urls:
@@ -173,6 +174,16 @@ def test_manual_corpus_calibration_reduces_known_false_positive_patterns() -> No
         CreateVerificationCommand(url="https://customer-portal.example.com/")
     )
     assert all(signal.signal_type != "high_domain_entropy" for signal in portal_result.signals)
+
+    google_auth_result = use_case.execute(
+        CreateVerificationCommand(url="https://accounts.google.com/signin")
+    )
+    assert not google_auth_result.signals
+
+    microsoft_auth_result = use_case.execute(
+        CreateVerificationCommand(url="https://login.microsoftonline.com/")
+    )
+    assert not microsoft_auth_result.signals
 
 
 def test_manual_corpus_calibration_rejects_unsafe_local_targets() -> None:

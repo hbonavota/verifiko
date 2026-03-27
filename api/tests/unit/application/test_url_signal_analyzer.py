@@ -39,6 +39,16 @@ def test_url_signal_analyzer_does_not_flag_official_brand_host_as_impersonation(
     assert all(signal.signal_type != SignalType.BRAND_IMPERSONATION for signal in signals)
 
 
+def test_url_signal_analyzer_does_not_flag_official_auth_hosts_with_generic_login_terms() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    google_signals = analyzer.analyze(NormalizedUrl.from_raw("https://accounts.google.com/signin"))
+    microsoft_signals = analyzer.analyze(NormalizedUrl.from_raw("https://login.microsoftonline.com/"))
+
+    assert google_signals == []
+    assert microsoft_signals == []
+
+
 def test_url_signal_analyzer_flags_government_brand_lure_domains() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
@@ -58,6 +68,18 @@ def test_url_signal_analyzer_flags_institution_mismatch_lures() -> None:
 
     assert any(signal.signal_type == SignalType.BRAND_IMPERSONATION for signal in signals)
     assert any(signal.title == "Institution-style payment or penalty lure" for signal in signals)
+
+
+def test_url_signal_analyzer_flags_risky_tld_for_institution_mismatch_lures() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://gov-traffic-fine.example.click/pay")
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    assert SignalType.BRAND_IMPERSONATION in signal_types
+    assert SignalType.TLD_TYPOSQUATTING in signal_types
 
 
 def test_url_signal_analyzer_flags_branded_shorteners() -> None:
