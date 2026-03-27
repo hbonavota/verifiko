@@ -60,6 +60,10 @@ def test_transport_security_signal_analyzer_emits_tls_failure_signal() -> None:
     assert "Validated host: portal-example.test." in signal.evidence
     assert "Validation provider: stub-tls." in signal.evidence
     assert "TLS failure reason: certificate verify failed." in signal.evidence
+    assert signal.message_params["evidence"][3]["params"]["failure_reason"] == {
+        "key": "phrase.tls_reason_certificate_verify_failed",
+        "params": {},
+    }
 
 
 def test_transport_security_signal_analyzer_skips_valid_https() -> None:

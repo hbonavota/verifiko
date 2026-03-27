@@ -7,7 +7,12 @@ from app.application.ports.tls_validator import (
     TlsValidatorPort,
 )
 from app.application.services.analysis_result import SignalAnalysisResult
-from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
+from app.application.services.message_resolver import (
+    build_localized_signal,
+    evidence_ref,
+    normalize_tls_failure_reason,
+    resolve_message,
+)
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -123,7 +128,7 @@ class TransportSecuritySignalAnalyzer:
             evidence.append(
                 evidence_ref(
                     "evidence.tls_failure_reason",
-                    failure_reason=validation_result.failure_reason,
+                    failure_reason=normalize_tls_failure_reason(validation_result.failure_reason),
                 )
             )
         if sensitive_terms:

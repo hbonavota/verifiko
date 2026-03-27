@@ -98,7 +98,10 @@ def test_resolved_destination_signal_analyzer_adds_url_signals_for_cross_domain_
 
     assert any(signal.signal_type.value == "brand_impersonation" for signal in result.signals)
     assert any(signal.source == "resolved-destination-url-analyzer" for signal in result.signals)
-    assert result.signals[0].evidence[0].startswith("Resolved final URL:")
+    assert result.signals[0].evidence[0] == (
+        "Resolved final URL: https://paypal-login-security-check.example.xyz/verify."
+    )
+    assert result.signals[0].message_params["evidence"][0]["key"] == "evidence.resolved_final_url"
 
 
 def test_resolved_destination_signal_analyzer_adds_html_signals_for_cross_domain_target() -> None:
@@ -162,7 +165,7 @@ def test_resolved_destination_signal_analyzer_records_warning_on_fetch_failure()
         redirect_resolution=resolution,
     )
 
-    assert result.warnings == ("resolved destination fetch failed",)
+    assert result.warnings == ("Resolved destination HTML inspection could not be completed.",)
 
 
 def test_resolved_destination_signal_analyzer_skips_benign_redirect_interstitial_html() -> None:

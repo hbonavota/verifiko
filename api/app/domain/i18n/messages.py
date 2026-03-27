@@ -325,6 +325,30 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "no category penalties recorded",
         "es": "sin penalizaciones por categoría registradas",
     },
+    "phrase.tls_reason_certificate_verify_failed": {
+        "en": "certificate verify failed",
+        "es": "falló la verificación del certificado",
+    },
+    "phrase.tls_reason_hostname_mismatch": {
+        "en": "hostname mismatch",
+        "es": "discordancia del nombre de host",
+    },
+    "phrase.placeholder_empty_value": {
+        "en": "(empty)",
+        "es": "(vacío)",
+    },
+    "phrase.placeholder_none_value": {
+        "en": "(none)",
+        "es": "(ninguno)",
+    },
+    "phrase.infrastructure_pattern_dynamic_dns": {
+        "en": "dynamic-dns",
+        "es": "DNS dinámico",
+    },
+    "phrase.infrastructure_pattern_residential_ptr": {
+        "en": "residential-ptr",
+        "es": "PTR residencial",
+    },
     "warning.domain_registration_unavailable": {
         "en": "Domain registration intelligence was unavailable for this run.",
         "es": "La inteligencia de registro del dominio no estuvo disponible en esta ejecución.",
@@ -356,6 +380,58 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
     "warning.html_fetch_blocked_private_target": {
         "en": "HTML content fetch was blocked for a private or special-use target.",
         "es": "La obtención del contenido HTML fue bloqueada por apuntar a un destino privado o de uso especial.",
+    },
+    "error.client_supplied_signals_not_accepted": {
+        "en": "Client-supplied signals are not accepted on this endpoint.",
+        "es": "Las señales proporcionadas por el cliente no se aceptan en este endpoint.",
+    },
+    "error.verification_not_found": {
+        "en": "Verification not found: {verification_id}",
+        "es": "Verificación no encontrada: {verification_id}",
+    },
+    "error.invalid_verification_id": {
+        "en": "Invalid verification id.",
+        "es": "ID de verificación no válido.",
+    },
+    "error.url_input_empty": {
+        "en": "URL input cannot be empty.",
+        "es": "La URL de entrada no puede estar vacía.",
+    },
+    "error.only_http_https_urls_supported": {
+        "en": "Only HTTP and HTTPS URLs are supported.",
+        "es": "Solo se admiten URLs HTTP y HTTPS.",
+    },
+    "error.url_host_required": {
+        "en": "URL host is required.",
+        "es": "Se requiere un host en la URL.",
+    },
+    "error.invalid_unicode_host_name": {
+        "en": "Invalid unicode host name.",
+        "es": "Nombre de host Unicode no válido.",
+    },
+    "error.only_http_https_outbound_targets_allowed": {
+        "en": "Only HTTP and HTTPS outbound targets are allowed.",
+        "es": "Solo se permiten destinos salientes HTTP y HTTPS.",
+    },
+    "error.outbound_target_host_required": {
+        "en": "Outbound target host is required.",
+        "es": "Se requiere un host para el destino saliente.",
+    },
+    "error.outbound_target_local_special_use_blocked": {
+        "en": "Outbound target is a local or special-use hostname and was blocked.",
+        "es": "El destino saliente es un hostname local o de uso especial y fue bloqueado.",
+    },
+    "error.outbound_target_single_label_blocked": {
+        "en": "Outbound target uses a single-label hostname and was blocked.",
+        "es": "El destino saliente usa un hostname de una sola etiqueta y fue bloqueado.",
+    },
+    "error.outbound_target_private_special_use_address_blocked": {
+        "en": "Outbound target resolved to a private or special-use address and was blocked.",
+        "es": "El destino saliente resolvió a una dirección privada o de uso especial y fue bloqueado.",
+    },
+    "error.outbound_target_host_unresolved_for_safety_validation": {
+        "en": "Outbound target host could not be resolved for safety validation.",
+        "es": "El host del destino saliente no pudo resolverse para la validación de seguridad.",
     },
     "evidence.host_resolves_to_raw_ip": {
         "en": "Host resolves to raw IP {ascii_host}.",

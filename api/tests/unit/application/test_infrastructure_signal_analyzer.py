@@ -49,6 +49,10 @@ def test_infrastructure_signal_analyzer_flags_dynamic_dns_reverse_host() -> None
     assert signal.signal_type == SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN
     assert signal.severity == SignalSeverity.HIGH
     assert "Matched infrastructure patterns: dynamic-dns, residential-ptr." in signal.evidence
+    assert signal.message_params["evidence"][3]["params"]["patterns"] == [
+        {"key": "phrase.infrastructure_pattern_dynamic_dns", "params": {}},
+        {"key": "phrase.infrastructure_pattern_residential_ptr", "params": {}},
+    ]
 
 
 def test_infrastructure_signal_analyzer_skips_benign_cdn_reverse_host() -> None:

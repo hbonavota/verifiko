@@ -202,6 +202,63 @@ def test_verification_api_returns_404_for_missing_verification(client: TestClien
     )
 
 
+def test_verification_api_localizes_known_error_details_with_accept_language(
+    client: TestClient,
+) -> None:
+    signals_response = client.post(
+        "/api/verifications",
+        json={
+            "url": "https://openai.com",
+            "signals": [
+                {
+                    "signal_type": "blacklist_match",
+                    "category": "content_behavior",
+                    "severity": "CRITICAL",
+                    "confidence": 99,
+                    "title": "Injected blacklist hit",
+                    "description": "Injected by client.",
+                    "source": "client",
+                }
+            ],
+        },
+        headers={"Accept-Language": "es"},
+    )
+
+    assert signals_response.status_code == 422
+    assert signals_response.json()["detail"] == (
+        "Las señales proporcionadas por el cliente no se aceptan en este endpoint."
+    )
+
+    local_response = client.post(
+        "/api/verifications",
+        json={"url": "https://localhost/login"},
+        headers={"Accept-Language": "es"},
+    )
+
+    assert local_response.status_code == 422
+    assert local_response.json()["detail"] == (
+        "El destino saliente es un hostname local o de uso especial y fue bloqueado."
+    )
+
+    not_found_response = client.get(
+        "/api/verifications/550e8400-e29b-41d4-a716-446655440099",
+        headers={"Accept-Language": "es"},
+    )
+
+    assert not_found_response.status_code == 404
+    assert not_found_response.json()["detail"] == (
+        "Verificación no encontrada: 550e8400-e29b-41d4-a716-446655440099"
+    )
+
+    invalid_id_response = client.get(
+        "/api/verifications/not-a-verification-id",
+        headers={"Accept-Language": "es"},
+    )
+
+    assert invalid_id_response.status_code == 422
+    assert invalid_id_response.json()["detail"] == "ID de verificación no válido."
+
+
 def test_verification_api_rejects_client_supplied_signals(client: TestClient) -> None:
     response = client.post(
         "/api/verifications",

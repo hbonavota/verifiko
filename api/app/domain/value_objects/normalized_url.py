@@ -3,6 +3,7 @@ import ipaddress
 from urllib.parse import SplitResult, unquote, urlsplit, urlunsplit
 
 from app.domain.exceptions.domain_exception import DomainException
+from app.domain.i18n.resolver import resolve_message
 
 _ZERO_WIDTH_CHARS = {"\u200b", "\u200c", "\u200d", "\ufeff"}
 _MULTI_LABEL_PUBLIC_SUFFIXES = {
@@ -66,16 +67,16 @@ class NormalizedUrl:
     def from_raw(raw_url: str) -> "NormalizedUrl":
         candidate = raw_url.strip()
         if not candidate:
-            raise DomainException("URL input cannot be empty.")
+            raise DomainException(resolve_message("error.url_input_empty"))
 
         if "//" not in candidate:
             candidate = f"https://{candidate}"
 
         parsed = urlsplit(candidate)
         if parsed.scheme.lower() not in {"http", "https"}:
-            raise DomainException("Only HTTP and HTTPS URLs are supported.")
+            raise DomainException(resolve_message("error.only_http_https_urls_supported"))
         if not parsed.hostname:
-            raise DomainException("URL host is required.")
+            raise DomainException(resolve_message("error.url_host_required"))
 
         host = parsed.hostname.lower().rstrip(".")
         contains_unicode = any(ord(char) > 127 for char in host)
@@ -84,7 +85,7 @@ class NormalizedUrl:
         try:
             ascii_host = host.encode("idna").decode("ascii")
         except UnicodeError as exc:
-            raise DomainException("Invalid unicode host name.") from exc
+            raise DomainException(resolve_message("error.invalid_unicode_host_name")) from exc
 
         is_ip_address = _is_ip_address(ascii_host)
         contains_punycode = any(label.startswith("xn--") for label in ascii_host.split("."))

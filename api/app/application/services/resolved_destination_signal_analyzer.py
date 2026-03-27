@@ -4,7 +4,11 @@ from app.application.ports.html_fetcher import HtmlFetchError, HtmlFetcherPort
 from app.application.ports.redirect_resolver import RedirectResolution
 from app.application.services.analysis_result import SignalAnalysisResult
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
-from app.application.services.message_resolver import evidence_ref, resolve_message
+from app.application.services.message_resolver import (
+    evidence_ref,
+    normalize_warning_message,
+    resolve_message,
+)
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.value_objects.normalized_url import NormalizedUrl
@@ -35,7 +39,12 @@ class ResolvedDestinationSignalAnalyzer:
         try:
             fetched_document = self.html_fetcher.fetch(final_url.normalized)
         except HtmlFetchError as exc:
-            warnings.append(str(exc) or resolve_message("warning.resolved_destination_html_unavailable"))
+            warnings.append(
+                normalize_warning_message(
+                    str(exc),
+                    default_key="warning.resolved_destination_html_unavailable",
+                )
+            )
         else:
             if fetched_document is not None:
                 signals.extend(self._clone_html_signals(final_url, fetched_document))
@@ -85,7 +94,10 @@ class ResolvedDestinationSignalAnalyzer:
         final_url: str,
         tag_prefix: str,
     ) -> AnalysisSignal:
-        evidence_prefix = f"Resolved final URL: {final_url}."
+        evidence_prefix = resolve_message(
+            "evidence.resolved_final_url",
+            {"final_url": final_url},
+        )
         evidence = (evidence_prefix, *signal.evidence)
         tags = (tag_prefix, *signal.tags)
         message_params = dict(signal.message_params or {})

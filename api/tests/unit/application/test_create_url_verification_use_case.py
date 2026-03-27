@@ -385,7 +385,7 @@ def test_create_url_verification_use_case_continues_when_html_fetch_fails() -> N
     assert dto.risk_assessment.risk_level != "SAFE"
     assert "Analysis coverage degraded:" in dto.risk_assessment.summary
     assert dto.risk_assessment.analysis_warnings == (
-        "fetch failed for http://secure-paypal-login.example.xyz/verify",
+        "HTML content inspection could not be completed.",
     )
     assert dto.trace is not None
     assert "html-credential-analyzer" in dto.trace.layers_executed

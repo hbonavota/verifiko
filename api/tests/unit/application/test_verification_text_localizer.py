@@ -166,3 +166,69 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
     assert localized.trace.signals_by_source["domain-recency-analyzer"][0].title == (
         "Registro de dominio muy reciente"
     )
+
+
+def test_verification_text_localizer_translates_nested_tls_failure_reason_params() -> None:
+    signal = AnalysisSignalDTO(
+        id="signal-tls-1",
+        signal_type="tls_validation_failure",
+        category="network_transport",
+        severity="MEDIUM",
+        confidence=84,
+        detected=True,
+        title="TLS validation failure",
+        description="The HTTPS endpoint could not be validated with the system TLS trust store.",
+        evidence=(
+            "Observed URL scheme: https.",
+            "Validated host: portal-example.test.",
+            "Validation provider: stub-tls.",
+            "TLS failure reason: certificate verify failed.",
+        ),
+        source="transport-security-analyzer",
+        base_weight=18,
+        score_contribution=12.0,
+        tags=("tls", "transport-security"),
+        created_at="2026-03-27T10:00:00+00:00",
+        message_key="signal.tls_validation_failure",
+        message_params={
+            "evidence": [
+                {"key": "evidence.observed_url_scheme", "params": {"scheme": "https"}},
+                {"key": "evidence.validated_host", "params": {"host": "portal-example.test"}},
+                {"key": "evidence.validation_provider", "params": {"provider_name": "stub-tls"}},
+                {
+                    "key": "evidence.tls_failure_reason",
+                    "params": {
+                        "failure_reason": {
+                            "key": "phrase.tls_reason_certificate_verify_failed",
+                            "params": {},
+                        }
+                    },
+                },
+            ],
+        },
+    )
+    dto = VerificationDTO(
+        id="verification-tls-1",
+        target_type="URL",
+        original_input="https://portal-example.test/login",
+        normalized_input="https://portal-example.test/login",
+        status="COMPLETED",
+        signals=(signal,),
+        risk_assessment=None,
+        trace=AnalysisTraceDTO(
+            layers_executed=("transport-security-analyzer",),
+            signals_by_source={"transport-security-analyzer": (signal,)},
+            total_signals=1,
+        ),
+        score_breakdown=None,
+        created_at="2026-03-27T10:00:00+00:00",
+        updated_at="2026-03-27T10:00:00+00:00",
+        completed_at="2026-03-27T10:00:00+00:00",
+        calculation_version="v1",
+    )
+
+    localized = localize_verification_dto(dto, locale="es")
+
+    assert localized.signals[0].evidence[3] == (
+        "Motivo del fallo TLS: falló la verificación del certificado."
+    )

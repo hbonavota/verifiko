@@ -4,6 +4,7 @@ from app.application.dto.verification_dto import VerificationDTO
 from app.application.exceptions.application_exception import VerificationNotFoundError
 from app.application.mappers.verification_mapper import VerificationMapper
 from app.application.queries.get_verification_query import GetVerificationQuery
+from app.domain.i18n.resolver import resolve_message
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.value_objects.verification_id import VerificationId
 
@@ -16,5 +17,10 @@ class GetVerificationResultUseCase:
         verification_id = VerificationId.from_string(query.verification_id)
         verification = self.repository.get_by_id(verification_id)
         if verification is None:
-            raise VerificationNotFoundError(f"Verification not found: {query.verification_id}")
+            raise VerificationNotFoundError(
+                resolve_message(
+                    "error.verification_not_found",
+                    {"verification_id": query.verification_id},
+                )
+            )
         return VerificationMapper.to_dto(verification)

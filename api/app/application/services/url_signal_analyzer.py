@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import parse_qsl
 
-from app.application.services.message_resolver import build_localized_signal, evidence_ref
+from app.application.services.message_resolver import build_localized_signal, evidence_ref, message_ref
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -387,7 +387,10 @@ class DeterministicUrlSignalAnalyzer:
                         "evidence": [
                             evidence_ref(
                                 "evidence.subdomain_observed",
-                                subdomain=normalized_url.subdomain or "(none)",
+                                subdomain=(
+                                    normalized_url.subdomain
+                                    or message_ref("phrase.placeholder_none_value")
+                                ),
                             ),
                             evidence_ref(
                                 "evidence.registered_domain_observed",
@@ -493,7 +496,7 @@ class DeterministicUrlSignalAnalyzer:
                     evidence_ref(
                         "evidence.query_parameter_may_steer_navigation",
                         key=key,
-                        value=value or "(empty)",
+                        value=value or message_ref("phrase.placeholder_empty_value"),
                     )
                 )
             if value.startswith("http://") or value.startswith("https://"):

@@ -7,7 +7,12 @@ from app.application.ports.infrastructure_lookup import (
 )
 from app.application.ports.redirect_resolver import RedirectResolution
 from app.application.services.analysis_result import SignalAnalysisResult
-from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
+from app.application.services.message_resolver import (
+    build_localized_signal,
+    evidence_ref,
+    message_ref,
+    resolve_message,
+)
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -117,7 +122,10 @@ class InfrastructureSignalAnalyzer:
             ),
             evidence_ref(
                 "evidence.matched_infrastructure_patterns",
-                patterns=", ".join(matched_patterns),
+                patterns=[
+                    _pattern_message_ref(pattern)
+                    for pattern in matched_patterns
+                ],
             ),
         ]
         reverse_samples = [
@@ -196,3 +204,11 @@ class InfrastructureSignalAnalyzer:
         )
         tokens = {match.group(0).lower() for match in _TOKEN_PATTERN.finditer(text)}
         return sorted(_SENSITIVE_TERMS.intersection(tokens))
+
+
+def _pattern_message_ref(pattern: str) -> dict[str, object] | str:
+    if pattern == "dynamic-dns":
+        return message_ref("phrase.infrastructure_pattern_dynamic_dns")
+    if pattern == "residential-ptr":
+        return message_ref("phrase.infrastructure_pattern_residential_ptr")
+    return pattern

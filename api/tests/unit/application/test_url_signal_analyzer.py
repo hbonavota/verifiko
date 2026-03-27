@@ -102,3 +102,19 @@ def test_url_signal_analyzer_flags_recognized_reputable_domains() -> None:
     assert {signal.signal_type for signal in signals} == {
         SignalType.RECOGNIZED_REPUTABLE_DOMAIN
     }
+
+
+def test_url_signal_analyzer_uses_structured_empty_and_none_placeholders() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(NormalizedUrl.from_raw("https://example.com/?next="))
+
+    redirect_signal = next(
+        signal for signal in signals if signal.signal_type == SignalType.SUSPICIOUS_REDIRECT_CHAIN
+    )
+
+    assert "Query parameter next=(empty) may steer navigation." in redirect_signal.evidence
+    assert redirect_signal.message_params["evidence"][0]["params"]["value"] == {
+        "key": "phrase.placeholder_empty_value",
+        "params": {},
+    }

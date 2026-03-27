@@ -22,7 +22,7 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
-from app.application.services.message_resolver import resolve_message
+from app.application.services.message_resolver import normalize_warning_message, resolve_message
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.entities.analysis_trace_stage import AnalysisTraceStage
 from app.domain.entities.risk_assessment import RiskAssessment
@@ -220,7 +220,12 @@ class CreateURLVerificationUseCase:
             fetched_document = self.html_fetcher.fetch(verification.normalized_input.normalized)
         except HtmlFetchError as exc:
             return SignalAnalysisResult(
-                warnings=(str(exc) or resolve_message("warning.html_content_inspection_unavailable"),)
+                warnings=(
+                    normalize_warning_message(
+                        str(exc),
+                        default_key="warning.html_content_inspection_unavailable",
+                    ),
+                )
             )
 
         if fetched_document is None:
