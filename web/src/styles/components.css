@@ -208,12 +208,12 @@
 }
 
 .field__control--has-action .field__input {
-  padding-right: 6rem;
+  padding-right: 4.35rem;
 }
 
 .field__action {
   position: absolute;
-  inset: 50% 0.75rem auto auto;
+  inset: 50% 0.6rem auto auto;
   transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
@@ -246,10 +246,33 @@
 }
 
 .analysis-form__paste {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.85rem;
+  height: 2.85rem;
   min-height: 0;
-  height: 44px;
-  padding-inline: 0.95rem;
-  border-radius: var(--radius-pill);
+  padding: 0;
+  border: 1px solid rgba(0, 191, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(14, 23, 45, 0.92);
+  color: var(--color-text-muted);
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.analysis-form__paste:hover {
+  border-color: rgba(0, 191, 255, 0.24);
+  background: rgba(17, 29, 56, 0.96);
+  color: var(--color-text);
+}
+
+.analysis-form__paste:disabled {
+  opacity: 0.55;
+}
+
+.analysis-form__paste:focus-visible {
+  outline: 2px solid rgba(0, 191, 255, 0.42);
+  outline-offset: 2px;
 }
 
 .analysis-form__paste-icon {

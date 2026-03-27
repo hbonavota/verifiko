@@ -2,8 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { createVerification } from "../../lib/api";
-import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { Button } from "../ui/Button";
 
 function PasteIcon() {
   return (
@@ -117,16 +117,16 @@ export function AnalyzeUrlForm({
       <form className={formClassName} onSubmit={(event) => void handleSubmit(event)}>
         <Input
           action={
-            <Button
+            <button
+              aria-label="Paste a link from the clipboard"
               className="analysis-form__paste"
               disabled={isSubmitting}
-              leadingIcon={<PasteIcon />}
               onClick={() => void handlePaste()}
               title="Paste a link from the clipboard"
-              variant="secondary"
+              type="button"
             >
-              Paste
-            </Button>
+              <PasteIcon />
+            </button>
           }
           autoComplete="off"
           className={inputClassName}
