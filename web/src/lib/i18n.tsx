@@ -580,7 +580,7 @@ const locales: Record<Language, string> = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-function resolveInitialLanguage(): Language {
+export function getStoredLanguage(): Language {
   if (typeof window === "undefined") {
     return "en";
   }
@@ -594,7 +594,7 @@ function resolveInitialLanguage(): Language {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>(resolveInitialLanguage);
+  const [language, setLanguage] = useState<Language>(getStoredLanguage);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, language);

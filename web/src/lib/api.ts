@@ -3,7 +3,7 @@ import type {
   CreateVerificationInput,
   HealthCheckResult,
 } from "../types/verification";
-import type { Language } from "./i18n";
+import { getStoredLanguage, type Language } from "./i18n";
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 const API_BASE_URL =
@@ -22,12 +22,15 @@ function getRequiredApiBaseUrl(): string {
 }
 
 async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = {
+    "Content-Type": "application/json",
+    "Accept-Language": getStoredLanguage(),
+    ...init?.headers,
+  };
+
   const response = await fetch(`${getRequiredApiBaseUrl()}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
     ...init,
+    headers,
   });
 
   if (!response.ok) {
