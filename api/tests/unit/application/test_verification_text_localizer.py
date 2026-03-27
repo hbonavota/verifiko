@@ -224,6 +224,83 @@ def test_verification_text_localizer_summarizes_compound_rules_without_internal_
     assert "evidence_light_clean_result" not in localized.risk_assessment.summary
 
 
+def test_verification_text_localizer_leads_with_primary_concern_for_risky_results() -> None:
+    signal = AnalysisSignalDTO(
+        id="signal-brand-1",
+        signal_type="brand_impersonation",
+        category="content_behavior",
+        severity="HIGH",
+        confidence=92,
+        detected=True,
+        title="Institution-style payment or penalty lure",
+        description="Government or authority-style payment, traffic, or penalty wording appears on a non-official domain.",
+        evidence=("Matched institution terms: traffic.",),
+        source="resolved-destination-url-analyzer",
+        base_weight=18,
+        created_at="2026-03-27T10:00:00+00:00",
+        tags=("traffic",),
+        score_contribution=24.84,
+        message_key="signal.institution_style_payment_or_penalty_lure",
+        message_params={
+            "evidence": [
+                {
+                    "key": "evidence.matched_institution_terms",
+                    "params": {"terms": "traffic"},
+                }
+            ]
+        },
+    )
+    assessment = RiskAssessmentDTO(
+        score=52,
+        risk_level="MEDIUM",
+        verdict="SUSPICIOUS",
+        summary="Detected 1 risk signal(s) with medium risk output. Category penalties totaled 24.84 and compound penalties totaled 0.00.",
+        top_signals=("Institution-style payment or penalty lure",),
+        category_breakdown={"content_behavior": 15.0},
+        terminal_override=False,
+        terminal_reason=None,
+        calculation_version="v1",
+        analysis_warnings=(),
+        analysis_trace=(),
+        explanation=RiskExplanationDTO(
+            headline="The engine produced a suspicious outcome driven by Institution-style payment or penalty lure.",
+            decision_basis="Score 52 mapped to medium risk with category penalties.",
+            primary_factors=(),
+            analysis_trace=(),
+            coverage_warnings=(),
+        ),
+        calculated_at="2026-03-27T10:00:00+00:00",
+    )
+    dto = VerificationDTO(
+        id="verification-2",
+        target_type="URL",
+        original_input="https://portal-example.top/pay",
+        normalized_input="https://portal-example.top/pay",
+        status="COMPLETED",
+        signals=(signal,),
+        risk_assessment=assessment,
+        trace=None,
+        score_breakdown=ScoreBreakdownDTO(
+            base_score=100.0,
+            signal_contributions=(),
+            compound_rules_applied=(),
+            final_score=52.0,
+        ),
+        created_at="2026-03-27T10:00:00+00:00",
+        updated_at="2026-03-27T10:00:00+00:00",
+        completed_at="2026-03-27T10:00:00+00:00",
+        calculation_version="v1",
+    )
+
+    localized = localize_verification_dto(dto, locale="es")
+
+    assert localized.risk_assessment is not None
+    assert localized.risk_assessment.summary.startswith(
+        "Principal riesgo: indicios de suplantación de marca o institución."
+    )
+    assert "También se detectaron otros indicadores de riesgo." not in localized.risk_assessment.summary
+
+
 def test_verification_text_localizer_translates_nested_tls_failure_reason_params() -> None:
     signal = AnalysisSignalDTO(
         id="signal-tls-1",

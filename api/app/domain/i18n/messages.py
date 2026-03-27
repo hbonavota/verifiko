@@ -277,9 +277,13 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "Detected {risk_signal_count} risk signal(s) with {risk_level} risk output. Category penalties totaled {category_total_penalty:.2f} and compound penalties totaled {compound_penalty:.2f}.",
         "es": "Se detectaron {risk_signal_count} señal(es) de riesgo con un resultado de riesgo {risk_level}. Las penalizaciones por categoría sumaron {category_total_penalty:.2f} y los ajustes compuestos sumaron {compound_penalty:.2f}.",
     },
-    "summary.main_drivers": {
-        "en": "{summary} Main drivers: {drivers}.",
-        "es": "{summary} Factores principales: {drivers}.",
+    "summary.primary_concern": {
+        "en": "Primary concern: {reason}. {summary}",
+        "es": "Principal riesgo: {reason}. {summary}",
+    },
+    "summary.secondary_factors": {
+        "en": "{summary} Additional risk indicators were also detected.",
+        "es": "{summary} También se detectaron otros indicadores de riesgo.",
     },
     "summary.rules": {
         "en": "{summary} Compound pattern adjustments applied: {rule_count}.",
@@ -292,6 +296,38 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
     "summary.analysis_coverage_degraded": {
         "en": "Analysis coverage degraded: {warnings} {summary}",
         "es": "Cobertura del análisis degradada: {warnings} {summary}",
+    },
+    "summary.reason.suspicious_redirect_chain": {
+        "en": "suspicious redirection behavior",
+        "es": "comportamiento sospechoso de redirección",
+    },
+    "summary.reason.low_information_page": {
+        "en": "lack of meaningful content on the destination page",
+        "es": "falta de contenido significativo en la página de destino",
+    },
+    "summary.reason.credential_harvest_form": {
+        "en": "possible credential harvesting behavior",
+        "es": "posible comportamiento de captación de credenciales",
+    },
+    "summary.reason.suspicious_login_interface": {
+        "en": "a suspicious login-style interface",
+        "es": "una interfaz sospechosa de inicio de sesión",
+    },
+    "summary.reason.tls_validation_failure": {
+        "en": "transport security validation problems",
+        "es": "problemas de validación de la seguridad del transporte",
+    },
+    "summary.reason.insecure_transport": {
+        "en": "insecure transport without TLS protection",
+        "es": "transporte inseguro sin protección TLS",
+    },
+    "summary.reason.brand_impersonation": {
+        "en": "brand or institution impersonation cues",
+        "es": "indicios de suplantación de marca o institución",
+    },
+    "summary.reason.suspicious_infrastructure_pattern": {
+        "en": "suspicious hosting or infrastructure patterns",
+        "es": "patrones sospechosos de alojamiento o infraestructura",
     },
     "explanation.headline.terminal_override": {
         "en": "The result was forced to a terminal malicious outcome by trusted backend intelligence.",
@@ -552,6 +588,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
     "evidence.redirect_chain_downgraded_transport": {
         "en": "Redirect chain downgraded transport from HTTPS to HTTP.",
         "es": "La cadena de redirección degradó el transporte de HTTPS a HTTP.",
+    },
+    "evidence.final_destination_uses_questionable_tld": {
+        "en": "Final destination uses a questionable TLD: .{tld}.",
+        "es": "El destino final utiliza un TLD cuestionable: .{tld}.",
     },
     "evidence.listed_value": {
         "en": "Listed value: {value}.",

@@ -1,6 +1,8 @@
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.entities.risk_assessment import RiskAssessment
 from app.domain.enums.risk_level import RiskLevel
+from app.domain.enums.signal_category import SignalCategory
+from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
 from app.domain.enums.verdict_type import VerdictType
 from app.domain.i18n.resolver import resolve_message
@@ -24,6 +26,23 @@ from app.domain.services.score_breakdown_builder import build_score_breakdown
 from app.domain.services.scoring_policies import CATEGORY_CAPS, SEVERITY_MULTIPLIERS
 from app.domain.services.scoring_service import ScoringService
 from app.domain.value_objects.confidence_score import ConfidenceScore
+
+_DOMINANT_SUMMARY_CATEGORIES = {
+    SignalCategory.NAVIGATION_BEHAVIOR,
+    SignalCategory.CONTENT_BEHAVIOR,
+    SignalCategory.DOMAIN_REPUTATION,
+    SignalCategory.NETWORK_TRANSPORT,
+}
+_DOMINANT_SUMMARY_REASON_KEYS = {
+    SignalType.SUSPICIOUS_REDIRECT_CHAIN: "summary.reason.suspicious_redirect_chain",
+    SignalType.LOW_INFORMATION_PAGE: "summary.reason.low_information_page",
+    SignalType.CREDENTIAL_HARVEST_FORM: "summary.reason.credential_harvest_form",
+    SignalType.SUSPICIOUS_LOGIN_INTERFACE: "summary.reason.suspicious_login_interface",
+    SignalType.TLS_VALIDATION_FAILURE: "summary.reason.tls_validation_failure",
+    SignalType.INSECURE_TRANSPORT: "summary.reason.insecure_transport",
+    SignalType.BRAND_IMPERSONATION: "summary.reason.brand_impersonation",
+    SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN: "summary.reason.suspicious_infrastructure_pattern",
+}
 
 
 class RiskScoringEngine(ScoringService):
@@ -100,14 +119,25 @@ class RiskScoringEngine(ScoringService):
                 "compound_penalty": compound_penalty,
             },
         )
+        dominant_signal = _select_dominant_summary_signal(active_signals)
         top_signal_titles = _top_signal_titles_from_penalties(signal_penalties, max_items=3)
         if not top_signal_titles and informational_signals:
             top_signal_titles = tuple(signal.title for signal in informational_signals[:3])
-        if top_signal_titles:
+        if dominant_signal is not None:
             summary = resolve_message(
-                "summary.main_drivers",
-                {"summary": summary, "drivers": ", ".join(top_signal_titles)},
+                "summary.primary_concern",
+                {
+                    "summary": summary,
+                    "reason": resolve_message(
+                        _DOMINANT_SUMMARY_REASON_KEYS[dominant_signal.signal_type]
+                    ),
+                },
             )
+            if len(active_signals) - len(informational_signals) > 1:
+                summary = resolve_message(
+                    "summary.secondary_factors",
+                    {"summary": summary},
+                )
         if triggered_rules:
             summary = resolve_message(
                 "summary.rules",
@@ -156,6 +186,22 @@ class RiskScoringEngine(ScoringService):
 def _signal_penalty(signal: AnalysisSignal) -> float:
     multiplier = SEVERITY_MULTIPLIERS[signal.severity]
     return signal.base_weight * multiplier * signal.confidence.as_ratio
+
+
+def _select_dominant_summary_signal(signals: list[AnalysisSignal]) -> AnalysisSignal | None:
+    eligible = [
+        signal
+        for signal in signals
+        if signal.detected
+        and signal.severity in {SignalSeverity.HIGH, SignalSeverity.CRITICAL}
+        and signal.confidence.value > 80
+        and signal.category in _DOMINANT_SUMMARY_CATEGORIES
+        and signal.signal_type in _DOMINANT_SUMMARY_REASON_KEYS
+        and _signal_penalty(signal) > 0
+    ]
+    if not eligible:
+        return None
+    return max(eligible, key=_signal_penalty)
 
 
 def risk_level_for_score(score: float) -> RiskLevel:

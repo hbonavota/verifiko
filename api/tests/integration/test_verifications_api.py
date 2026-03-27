@@ -169,7 +169,9 @@ def test_verification_api_localizes_backend_generated_text_with_accept_language(
     created_body = create_response.json()
     signal_titles = {signal["title"] for signal in created_body["signals"]}
     assert "Cebo de credenciales en la URL" in signal_titles
-    assert created_body["risk_assessment"]["summary"].startswith("Se detectaron")
+    assert created_body["risk_assessment"]["summary"].startswith(
+        "Principal riesgo:"
+    )
     assert created_body["risk_assessment"]["explanation"]["headline"].startswith("El motor produjo")
 
     verification_id = created_body["id"]
@@ -182,6 +184,9 @@ def test_verification_api_localizes_backend_generated_text_with_accept_language(
     fetched_body = get_response.json()
     fetched_titles = {signal["title"] for signal in fetched_body["signals"]}
     assert "Cebo de credenciales en la URL" in fetched_titles
+    assert fetched_body["risk_assessment"]["summary"].startswith(
+        "Principal riesgo:"
+    )
     assert fetched_body["risk_assessment"]["explanation"]["primary_factors"]
 
     list_response = client.get(
@@ -190,7 +195,9 @@ def test_verification_api_localizes_backend_generated_text_with_accept_language(
     )
     assert list_response.status_code == 200
     listed_items = list_response.json()
-    assert listed_items[0]["risk_assessment"]["summary"].startswith("Se detectaron")
+    assert listed_items[0]["risk_assessment"]["summary"].startswith(
+        "Principal riesgo:"
+    )
 
 
 def test_verification_api_returns_404_for_missing_verification(client: TestClient) -> None:

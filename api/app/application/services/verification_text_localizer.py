@@ -12,6 +12,9 @@ from app.application.dto.verification_dto import (
     ScoreBreakdownDTO,
     VerificationDTO,
 )
+from app.domain.enums.signal_category import SignalCategory
+from app.domain.enums.signal_severity import SignalSeverity
+from app.domain.enums.signal_type import SignalType
 from app.domain.i18n.resolver import resolve_message, resolve_signal_text
 
 SupportedLocale = Literal["en", "es"]
@@ -178,6 +181,22 @@ _RISK_LEVEL_LOWER_ES = {
     "MEDIUM": "medio",
     "HIGH": "alto",
     "CRITICAL": "crítico",
+}
+_DOMINANT_SUMMARY_CATEGORIES = {
+    SignalCategory.NAVIGATION_BEHAVIOR.value,
+    SignalCategory.CONTENT_BEHAVIOR.value,
+    SignalCategory.DOMAIN_REPUTATION.value,
+    SignalCategory.NETWORK_TRANSPORT.value,
+}
+_DOMINANT_SUMMARY_REASON_KEYS = {
+    SignalType.SUSPICIOUS_REDIRECT_CHAIN.value: "summary.reason.suspicious_redirect_chain",
+    SignalType.LOW_INFORMATION_PAGE.value: "summary.reason.low_information_page",
+    SignalType.CREDENTIAL_HARVEST_FORM.value: "summary.reason.credential_harvest_form",
+    SignalType.SUSPICIOUS_LOGIN_INTERFACE.value: "summary.reason.suspicious_login_interface",
+    SignalType.TLS_VALIDATION_FAILURE.value: "summary.reason.tls_validation_failure",
+    SignalType.INSECURE_TRANSPORT.value: "summary.reason.insecure_transport",
+    SignalType.BRAND_IMPERSONATION.value: "summary.reason.brand_impersonation",
+    SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN.value: "summary.reason.suspicious_infrastructure_pattern",
 }
 
 _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -487,13 +506,25 @@ def _build_spanish_summary(
             language="es",
         )
 
-        top_signal_titles = _localized_top_signal_titles(localized_signals, max_items=3)
-        if top_signal_titles:
+        dominant_signal = _select_dominant_summary_signal_dto(risk_signals)
+        if dominant_signal:
             summary = resolve_message(
-                "summary.main_drivers",
-                {"summary": summary, "drivers": ", ".join(top_signal_titles)},
+                "summary.primary_concern",
+                {
+                    "summary": summary,
+                    "reason": resolve_message(
+                        _DOMINANT_SUMMARY_REASON_KEYS[dominant_signal.signal_type],
+                        language="es",
+                    ),
+                },
                 language="es",
             )
+            if len(risk_signals) > 1:
+                summary = resolve_message(
+                    "summary.secondary_factors",
+                    {"summary": summary},
+                    language="es",
+                )
 
         if score_breakdown and score_breakdown.compound_rules_applied:
             summary = resolve_message(
@@ -526,6 +557,22 @@ def _build_spanish_summary(
         )
 
     return summary
+
+
+def _select_dominant_summary_signal_dto(
+    signals: list[AnalysisSignalDTO],
+) -> AnalysisSignalDTO | None:
+    eligible = [
+        signal
+        for signal in signals
+        if signal.severity in {SignalSeverity.HIGH.value, SignalSeverity.CRITICAL.value}
+        and signal.confidence > 80
+        and signal.category in _DOMINANT_SUMMARY_CATEGORIES
+        and signal.signal_type in _DOMINANT_SUMMARY_REASON_KEYS
+    ]
+    if not eligible:
+        return None
+    return max(eligible, key=lambda signal: signal.score_contribution)
 
 
 def _build_spanish_headline(

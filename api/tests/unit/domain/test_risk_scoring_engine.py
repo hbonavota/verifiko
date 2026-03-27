@@ -62,6 +62,8 @@ def test_compound_rule_adds_penalty() -> None:
     result = engine.calculate(signals, calculation_version="v1")
 
     assert result.score.value < 100
+    assert result.summary.startswith("Primary concern: brand or institution impersonation cues.")
+    assert "Additional risk indicators were also detected." in result.summary
     assert "Compound pattern adjustments applied:" in result.summary
     assert "credential_lure_pattern" not in result.summary
     assert result.score_breakdown is not None
@@ -289,8 +291,30 @@ def test_evidence_light_clean_result_penalizes_zero_signal_unknowns() -> None:
     result = engine.calculate([], calculation_version="v1")
 
     assert result.score.value == 98
+    assert result.summary.startswith("Detected 0 risk signal(s)")
     assert "Compound pattern adjustments applied:" in result.summary
     assert "evidence_light_clean_result" not in result.summary
+
+
+def test_summary_falls_back_when_no_dominant_mapped_signal_exists() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.MISLEADING_SUBDOMAIN,
+            category=SignalCategory.DOMAIN_STRUCTURE,
+            severity=SignalSeverity.HIGH,
+            confidence=ConfidenceScore(88),
+            title="Misleading subdomain structure",
+            description="Unusual trust-signaling depth in the subdomain.",
+            source="url-rule-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.MISLEADING_SUBDOMAIN],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.summary.startswith("Detected 1 risk signal(s)")
+    assert "Primary concern:" not in result.summary
 
 
 def test_reputable_domain_bonus_does_not_override_suspicious_signals() -> None:

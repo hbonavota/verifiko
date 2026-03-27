@@ -772,6 +772,10 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_lures
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
     assert dto.risk_assessment.score < 61
+    assert dto.risk_assessment.summary.startswith(
+        "Primary concern: brand or institution impersonation cues."
+    )
+    assert "Additional risk indicators were also detected." in dto.risk_assessment.summary
     assert "Compound pattern adjustments applied:" in dto.risk_assessment.summary
     assert "shortened_redirected_lure_pattern" not in dto.risk_assessment.summary
     assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
