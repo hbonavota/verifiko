@@ -66,6 +66,20 @@ class NullHtmlFetcher(HtmlFetcherPort):
         return None
 
 
+class StaticHtmlFetcher(HtmlFetcherPort):
+    def __init__(self, content: str) -> None:
+        self._content = content
+
+    def fetch(self, url: str):
+        from app.application.ports.html_fetcher import FetchedHtmlDocument
+
+        return FetchedHtmlDocument(
+            content=self._content,
+            source_url=url,
+            content_type="text/html",
+        )
+
+
 class ValidTlsValidator(TlsValidatorPort):
     def validate_hostname(self, hostname: str, port: int = 443) -> TlsValidationResult:
         return TlsValidationResult(is_valid=True, provider_name="stub-tls")
@@ -90,7 +104,10 @@ class NoopInfrastructureLookup(InfrastructureLookupPort):
         )
 
 
-def _build_use_case(public_target_validator=None) -> CreateURLVerificationUseCase:
+def _build_use_case(
+    public_target_validator=None,
+    html_fetcher: HtmlFetcherPort | None = None,
+) -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=FakeRepository(),
         id_generator=FakeIdGenerator(),
@@ -109,10 +126,10 @@ def _build_use_case(public_target_validator=None) -> CreateURLVerificationUseCas
         infrastructure_signal_analyzer=InfrastructureSignalAnalyzer(
             infrastructure_lookup=NoopInfrastructureLookup()
         ),
-        html_fetcher=NullHtmlFetcher(),
+        html_fetcher=html_fetcher or NullHtmlFetcher(),
         resolved_destination_signal_analyzer=ResolvedDestinationSignalAnalyzer(
             url_signal_analyzer=DeterministicUrlSignalAnalyzer(),
-            html_fetcher=NullHtmlFetcher(),
+            html_fetcher=html_fetcher or NullHtmlFetcher(),
             html_credential_signal_analyzer=HtmlCredentialSignalAnalyzer(),
         ),
         html_credential_signal_analyzer=HtmlCredentialSignalAnalyzer(),
@@ -198,3 +215,49 @@ def test_manual_corpus_calibration_rejects_single_label_targets() -> None:
 
     with pytest.raises(DomainException):
         use_case.execute(CreateVerificationCommand(url="A"))
+
+
+def test_manual_corpus_calibration_marks_parked_pages_as_caution_or_worse() -> None:
+    use_case = _build_use_case(
+        html_fetcher=StaticHtmlFetcher(
+            """
+            <html>
+              <body>
+                <h1>This domain is for sale</h1>
+                <p>Buy this domain with Sedo.</p>
+              </body>
+            </html>
+            """
+        )
+    )
+
+    result = use_case.execute(CreateVerificationCommand(url="https://for-sale-example.test/"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level in {
+        RiskLevel.LOW.value,
+        RiskLevel.MEDIUM.value,
+        RiskLevel.HIGH.value,
+        RiskLevel.CRITICAL.value,
+    }
+    assert any(signal.signal_type == "low_information_page" for signal in result.signals)
+
+
+def test_manual_corpus_calibration_marks_empty_root_pages_as_ambiguous_not_pristine() -> None:
+    use_case = _build_use_case(
+        html_fetcher=StaticHtmlFetcher(
+            """
+            <html>
+              <body>
+                <h1>Welcome</h1>
+              </body>
+            </html>
+            """
+        )
+    )
+
+    result = use_case.execute(CreateVerificationCommand(url="https://thin-example.test/"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.score < 100
+    assert any(signal.signal_type == "low_information_page" for signal in result.signals)

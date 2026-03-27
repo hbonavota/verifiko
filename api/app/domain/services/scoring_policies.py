@@ -31,6 +31,7 @@ BASE_SIGNAL_WEIGHTS: dict[SignalType, float] = {
     SignalType.SHORTENED_URL: 8,
     SignalType.PHISHING_KEYWORDS: 7,
     SignalType.NON_STANDARD_PORT_USAGE: 7,
+    SignalType.LOW_INFORMATION_PAGE: 16,
 }
 
 CATEGORY_CAPS: dict[SignalCategory, float] = {
@@ -63,4 +64,5 @@ SIGNAL_CATEGORY_MAP: dict[SignalType, SignalCategory] = {
     SignalType.SUSPICIOUS_REDIRECT_CHAIN: SignalCategory.NAVIGATION_BEHAVIOR,
     SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN: SignalCategory.DOMAIN_REPUTATION,
     SignalType.PHISHING_KEYWORDS: SignalCategory.CONTENT_BEHAVIOR,
+    SignalType.LOW_INFORMATION_PAGE: SignalCategory.CONTENT_BEHAVIOR,
 }

@@ -137,3 +137,52 @@ def test_html_credential_signal_analyzer_skips_same_site_redirect_interstitial_w
     )
 
     assert signals == []
+
+
+def test_html_credential_signal_analyzer_flags_parked_placeholder_pages() -> None:
+    analyzer = HtmlCredentialSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://for-sale-example.test/"),
+        FetchedHtmlDocument(
+            content="""
+            <html>
+              <body>
+                <h1>This domain is for sale</h1>
+                <p>Buy this domain with Sedo.</p>
+              </body>
+            </html>
+            """,
+            source_url="https://for-sale-example.test/",
+            content_type="text/html",
+        ),
+    )
+
+    assert len(signals) == 1
+    assert signals[0].signal_type == SignalType.LOW_INFORMATION_PAGE
+    assert signals[0].title == "Parked or placeholder landing page"
+    assert "Matched placeholder markers: buy this domain, sedo, this domain is for sale." in signals[0].evidence
+
+
+def test_html_credential_signal_analyzer_flags_extremely_low_information_root_pages() -> None:
+    analyzer = HtmlCredentialSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://thin-example.test/"),
+        FetchedHtmlDocument(
+            content="""
+            <html>
+              <body>
+                <h1>Welcome</h1>
+              </body>
+            </html>
+            """,
+            source_url="https://thin-example.test/",
+            content_type="text/html",
+        ),
+    )
+
+    assert len(signals) == 1
+    assert signals[0].signal_type == SignalType.LOW_INFORMATION_PAGE
+    assert signals[0].title == "Low-information landing page"
+    assert "Visible text tokens found: 1." in signals[0].evidence

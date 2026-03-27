@@ -23,3 +23,4 @@ class SignalType(str, Enum):
     SUSPICIOUS_REDIRECT_CHAIN = "suspicious_redirect_chain"
     SUSPICIOUS_INFRASTRUCTURE_PATTERN = "suspicious_infrastructure_pattern"
     PHISHING_KEYWORDS = "phishing_keywords"
+    LOW_INFORMATION_PAGE = "low_information_page"

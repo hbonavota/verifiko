@@ -22,6 +22,18 @@ _LOGIN_TERMS = {
     "verify",
 }
 _ACCOUNT_FIELD_HINTS = {"email", "identifier", "login", "mail", "user", "username"}
+_LOW_INFORMATION_MARKERS = {
+    "apache2 ubuntu default page",
+    "buy this domain",
+    "coming soon",
+    "domain for sale",
+    "future home of something quite cool",
+    "parked free courtesy of",
+    "sedo",
+    "this domain is for sale",
+    "under construction",
+    "welcome to nginx",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +66,8 @@ class HtmlCredentialSignalAnalyzer:
             {hint for form in parsed_page.forms for hint in form.account_hints}
         )
         matched_login_terms = _match_login_terms(parsed_page.visible_text)
+        visible_token_count = _visible_token_count(parsed_page.visible_text)
+        low_information_markers = _match_low_information_markers(parsed_page.visible_text)
         suspicious_host_context = _has_suspicious_host_context(normalized_url)
         suspicious_actions = [
             action
@@ -132,7 +146,72 @@ class HtmlCredentialSignalAnalyzer:
                 )
             )
 
+        low_information_signal = self._low_information_signal(
+            normalized_url=normalized_url,
+            form_count=form_count,
+            password_field_count=password_field_count,
+            matched_login_terms=matched_login_terms,
+            visible_token_count=visible_token_count,
+            low_information_markers=low_information_markers,
+        )
+        if low_information_signal is not None:
+            signals.append(low_information_signal)
+
         return signals
+
+    def _low_information_signal(
+        self,
+        normalized_url: NormalizedUrl,
+        form_count: int,
+        password_field_count: int,
+        matched_login_terms: list[str],
+        visible_token_count: int,
+        low_information_markers: list[str],
+    ) -> AnalysisSignal | None:
+        if form_count > 0 or password_field_count > 0 or matched_login_terms:
+            return None
+
+        path_is_root = normalized_url.decoded_path in {"", "/"}
+        explicit_placeholder = bool(low_information_markers)
+        extremely_low_information = path_is_root and visible_token_count <= 3
+
+        if not explicit_placeholder and not extremely_low_information:
+            return None
+
+        if explicit_placeholder:
+            title = "Parked or placeholder landing page"
+            description = (
+                "The fetched HTML looks like a parked domain, default hosting page, or placeholder landing page."
+            )
+            severity = SignalSeverity.HIGH
+            confidence = 88
+            evidence = (
+                f"Visible text tokens found: {visible_token_count}.",
+                f"Matched placeholder markers: {', '.join(low_information_markers[:3])}.",
+            )
+            tags = ("parked-page", "placeholder-page")
+        else:
+            title = "Low-information landing page"
+            description = (
+                "The fetched HTML contains almost no meaningful visible content, which limits confidence in a clean result."
+            )
+            severity = SignalSeverity.MEDIUM
+            confidence = 72
+            evidence = (
+                f"Visible text tokens found: {visible_token_count}.",
+                "The fetched landing page exposes no forms or meaningful visible copy.",
+            )
+            tags = ("low-information", "thin-content")
+
+        return self._signal(
+            signal_type=SignalType.LOW_INFORMATION_PAGE,
+            severity=severity,
+            confidence=confidence,
+            title=title,
+            description=description,
+            evidence=evidence,
+            tags=tags,
+        )
 
     def _build_evidence(
         self,
@@ -290,6 +369,22 @@ def _match_account_hint(candidate: str) -> str | None:
 def _match_login_terms(text_fragments: Iterable[str]) -> list[str]:
     lowered = " ".join(fragment.lower() for fragment in text_fragments)
     return sorted(term for term in _LOGIN_TERMS if term in lowered)
+
+
+def _match_low_information_markers(text_fragments: Iterable[str]) -> list[str]:
+    lowered = " ".join(fragment.lower() for fragment in text_fragments)
+    return sorted(marker for marker in _LOW_INFORMATION_MARKERS if marker in lowered)
+
+
+def _visible_token_count(text_fragments: Iterable[str]) -> int:
+    return len(
+        {
+            fragment
+            for text in text_fragments
+            for fragment in text.lower().replace("/", " ").split()
+            if fragment
+        }
+    )
 
 
 def _has_suspicious_host_context(normalized_url: NormalizedUrl) -> bool:

@@ -138,5 +138,14 @@ class InfrastructureBackedCredentialLureRule(CompoundRule):
         return None
 
 
+class LowInformationLandingPageRule(CompoundRule):
+    name = "low_information_landing_page"
+
+    def evaluate(self, signal_types: set[SignalType]) -> float | None:
+        if SignalType.LOW_INFORMATION_PAGE in signal_types:
+            return 5
+        return None
+
+
 def detected_types(signals: list[AnalysisSignal]) -> set[SignalType]:
     return {signal.signal_type for signal in signals if signal.detected}

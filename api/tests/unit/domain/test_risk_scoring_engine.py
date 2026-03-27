@@ -187,3 +187,29 @@ def test_shortened_redirected_lure_rule_adds_penalty() -> None:
         entry.rule_name == "shortened_redirected_lure_pattern"
         for entry in result.score_breakdown.compound_rules_applied
     )
+
+
+def test_low_information_landing_page_rule_adds_penalty() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.LOW_INFORMATION_PAGE,
+            category=SignalCategory.CONTENT_BEHAVIOR,
+            severity=SignalSeverity.HIGH,
+            confidence=ConfidenceScore(88),
+            title="Parked or placeholder landing page",
+            description="The page looks parked or non-informative.",
+            source="html-credential-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.LOW_INFORMATION_PAGE],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.score.value == 80
+    assert "low_information_landing_page" in result.summary
+    assert result.score_breakdown is not None
+    assert any(
+        entry.rule_name == "low_information_landing_page"
+        for entry in result.score_breakdown.compound_rules_applied
+    )

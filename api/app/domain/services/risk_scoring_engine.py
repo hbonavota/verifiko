@@ -10,6 +10,7 @@ from app.domain.services.compound_rules import (
     DeceptiveBrandSubdomainRule,
     EmailFraudStagingPatternRule,
     InfrastructureBackedCredentialLureRule,
+    LowInformationLandingPageRule,
     RedirectedDeceptionPatternRule,
     ShortenedCredentialLureRule,
     ShortenedRedirectedLureRule,
@@ -32,6 +33,7 @@ class RiskScoringEngine(ScoringService):
             ShortenedCredentialLureRule(),
             ShortenedRedirectedLureRule(),
             InfrastructureBackedCredentialLureRule(),
+            LowInformationLandingPageRule(),
         ]
 
     def calculate(self, signals: list[AnalysisSignal], calculation_version: str) -> RiskAssessment:
