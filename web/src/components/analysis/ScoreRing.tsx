@@ -1,4 +1,3 @@
-import { toneForRiskLevel } from "../../lib/risk";
 import type { RiskLevel } from "../../types/verification";
 
 interface ScoreRingProps {
@@ -11,10 +10,10 @@ interface ScoreRingProps {
 }
 
 function scoreRingClassName({
-  riskLevel,
+  score,
   size,
   state,
-}: Pick<ScoreRingProps, "riskLevel" | "size" | "state">) {
+}: Pick<ScoreRingProps, "score" | "size" | "state">) {
   const classes = ["score-ring"];
 
   if (size === "hero") {
@@ -26,17 +25,17 @@ function scoreRingClassName({
     return classes.join(" ");
   }
 
-  if (state === "idle" || !riskLevel) {
+  if (state === "idle" || typeof score !== "number" || Number.isNaN(score)) {
     classes.push("score-ring--neutral");
     return classes.join(" ");
   }
 
-  const tone = toneForRiskLevel(riskLevel);
-
-  if (tone === "danger") {
+  if (score <= 40) {
     classes.push("score-ring--danger");
-  } else if (tone === "warning") {
-    classes.push("score-ring--warning");
+  } else if (score <= 60) {
+    classes.push("score-ring--warning-strong");
+  } else if (score <= 80) {
+    classes.push("score-ring--warning-soft");
   } else {
     classes.push("score-ring--success");
   }
@@ -56,11 +55,10 @@ export function ScoreRing({
   const roundedDisplayScore = Math.round(clampedScore);
   const progress = state === "ready" ? `${clampedScore} ${100 - clampedScore}` : "32 68";
   const displayValue = valueLabel ?? (state === "ready" ? String(roundedDisplayScore) : "--");
-  const className = scoreRingClassName({ riskLevel, size, state });
-  const tone = state === "ready" && riskLevel ? toneForRiskLevel(riskLevel) : "neutral";
+  const className = scoreRingClassName({ score: clampedScore, size, state });
 
   return (
-    <div className={className} aria-label={`${label}: ${displayValue}`} data-state={state} data-tone={tone}>
+    <div className={className} aria-label={`${label}: ${displayValue}`} data-state={state}>
       <svg viewBox="0 0 120 120" className="score-ring__svg" aria-hidden="true">
         <circle className="score-ring__track" cx="60" cy="60" r="48" />
         <circle

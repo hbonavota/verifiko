@@ -1352,13 +1352,22 @@
   background: radial-gradient(circle, rgba(25, 195, 125, 0.18), transparent 68%);
 }
 
-.score-ring--warning .score-ring__progress {
-  stroke: var(--color-warning);
+.score-ring--warning-strong .score-ring__progress {
+  stroke: #ff8a3d;
 }
 
-.score-ring--warning.score-ring--hero::after {
+.score-ring--warning-strong.score-ring--hero::after {
   opacity: 1;
-  background: radial-gradient(circle, rgba(255, 176, 32, 0.18), transparent 68%);
+  background: radial-gradient(circle, rgba(255, 138, 61, 0.2), transparent 68%);
+}
+
+.score-ring--warning-soft .score-ring__progress {
+  stroke: #f4c442;
+}
+
+.score-ring--warning-soft.score-ring--hero::after {
+  opacity: 1;
+  background: radial-gradient(circle, rgba(244, 196, 66, 0.2), transparent 68%);
 }
 
 .score-ring--danger .score-ring__progress {
