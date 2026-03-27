@@ -4,7 +4,15 @@ export type VerificationStatus = "PENDING" | "ANALYZING" | "COMPLETED" | "FAILED
 
 export type SignalSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
-export type SignalStatus = "Observed" | "Correlated" | "Escalated" | "Pending review";
+export type SignalStatus =
+  | "Observed"
+  | "Correlated"
+  | "Escalated"
+  | "Pending review"
+  | "Observada"
+  | "Correlacionada"
+  | "Escalada"
+  | "Pendiente de revisión";
 
 export interface VerificationSignal {
   id: string;

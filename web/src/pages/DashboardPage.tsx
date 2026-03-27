@@ -177,7 +177,10 @@ export function DashboardPage() {
                         {signal.category}
                       </span>
                       <div className="signal-table__cell" data-label={copy.dashboard.severity}>
-                        <Badge label={signal.severity} tone={toneForRiskLevel(signal.severity)} />
+                        <Badge
+                          label={formatRiskLevel(signal.severity, language)}
+                          tone={toneForRiskLevel(signal.severity)}
+                        />
                       </div>
                       <span className="signal-table__value" data-label={copy.dashboard.confidence}>
                         {signal.confidence}%

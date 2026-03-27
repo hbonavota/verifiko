@@ -178,7 +178,10 @@ export function HomePage() {
                     <article key={signal.id} className="preview-signal-list__item">
                       <div className="preview-signal-list__topline">
                         <p className="preview-signal-list__title">{signal.title}</p>
-                        <Badge label={signal.severity} tone={toneForRiskLevel(signal.severity)} />
+                        <Badge
+                          label={formatRiskLevel(signal.severity, language)}
+                          tone={toneForRiskLevel(signal.severity)}
+                        />
                       </div>
                       <p className="preview-signal-list__detail">{signal.reason}</p>
                     </article>

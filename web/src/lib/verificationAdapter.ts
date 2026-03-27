@@ -10,6 +10,7 @@ import type {
   VerificationSummary,
 } from "../types/verification";
 import type { Language } from "./i18n";
+import { formatRiskLevel, formatVerdict } from "./formatVerdict";
 
 function titleCase(value: string): string {
   return value
@@ -20,12 +21,47 @@ function titleCase(value: string): string {
 
 function signalStatusForSeverity(severity: ApiAnalysisSignal["severity"], language: Language): SignalStatus {
   if (severity === "CRITICAL" || severity === "HIGH") {
-    return language === "es" ? "Escalated" : "Escalated";
+    return language === "es" ? "Escalada" : "Escalated";
   }
   if (severity === "MEDIUM") {
-    return language === "es" ? "Correlated" : "Correlated";
+    return language === "es" ? "Correlacionada" : "Correlated";
   }
-  return language === "es" ? "Observed" : "Observed";
+  return language === "es" ? "Observada" : "Observed";
+}
+
+function formatSignalCategory(category: string, language: Language): string {
+  const normalized = category.trim().toUpperCase();
+  const labels = {
+    DOMAIN_REPUTATION: language === "es" ? "Reputación del dominio" : "Domain reputation",
+    DOMAIN_STRUCTURE: language === "es" ? "Estructura del dominio" : "Domain structure",
+    NETWORK_TRANSPORT: language === "es" ? "Transporte de red" : "Network transport",
+    NAVIGATION_BEHAVIOR: language === "es" ? "Comportamiento de navegación" : "Navigation behavior",
+    CONTENT_BEHAVIOR: language === "es" ? "Comportamiento del contenido" : "Content behavior",
+  } as const;
+
+  return labels[normalized as keyof typeof labels] ?? titleCase(category);
+}
+
+function formatSignalSource(source: string, language: Language): string {
+  const normalized = source.trim().toLowerCase();
+  const labels = {
+    "url-rule-analyzer": language === "es" ? "Análisis de URL" : "URL analysis",
+    "redirect-chain-analyzer": language === "es" ? "Análisis de redirecciones" : "Redirect analysis",
+    "resolved-destination-url-analyzer":
+      language === "es" ? "Análisis de URL del destino final" : "Final-destination URL analysis",
+    "resolved-destination-html-analyzer":
+      language === "es" ? "Análisis HTML del destino final" : "Final-destination HTML analysis",
+    "html-credential-analyzer": language === "es" ? "Análisis HTML" : "HTML analysis",
+    "transport-security-analyzer":
+      language === "es" ? "Análisis de transporte seguro" : "Transport security analysis",
+    "domain-recency-analyzer":
+      language === "es" ? "Análisis de antigüedad del dominio" : "Domain age analysis",
+    "infrastructure-intelligence-analyzer":
+      language === "es" ? "Análisis de infraestructura" : "Infrastructure analysis",
+    "reputation-analyzer": language === "es" ? "Análisis de reputación" : "Reputation analysis",
+  } as const;
+
+  return labels[normalized as keyof typeof labels] ?? titleCase(source.replace(/-/g, " "));
 }
 
 function signalReason(signal: ApiAnalysisSignal): string {
@@ -42,10 +78,10 @@ function mapSignal(signal: ApiAnalysisSignal, language: Language): VerificationS
     title: signal.title,
     description: signal.description,
     reason: signalReason(signal),
-    category: titleCase(signal.category),
+    category: formatSignalCategory(signal.category, language),
     severity: signal.severity,
     confidence: signal.confidence,
-    source: signal.source,
+    source: formatSignalSource(signal.source, language),
     scoreContribution: Math.round(signal.score_contribution * 10) / 10,
     status: signalStatusForSeverity(signal.severity, language),
     evidence: signal.evidence,
@@ -216,8 +252,8 @@ function buildDecisionTrace(
       detail: verification.risk_assessment.summary,
       outcome:
         language === "es"
-          ? `Puntuación ${verification.risk_assessment.score} con veredicto ${verification.risk_assessment.verdict}`
-          : `Score ${verification.risk_assessment.score} with verdict ${verification.risk_assessment.verdict}`,
+          ? `Puntuación ${verification.risk_assessment.score} con veredicto ${formatVerdict(verification.risk_assessment.verdict, language)}`
+          : `Score ${verification.risk_assessment.score} with verdict ${formatVerdict(verification.risk_assessment.verdict, language)}`,
       timestamp: verification.risk_assessment.calculated_at,
     });
   }
@@ -258,10 +294,10 @@ export function adaptApiVerification(verification: ApiVerification, language: La
     evidenceSummary,
     executiveSummary: {
       posture:
-        verification.signals.length > 0
-          ? language === "es"
-            ? `Riesgo ${verification.risk_assessment?.risk_level ?? "LOW"} basado en las señales retenidas en esta verificación.`
-            : `${verification.risk_assessment?.risk_level ?? "LOW"} risk based on the signals retained in this verification.`
+      verification.signals.length > 0
+        ? language === "es"
+            ? `Riesgo ${formatRiskLevel(verification.risk_assessment?.risk_level ?? "LOW", language)} basado en las señales retenidas en esta verificación.`
+            : `${formatRiskLevel(verification.risk_assessment?.risk_level ?? "LOW", language)} risk based on the signals retained in this verification.`
           : language === "es"
             ? "No se retuvo una señal de alerta fuerte en esta verificación."
             : "No strong warning signal was retained in this verification.",

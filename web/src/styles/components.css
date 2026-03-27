@@ -892,9 +892,8 @@
   font-weight: 600;
   line-height: 1.45;
   color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .verification-detail__summary-copy,
@@ -969,6 +968,8 @@
   margin: 0;
   font-weight: 600;
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .verification-assessment-card {
@@ -986,6 +987,16 @@
   gap: var(--space-3);
   align-items: flex-start;
   flex-wrap: wrap;
+}
+
+.signal-review-card__header > div:first-child,
+.signal-review-card__reasoning > div,
+.decision-trace__content,
+.evidence-block,
+.verification-context-card__notes,
+.verification-detail-target,
+.verification-detail-meta-item {
+  min-width: 0;
 }
 
 .verification-assessment-card__hero {
@@ -1560,6 +1571,8 @@
 
 .signal-review-card__title {
   font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .signal-review-card__score {
@@ -1582,6 +1595,9 @@
 .signal-review-card__meta-item {
   color: var(--color-text-muted);
   font-size: 0.9rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .signal-review-card__reasoning {
@@ -1594,6 +1610,21 @@
   padding-left: 1rem;
   color: var(--color-text-muted);
   line-height: 1.6;
+}
+
+.signal-review-card__description,
+.signal-review-card__reason,
+.summary-reason-card__copy,
+.technical-analysis-section__copy,
+.inconclusive-card__detail,
+.inconclusive-card__next-copy,
+.decision-trace__detail,
+.decision-trace__outcome,
+.notes-panel__text,
+.evidence-block__list li,
+.signal-review-card__evidence li {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .verification-detail-analysis-grid {

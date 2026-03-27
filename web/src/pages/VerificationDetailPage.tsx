@@ -299,7 +299,10 @@ export function VerificationDetailPage() {
                   <article key={signal.id} className="summary-reason-card">
                     <div className="summary-reason-card__topline">
                       <span className="summary-reason-card__index">{index + 1}</span>
-                      <Badge label={signal.severity} tone={toneForRiskLevel(signal.severity)} />
+                      <Badge
+                        label={formatRiskLevel(signal.severity, language)}
+                        tone={toneForRiskLevel(signal.severity)}
+                      />
                     </div>
                     <p className="summary-reason-card__title">{signal.title}</p>
                     <p className="summary-reason-card__copy">{signal.reason}</p>
@@ -369,7 +372,10 @@ export function VerificationDetailPage() {
                     </div>
 
                     <div className="signal-review-card__meta">
-                      <Badge label={signal.severity} tone={toneForRiskLevel(signal.severity)} />
+                      <Badge
+                        label={formatRiskLevel(signal.severity, language)}
+                        tone={toneForRiskLevel(signal.severity)}
+                      />
                       <span className="signal-review-card__meta-item">{signal.category}</span>
                       <span className="signal-review-card__meta-item">{`${signal.confidence}${copy.detail.confidenceSuffix}`}</span>
                       <span className="signal-review-card__meta-item">{signal.source}</span>
