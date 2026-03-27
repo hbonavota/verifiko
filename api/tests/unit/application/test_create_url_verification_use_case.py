@@ -636,6 +636,75 @@ def test_create_url_verification_use_case_keeps_clean_shortener_redirects_safe()
     assert "recognized_reputable_domain_bonus" not in dto.risk_assessment.summary
 
 
+def test_create_url_verification_use_case_flags_shortener_redirects_to_questionable_tlds() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://portal-example.top/landing",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/abcd",
+                        target_url="https://portal-example.top/landing",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/abcd"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+    assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain"
+        and "Final destination uses a questionable TLD: .top." in signal.evidence
+        for signal in dto.signals
+    )
+
+
+def test_create_url_verification_use_case_strengthens_redirects_to_thin_questionable_destinations() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://portal-example.top/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/abcd",
+                        target_url="https://portal-example.top/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        ),
+        html_fetcher=FakeHtmlFetcher(
+            FetchedHtmlDocument(
+                content="""
+                <html>
+                  <body>
+                    <h1>Welcome</h1>
+                  </body>
+                </html>
+                """,
+                source_url="https://portal-example.top/",
+                content_type="text/html",
+            )
+        ),
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/abcd"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "MEDIUM"
+    assert dto.risk_assessment.score < 55
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(signal.signal_type == "low_information_page" for signal in dto.signals)
+
+
 @pytest.mark.parametrize("url", ("https://google.com", "https://www.verifiko.es/"))
 def test_create_url_verification_use_case_keeps_benign_targets_safe_under_minor_warnings(
     url: str,

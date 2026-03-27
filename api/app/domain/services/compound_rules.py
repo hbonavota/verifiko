@@ -147,6 +147,18 @@ class LowInformationLandingPageRule(CompoundRule):
         return None
 
 
+class RedirectedLowInformationDestinationRule(CompoundRule):
+    name = "redirected_low_information_destination"
+
+    def evaluate(self, signal_types: set[SignalType]) -> float | None:
+        if {
+            SignalType.SUSPICIOUS_REDIRECT_CHAIN,
+            SignalType.LOW_INFORMATION_PAGE,
+        }.issubset(signal_types):
+            return 6
+        return None
+
+
 class EvidenceLightCleanResultRule(CompoundRule):
     name = "evidence_light_clean_result"
 

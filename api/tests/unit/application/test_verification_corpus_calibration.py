@@ -331,6 +331,73 @@ def test_manual_corpus_calibration_keeps_shortener_to_low_information_targets_in
     assert all(signal.signal_type != "suspicious_redirect_chain" for signal in result.signals)
 
 
+def test_manual_corpus_calibration_marks_shortener_to_questionable_tld_as_suspicious() -> None:
+    class ShortenerRedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            return RedirectResolution(
+                final_url="https://portal-example.top/landing",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/abcd",
+                        target_url="https://portal-example.top/landing",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+
+    use_case = _build_use_case(redirect_resolver=ShortenerRedirectResolver())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/abcd"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level in {
+        RiskLevel.LOW.value,
+        RiskLevel.MEDIUM.value,
+        RiskLevel.HIGH.value,
+        RiskLevel.CRITICAL.value,
+    }
+    assert any(signal.signal_type == "shortened_url" for signal in result.signals)
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+
+
+def test_manual_corpus_calibration_strengthens_redirects_to_thin_questionable_destinations() -> None:
+    class ShortenerRedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            return RedirectResolution(
+                final_url="https://portal-example.top/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/abcd",
+                        target_url="https://portal-example.top/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+
+    use_case = _build_use_case(
+        redirect_resolver=ShortenerRedirectResolver(),
+        html_fetcher=StaticHtmlFetcher(
+            """
+            <html>
+              <body>
+                <h1>Welcome</h1>
+              </body>
+            </html>
+            """
+        ),
+    )
+
+    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/abcd"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level == RiskLevel.MEDIUM.value
+    assert result.risk_assessment.score < 55
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+    assert any(signal.signal_type == "low_information_page" for signal in result.signals)
+
+
 def test_manual_corpus_calibration_distinguishes_trusted_clean_from_unknown_clean() -> None:
     trusted_result = _build_use_case().execute(
         CreateVerificationCommand(url="https://openai.com/research")

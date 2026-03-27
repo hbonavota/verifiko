@@ -13,6 +13,7 @@ from app.domain.services.compound_rules import (
     EmailFraudStagingPatternRule,
     InfrastructureBackedCredentialLureRule,
     LowInformationLandingPageRule,
+    RedirectedLowInformationDestinationRule,
     ReputableDomainSupportRule,
     RedirectedDeceptionPatternRule,
     ShortenedCredentialLureRule,
@@ -37,6 +38,7 @@ class RiskScoringEngine(ScoringService):
             ShortenedRedirectedLureRule(),
             InfrastructureBackedCredentialLureRule(),
             LowInformationLandingPageRule(),
+            RedirectedLowInformationDestinationRule(),
             EvidenceLightCleanResultRule(),
             ReputableDomainSupportRule(),
         ]

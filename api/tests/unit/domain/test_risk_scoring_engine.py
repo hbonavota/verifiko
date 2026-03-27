@@ -220,6 +220,44 @@ def test_low_information_landing_page_rule_adds_penalty() -> None:
     )
 
 
+def test_redirected_low_information_destination_rule_adds_penalty() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.SUSPICIOUS_REDIRECT_CHAIN,
+            category=SignalCategory.NAVIGATION_BEHAVIOR,
+            severity=SignalSeverity.HIGH,
+            confidence=ConfidenceScore(85),
+            title="Observed redirect chain",
+            description="Observed redirect chain changed domains.",
+            source="redirect-chain-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
+        ),
+        AnalysisSignal.create(
+            signal_type=SignalType.LOW_INFORMATION_PAGE,
+            category=SignalCategory.CONTENT_BEHAVIOR,
+            severity=SignalSeverity.MEDIUM,
+            confidence=ConfidenceScore(72),
+            title="Low-information landing page",
+            description="The page contains almost no meaningful visible content.",
+            source="resolved-destination-html-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.LOW_INFORMATION_PAGE],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.score.value == 64.73
+    assert result.risk_level.value == "LOW"
+    assert "Compound pattern adjustments applied:" in result.summary
+    assert "redirected_low_information_destination" not in result.summary
+    assert result.score_breakdown is not None
+    assert any(
+        entry.rule_name == "redirected_low_information_destination"
+        for entry in result.score_breakdown.compound_rules_applied
+    )
+
+
 def test_recognized_reputable_domain_bonus_improves_clean_score() -> None:
     engine = RiskScoringEngine()
     signals = [
