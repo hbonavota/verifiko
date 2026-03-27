@@ -53,8 +53,9 @@ export function ScoreRing({
   riskLevel,
 }: ScoreRingProps) {
   const clampedScore = Math.max(0, Math.min(100, score));
+  const roundedDisplayScore = Math.round(clampedScore);
   const progress = state === "ready" ? `${clampedScore} ${100 - clampedScore}` : "32 68";
-  const displayValue = valueLabel ?? (state === "ready" ? String(clampedScore) : "--");
+  const displayValue = valueLabel ?? (state === "ready" ? String(roundedDisplayScore) : "--");
   const className = scoreRingClassName({ riskLevel, size, state });
   const tone = state === "ready" && riskLevel ? toneForRiskLevel(riskLevel) : "neutral";
 
