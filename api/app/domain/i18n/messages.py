@@ -282,8 +282,8 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "es": "{summary} Factores principales: {drivers}.",
     },
     "summary.rules": {
-        "en": "{summary} Rules: {rules}.",
-        "es": "{summary} Reglas: {rules}.",
+        "en": "{summary} Compound pattern adjustments applied: {rule_count}.",
+        "es": "{summary} Ajustes por patrones compuestos aplicados: {rule_count}.",
     },
     "summary.supporting_trust_context": {
         "en": "{summary} Supporting trust context: {trust_context}.",

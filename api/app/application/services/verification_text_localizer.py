@@ -164,20 +164,6 @@ _CATEGORY_ES = {
     "content_behavior": "comportamiento del contenido",
 }
 
-_RULE_ES = {
-    "brand_new_lookalike_domain": "dominio reciente con apariencia de marca",
-    "credential_lure_pattern": "patrón de cebo de credenciales",
-    "deceptive_brand_subdomain_pattern": "patrón engañoso de marca en subdominio",
-    "email_fraud_staging_pattern": "patrón de preparación de fraude por correo",
-    "redirected_deception_pattern": "patrón de engaño con redirección",
-    "shortened_credential_lure_pattern": "patrón de cebo con acortador",
-    "shortened_redirected_lure_pattern": "patrón de cebo redirigido con acortador",
-    "infrastructure_backed_credential_lure": "cebo de credenciales respaldado por infraestructura",
-    "low_information_landing_page": "página de aterrizaje con poca información",
-    "evidence_light_clean_result": "resultado limpio con poca evidencia",
-    "recognized_reputable_domain_bonus": "bonificación por dominio reputado reconocido",
-}
-
 _VERDICT_LOWER_ES = {
     "TRUSTED": "confiable",
     "CAUTION": "con cautela",
@@ -510,13 +496,12 @@ def _build_spanish_summary(
             )
 
         if score_breakdown and score_breakdown.compound_rules_applied:
-            localized_rules = tuple(
-                _localize_rule_name(item.rule_name)
-                for item in score_breakdown.compound_rules_applied
-            )
             summary = resolve_message(
                 "summary.rules",
-                {"summary": summary, "rules": ", ".join(localized_rules)},
+                {
+                    "summary": summary,
+                    "rule_count": len(score_breakdown.compound_rules_applied),
+                },
                 language="es",
             )
 
@@ -678,10 +663,6 @@ def _localize_evidence(value: str) -> str:
 
 def _localize_category(value: str) -> str:
     return _CATEGORY_ES.get(value, value)
-
-
-def _localize_rule_name(value: str) -> str:
-    return _RULE_ES.get(value, value)
 
 
 def _verdict_lower(value: str) -> str:

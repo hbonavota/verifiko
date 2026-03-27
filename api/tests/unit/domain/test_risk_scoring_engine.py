@@ -62,7 +62,8 @@ def test_compound_rule_adds_penalty() -> None:
     result = engine.calculate(signals, calculation_version="v1")
 
     assert result.score.value < 100
-    assert "credential_lure_pattern" in result.summary
+    assert "Compound pattern adjustments applied:" in result.summary
+    assert "credential_lure_pattern" not in result.summary
     assert result.score_breakdown is not None
     assert any(
         entry.rule_name == "credential_lure_pattern"
@@ -99,7 +100,8 @@ def test_infrastructure_compound_rule_adds_penalty() -> None:
     result = engine.calculate(signals, calculation_version="v1")
 
     assert result.score.value < 100
-    assert "infrastructure_backed_credential_lure" in result.summary
+    assert "Compound pattern adjustments applied:" in result.summary
+    assert "infrastructure_backed_credential_lure" not in result.summary
     assert result.score_breakdown is not None
     assert any(
         entry.rule_name == "infrastructure_backed_credential_lure"
@@ -135,7 +137,8 @@ def test_shortened_credential_lure_rule_adds_penalty() -> None:
     result = engine.calculate(signals, calculation_version="v1")
 
     assert result.score.value < 100
-    assert "shortened_credential_lure_pattern" in result.summary
+    assert "Compound pattern adjustments applied:" in result.summary
+    assert "shortened_credential_lure_pattern" not in result.summary
     assert result.score_breakdown is not None
     assert any(
         entry.rule_name == "shortened_credential_lure_pattern"
@@ -181,7 +184,8 @@ def test_shortened_redirected_lure_rule_adds_penalty() -> None:
     result = engine.calculate(signals, calculation_version="v1")
 
     assert result.score.value < 100
-    assert "shortened_redirected_lure_pattern" in result.summary
+    assert "Compound pattern adjustments applied:" in result.summary
+    assert "shortened_redirected_lure_pattern" not in result.summary
     assert result.score_breakdown is not None
     assert any(
         entry.rule_name == "shortened_redirected_lure_pattern"
@@ -207,7 +211,8 @@ def test_low_information_landing_page_rule_adds_penalty() -> None:
     result = engine.calculate(signals, calculation_version="v1")
 
     assert result.score.value == 80
-    assert "low_information_landing_page" in result.summary
+    assert "Compound pattern adjustments applied:" in result.summary
+    assert "low_information_landing_page" not in result.summary
     assert result.score_breakdown is not None
     assert any(
         entry.rule_name == "low_information_landing_page"
@@ -236,7 +241,8 @@ def test_recognized_reputable_domain_bonus_improves_clean_score() -> None:
     assert result.top_signals == ("Recognized reputable domain",)
     assert "Detected 0 risk signal(s)" in result.summary
     assert "Supporting trust context" in result.summary
-    assert "recognized_reputable_domain_bonus" in result.summary
+    assert "Compound pattern adjustments applied:" in result.summary
+    assert "recognized_reputable_domain_bonus" not in result.summary
 
 
 def test_evidence_light_clean_result_penalizes_zero_signal_unknowns() -> None:
@@ -245,7 +251,8 @@ def test_evidence_light_clean_result_penalizes_zero_signal_unknowns() -> None:
     result = engine.calculate([], calculation_version="v1")
 
     assert result.score.value == 98
-    assert "evidence_light_clean_result" in result.summary
+    assert "Compound pattern adjustments applied:" in result.summary
+    assert "evidence_light_clean_result" not in result.summary
 
 
 def test_reputable_domain_bonus_does_not_override_suspicious_signals() -> None:

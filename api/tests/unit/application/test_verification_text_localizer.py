@@ -2,6 +2,7 @@ from app.application.dto.verification_dto import (
     AnalysisSignalDTO,
     AnalysisStageTraceDTO,
     AnalysisTraceDTO,
+    CompoundRuleDeltaDTO,
     ExplanationFactorDTO,
     RiskAssessmentDTO,
     RiskExplanationDTO,
@@ -166,6 +167,61 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
     assert localized.trace.signals_by_source["domain-recency-analyzer"][0].title == (
         "Registro de dominio muy reciente"
     )
+
+
+def test_verification_text_localizer_summarizes_compound_rules_without_internal_ids() -> None:
+    assessment = RiskAssessmentDTO(
+        score=98,
+        risk_level="SAFE",
+        verdict="TRUSTED",
+        summary=(
+            "Detected 0 risk signal(s) with safe risk output. Category penalties totaled 0.00 and "
+            "compound penalties totaled 2.00. Compound pattern adjustments applied: 1."
+        ),
+        top_signals=(),
+        category_breakdown={},
+        terminal_override=False,
+        terminal_reason=None,
+        calculation_version="v1",
+        analysis_warnings=(),
+        analysis_trace=(),
+        explanation=RiskExplanationDTO(
+            headline="The engine produced a trusted outcome without high-confidence driver signals.",
+            decision_basis="Score 98 mapped to safe risk with no category penalties recorded.",
+            primary_factors=(),
+            analysis_trace=(),
+            coverage_warnings=(),
+        ),
+        calculated_at="2026-03-27T10:00:00+00:00",
+    )
+    dto = VerificationDTO(
+        id="verification-1",
+        target_type="URL",
+        original_input="https://unknown-clean.example/",
+        normalized_input="https://unknown-clean.example/",
+        status="COMPLETED",
+        signals=(),
+        risk_assessment=assessment,
+        trace=None,
+        score_breakdown=ScoreBreakdownDTO(
+            base_score=100.0,
+            signal_contributions=(),
+            compound_rules_applied=(
+                CompoundRuleDeltaDTO(rule_name="evidence_light_clean_result", delta=2.0),
+            ),
+            final_score=98.0,
+        ),
+        created_at="2026-03-27T10:00:00+00:00",
+        updated_at="2026-03-27T10:00:00+00:00",
+        completed_at="2026-03-27T10:00:00+00:00",
+        calculation_version="v1",
+    )
+
+    localized = localize_verification_dto(dto, locale="es")
+
+    assert localized.risk_assessment is not None
+    assert "Ajustes por patrones compuestos aplicados: 1." in localized.risk_assessment.summary
+    assert "evidence_light_clean_result" not in localized.risk_assessment.summary
 
 
 def test_verification_text_localizer_translates_nested_tls_failure_reason_params() -> None:

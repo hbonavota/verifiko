@@ -109,7 +109,7 @@ class RiskScoringEngine(ScoringService):
         if triggered_rules:
             summary = resolve_message(
                 "summary.rules",
-                {"summary": summary, "rules": ", ".join(triggered_rules)},
+                {"summary": summary, "rule_count": len(triggered_rules)},
             )
         if informational_signals:
             summary = resolve_message(

@@ -347,8 +347,10 @@ def test_manual_corpus_calibration_distinguishes_trusted_clean_from_unknown_clea
         signal.signal_type for signal in trusted_result.signals
     } == {"recognized_reputable_domain"}
     assert "Supporting trust context" in trusted_result.risk_assessment.summary
+    assert "recognized_reputable_domain_bonus" not in trusted_result.risk_assessment.summary
 
     assert unknown_result.risk_assessment is not None
     assert unknown_result.risk_assessment.risk_level == RiskLevel.SAFE.value
     assert unknown_result.signals == ()
-    assert "evidence_light_clean_result" in unknown_result.risk_assessment.summary
+    assert "Compound pattern adjustments applied:" in unknown_result.risk_assessment.summary
+    assert "evidence_light_clean_result" not in unknown_result.risk_assessment.summary

@@ -603,7 +603,8 @@ def test_create_url_verification_use_case_strengthens_branded_shortener_lures() 
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "LOW"
-    assert "shortened_credential_lure_pattern" in dto.risk_assessment.summary
+    assert "Compound pattern adjustments applied:" in dto.risk_assessment.summary
+    assert "shortened_credential_lure_pattern" not in dto.risk_assessment.summary
 
 
 def test_create_url_verification_use_case_keeps_clean_shortener_redirects_safe() -> None:
@@ -631,7 +632,8 @@ def test_create_url_verification_use_case_keeps_clean_shortener_redirects_safe()
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
     assert any(signal.signal_type == "recognized_reputable_domain" for signal in dto.signals)
     assert all(signal.signal_type != "suspicious_redirect_chain" for signal in dto.signals)
-    assert "recognized_reputable_domain_bonus" in dto.risk_assessment.summary
+    assert "Compound pattern adjustments applied:" in dto.risk_assessment.summary
+    assert "recognized_reputable_domain_bonus" not in dto.risk_assessment.summary
 
 
 @pytest.mark.parametrize("url", ("https://google.com", "https://www.verifiko.es/"))
@@ -701,7 +703,8 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_lures
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
     assert dto.risk_assessment.score < 61
-    assert "shortened_redirected_lure_pattern" in dto.risk_assessment.summary
+    assert "Compound pattern adjustments applied:" in dto.risk_assessment.summary
+    assert "shortened_redirected_lure_pattern" not in dto.risk_assessment.summary
     assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
     assert any(
         signal.signal_type == "brand_impersonation"
