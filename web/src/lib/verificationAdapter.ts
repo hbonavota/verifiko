@@ -45,13 +45,21 @@ function formatSignalCategory(category: string, language: Language): string {
 function formatSignalSource(source: string, language: Language): string {
   const normalized = source.trim().toLowerCase();
   const labels = {
+    "content-analyzer": language === "es" ? "Análisis de contenido" : "Content analysis",
+    "network-check": language === "es" ? "Comprobación de red" : "Network check",
+    "nlp-analyzer": language === "es" ? "Análisis lingüístico" : "Language analysis",
+    "redirect-resolver": language === "es" ? "Resolución de redirecciones" : "Redirect resolution",
     "url-rule-analyzer": language === "es" ? "Análisis de URL" : "URL analysis",
+    "url-normalizer": language === "es" ? "Normalización de URL" : "URL normalization",
     "redirect-chain-analyzer": language === "es" ? "Análisis de redirecciones" : "Redirect analysis",
     "resolved-destination-url-analyzer":
       language === "es" ? "Análisis de URL del destino final" : "Final-destination URL analysis",
     "resolved-destination-html-analyzer":
       language === "es" ? "Análisis HTML del destino final" : "Final-destination HTML analysis",
+    "resolved-destination-analysis":
+      language === "es" ? "Análisis del destino final" : "Final-destination analysis",
     "html-credential-analyzer": language === "es" ? "Análisis HTML" : "HTML analysis",
+    "threat-feed": language === "es" ? "Fuente de amenazas" : "Threat feed",
     "transport-security-analyzer":
       language === "es" ? "Análisis de transporte seguro" : "Transport security analysis",
     "domain-recency-analyzer":
@@ -59,6 +67,7 @@ function formatSignalSource(source: string, language: Language): string {
     "infrastructure-intelligence-analyzer":
       language === "es" ? "Análisis de infraestructura" : "Infrastructure analysis",
     "reputation-analyzer": language === "es" ? "Análisis de reputación" : "Reputation analysis",
+    "trusted-signal-input": language === "es" ? "Señal de confianza aportada" : "Trusted signal input",
   } as const;
 
   return labels[normalized as keyof typeof labels] ?? titleCase(source.replace(/-/g, " "));

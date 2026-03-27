@@ -14,18 +14,25 @@ const API_BASE_URL =
       : "";
 
 function getRequiredApiBaseUrl(): string {
+  const language = getStoredLanguage();
+
   if (!API_BASE_URL) {
-    throw new Error("VITE_API_BASE_URL is not configured.");
+    throw new Error(
+      language === "es"
+        ? "VITE_API_BASE_URL no está configurado."
+        : "VITE_API_BASE_URL is not configured.",
+    );
   }
 
   return API_BASE_URL;
 }
 
 async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const language = getStoredLanguage();
   const headers = {
     "Content-Type": "application/json",
-    "Accept-Language": getStoredLanguage(),
     ...init?.headers,
+    "Accept-Language": language,
   };
 
   const response = await fetch(`${getRequiredApiBaseUrl()}${path}`, {
@@ -34,7 +41,10 @@ async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    let detail = `Request failed with status ${response.status}.`;
+    let detail =
+      language === "es"
+        ? `La solicitud falló con el estado ${response.status}.`
+        : `Request failed with status ${response.status}.`;
 
     try {
       const payload = (await response.json()) as { detail?: string };
