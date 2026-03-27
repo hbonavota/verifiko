@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
 from app.application.commands.create_verification_command import CreateVerificationCommand
 from app.application.queries.get_verification_query import GetVerificationQuery
@@ -11,6 +11,7 @@ from app.entrypoints.api.dependencies.container import (
     get_get_verification_result_use_case,
     get_list_verifications_use_case,
 )
+from app.entrypoints.api.locale import select_response_locale
 from app.entrypoints.api.presenters.verification_presenter import VerificationPresenter
 from app.entrypoints.api.schemas.verification_schema import (
     CreateVerificationRequest,
@@ -24,6 +25,7 @@ router = APIRouter(prefix="/verifications", tags=["verifications"])
 @router.post("", response_model=VerificationResponse, status_code=status.HTTP_201_CREATED)
 def create_verification(
     payload: CreateVerificationRequest,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     use_case: CreateURLVerificationUseCase = Depends(get_create_url_verification_use_case),
 ) -> VerificationResponse:
     if payload.signals:
@@ -37,7 +39,10 @@ def create_verification(
             url=payload.url,
         )
     )
-    return VerificationPresenter.to_response(dto)
+    return VerificationPresenter.to_response(
+        dto,
+        locale=select_response_locale(accept_language),
+    )
 
 
 @router.get("", response_model=list[VerificationResponse])
@@ -45,16 +50,22 @@ def list_verifications(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     status: VerificationStatus | None = Query(default=None),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     use_case: ListVerificationsUseCase = Depends(get_list_verifications_use_case),
 ) -> list[VerificationResponse]:
     dtos = use_case.execute(ListVerificationsQuery(limit=limit, offset=offset, status=status))
-    return [VerificationPresenter.to_response(dto) for dto in dtos]
+    locale = select_response_locale(accept_language)
+    return [VerificationPresenter.to_response(dto, locale=locale) for dto in dtos]
 
 
 @router.get("/{verification_id}", response_model=VerificationResponse)
 def get_verification(
     verification_id: str,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     use_case: GetVerificationResultUseCase = Depends(get_get_verification_result_use_case),
 ) -> VerificationResponse:
     dto = use_case.execute(GetVerificationQuery(verification_id=verification_id))
-    return VerificationPresenter.to_response(dto)
+    return VerificationPresenter.to_response(
+        dto,
+        locale=select_response_locale(accept_language),
+    )

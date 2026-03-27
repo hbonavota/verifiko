@@ -4,6 +4,7 @@ from app.application.ports.html_fetcher import HtmlFetchError, HtmlFetcherPort
 from app.application.ports.redirect_resolver import RedirectResolution
 from app.application.services.analysis_result import SignalAnalysisResult
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.message_resolver import evidence_ref, resolve_message
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.value_objects.normalized_url import NormalizedUrl
@@ -34,7 +35,7 @@ class ResolvedDestinationSignalAnalyzer:
         try:
             fetched_document = self.html_fetcher.fetch(final_url.normalized)
         except HtmlFetchError as exc:
-            warnings.append(str(exc) or "Resolved destination HTML inspection could not be completed.")
+            warnings.append(str(exc) or resolve_message("warning.resolved_destination_html_unavailable"))
         else:
             if fetched_document is not None:
                 signals.extend(self._clone_html_signals(final_url, fetched_document))
@@ -56,7 +57,7 @@ class ResolvedDestinationSignalAnalyzer:
             self._copy_signal(
                 signal,
                 source=self.url_source,
-                evidence_prefix=f"Resolved final URL: {final_url.normalized}.",
+                final_url=final_url.normalized,
                 tag_prefix="resolved-destination",
             )
             for signal in self.url_signal_analyzer.analyze(final_url)
@@ -71,7 +72,7 @@ class ResolvedDestinationSignalAnalyzer:
             self._copy_signal(
                 signal,
                 source=self.html_source,
-                evidence_prefix=f"Resolved final URL: {final_url.normalized}.",
+                final_url=final_url.normalized,
                 tag_prefix="resolved-destination",
             )
             for signal in self.html_credential_signal_analyzer.analyze(final_url, fetched_document)
@@ -81,11 +82,18 @@ class ResolvedDestinationSignalAnalyzer:
         self,
         signal: AnalysisSignal,
         source: str,
-        evidence_prefix: str,
+        final_url: str,
         tag_prefix: str,
     ) -> AnalysisSignal:
+        evidence_prefix = f"Resolved final URL: {final_url}."
         evidence = (evidence_prefix, *signal.evidence)
         tags = (tag_prefix, *signal.tags)
+        message_params = dict(signal.message_params or {})
+        existing_evidence = list(message_params.get("evidence") or [])
+        message_params["evidence"] = [
+            evidence_ref("evidence.resolved_final_url", final_url=final_url),
+            *existing_evidence,
+        ]
         return AnalysisSignal.create(
             signal_type=signal.signal_type,
             category=signal.category,
@@ -97,4 +105,6 @@ class ResolvedDestinationSignalAnalyzer:
             base_weight=signal.base_weight,
             evidence=evidence,
             tags=tags,
+            message_key=signal.message_key,
+            message_params=message_params,
         )

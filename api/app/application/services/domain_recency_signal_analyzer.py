@@ -7,6 +7,7 @@ from app.application.ports.domain_age_lookup import (
     DomainRegistrationLookupError,
 )
 from app.application.services.analysis_result import SignalAnalysisResult
+from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -35,7 +36,7 @@ class DomainRecencySignalAnalyzer:
             registration = self.domain_age_lookup.lookup(normalized_url.registered_domain)
         except DomainRegistrationLookupError:
             return SignalAnalysisResult(
-                warnings=("Domain registration intelligence was unavailable for this run.",)
+                warnings=(resolve_message("warning.domain_registration_unavailable"),)
             )
 
         if registration is None:
@@ -51,11 +52,8 @@ class DomainRecencySignalAnalyzer:
                     self._signal(
                         severity=SignalSeverity.HIGH,
                         confidence=93,
-                        title="Very recent domain registration",
-                        description=(
-                            "The registered domain appears to have been created within the last "
-                            f"{EXTREME_RECENCY_THRESHOLD_DAYS} days."
-                        ),
+                        message_key="signal.very_recent_domain_registration",
+                        threshold_days=EXTREME_RECENCY_THRESHOLD_DAYS,
                         observed_domain=normalized_url.registered_domain,
                         registered_at=registration.registered_at,
                         age_in_days=age_in_days,
@@ -70,11 +68,8 @@ class DomainRecencySignalAnalyzer:
                     self._signal(
                         severity=SignalSeverity.MEDIUM,
                         confidence=81,
-                        title="Recent domain registration",
-                        description=(
-                            "The registered domain appears to have been created within the last "
-                            f"{RECENT_RECENCY_THRESHOLD_DAYS} days."
-                        ),
+                        message_key="signal.recent_domain_registration",
+                        threshold_days=RECENT_RECENCY_THRESHOLD_DAYS,
                         observed_domain=normalized_url.registered_domain,
                         registered_at=registration.registered_at,
                         age_in_days=age_in_days,
@@ -95,27 +90,32 @@ class DomainRecencySignalAnalyzer:
         self,
         severity: SignalSeverity,
         confidence: float,
-        title: str,
-        description: str,
+        message_key: str,
+        threshold_days: int,
         observed_domain: str,
         registered_at: datetime,
         age_in_days: int,
         provider_name: str,
     ) -> AnalysisSignal:
-        return AnalysisSignal.create(
+        return build_localized_signal(
             signal_type=SignalType.RECENT_DOMAIN_REGISTRATION,
             category=SIGNAL_CATEGORY_MAP[SignalType.RECENT_DOMAIN_REGISTRATION],
             severity=severity,
             confidence=ConfidenceScore(confidence),
-            title=title,
-            description=description,
             source=self.source,
             base_weight=BASE_SIGNAL_WEIGHTS[SignalType.RECENT_DOMAIN_REGISTRATION],
-            evidence=(
-                f"Observed domain: {observed_domain}.",
-                f"Registration date: {registered_at.astimezone(timezone.utc).date().isoformat()}.",
-                f"Computed domain age: {age_in_days} day(s).",
-                f"Lookup provider: {provider_name}.",
-            ),
+            message_key=message_key,
+            message_params={
+                "threshold_days": threshold_days,
+                "evidence": [
+                    evidence_ref("evidence.observed_domain", observed_domain=observed_domain),
+                    evidence_ref(
+                        "evidence.registration_date",
+                        registration_date=registered_at.astimezone(timezone.utc).date().isoformat(),
+                    ),
+                    evidence_ref("evidence.computed_domain_age_days", age_in_days=age_in_days),
+                    evidence_ref("evidence.lookup_provider", provider_name=provider_name),
+                ],
+            },
             tags=("domain-age", "registration-recency"),
         )

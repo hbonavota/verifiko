@@ -22,6 +22,7 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
+from app.application.services.message_resolver import resolve_message
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.entities.analysis_trace_stage import AnalysisTraceStage
 from app.domain.entities.risk_assessment import RiskAssessment
@@ -219,7 +220,7 @@ class CreateURLVerificationUseCase:
             fetched_document = self.html_fetcher.fetch(verification.normalized_input.normalized)
         except HtmlFetchError as exc:
             return SignalAnalysisResult(
-                warnings=(str(exc) or "HTML content inspection could not be completed.",)
+                warnings=(str(exc) or resolve_message("warning.html_content_inspection_unavailable"),)
             )
 
         if fetched_document is None:
@@ -246,10 +247,12 @@ class CreateURLVerificationUseCase:
         deduplicated_warnings = tuple(dict.fromkeys(warnings))
         summary = risk_assessment.summary
         if deduplicated_warnings:
-            summary = (
-                "Analysis coverage degraded: "
-                f"{' '.join(deduplicated_warnings)} "
-                f"{risk_assessment.summary}"
+            summary = resolve_message(
+                "summary.analysis_coverage_degraded",
+                {
+                    "warnings": " ".join(deduplicated_warnings),
+                    "summary": risk_assessment.summary,
+                },
             )
 
         adjusted_score = risk_assessment.score

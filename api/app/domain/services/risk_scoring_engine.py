@@ -3,6 +3,7 @@ from app.domain.entities.risk_assessment import RiskAssessment
 from app.domain.enums.risk_level import RiskLevel
 from app.domain.enums.signal_type import SignalType
 from app.domain.enums.verdict_type import VerdictType
+from app.domain.i18n.resolver import resolve_message
 from app.domain.services.compound_rules import (
     BrandNewLookalikeDomainRule,
     CompoundRule,
@@ -48,7 +49,7 @@ class RiskScoringEngine(ScoringService):
                 score=final_score,
                 risk_level=RiskLevel.CRITICAL,
                 verdict=VerdictType.CONFIRMED_MALICIOUS,
-                summary="Terminal override triggered by high-confidence blacklist match.",
+                summary=resolve_message("summary.terminal_blacklist_override"),
                 top_signals=_top_signal_titles(active_signals),
                 category_breakdown={},
                 terminal_override=True,
@@ -88,21 +89,35 @@ class RiskScoringEngine(ScoringService):
         risk_level = risk_level_for_score(final_score.value)
         verdict = verdict_for_level(risk_level)
 
-        summary = (
-            f"Detected {len(active_signals) - len(informational_signals)} risk signal(s) with {risk_level.value.lower()} risk output. "
-            f"Category penalties totaled {category_total_penalty:.2f} and compound penalties totaled {compound_penalty:.2f}."
+        summary = resolve_message(
+            "summary.risk_detected",
+            {
+                "risk_signal_count": len(active_signals) - len(informational_signals),
+                "risk_level": risk_level.value.lower(),
+                "category_total_penalty": category_total_penalty,
+                "compound_penalty": compound_penalty,
+            },
         )
         top_signal_titles = _top_signal_titles_from_penalties(signal_penalties, max_items=3)
         if not top_signal_titles and informational_signals:
             top_signal_titles = tuple(signal.title for signal in informational_signals[:3])
         if top_signal_titles:
-            summary = f"{summary} Main drivers: {', '.join(top_signal_titles)}."
+            summary = resolve_message(
+                "summary.main_drivers",
+                {"summary": summary, "drivers": ", ".join(top_signal_titles)},
+            )
         if triggered_rules:
-            summary = f"{summary} Rules: {', '.join(triggered_rules)}."
+            summary = resolve_message(
+                "summary.rules",
+                {"summary": summary, "rules": ", ".join(triggered_rules)},
+            )
         if informational_signals:
-            summary = (
-                f"{summary} Supporting trust context: "
-                f"{', '.join(signal.title for signal in informational_signals[:2])}."
+            summary = resolve_message(
+                "summary.supporting_trust_context",
+                {
+                    "summary": summary,
+                    "trust_context": ", ".join(signal.title for signal in informational_signals[:2]),
+                },
             )
 
         return RiskAssessment(

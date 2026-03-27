@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+from typing import Any
 
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.entities.risk_assessment import RiskAssessment
 from app.domain.entities.verification import Verification
+from app.domain.i18n.resolver import resolve_message
 from app.domain.services.scoring_policies import SEVERITY_MULTIPLIERS
 
 
@@ -10,6 +12,8 @@ from app.domain.services.scoring_policies import SEVERITY_MULTIPLIERS
 class ExplanationFactor:
     signal_type: str
     title: str
+    message_key: str | None
+    message_params: dict[str, Any]
     source: str
     severity: str
     score_contribution: float
@@ -51,6 +55,8 @@ class RiskExplanationBuilder:
             ExplanationFactor(
                 signal_type=signal.signal_type.value,
                 title=signal.title,
+                message_key=signal.message_key,
+                message_params=signal.message_params,
                 source=signal.source,
                 severity=signal.severity.value,
                 score_contribution=RiskExplanationBuilder._score_contribution(signal),
@@ -77,21 +83,32 @@ class RiskExplanationBuilder:
         primary_factors: tuple[ExplanationFactor, ...],
     ) -> str:
         if assessment.terminal_override:
-            return "The result was forced to a terminal malicious outcome by trusted backend intelligence."
+            return resolve_message("explanation.headline.terminal_override")
         if not primary_factors:
-            return f"The engine produced a {assessment.verdict.value.lower()} outcome without high-confidence driver signals."
+            return resolve_message(
+                "explanation.headline.no_high_confidence",
+                {"verdict": assessment.verdict.value.lower()},
+            )
         trust_context_factors = tuple(
             factor for factor in primary_factors if factor.score_contribution == 0
         )
         if assessment.risk_level.value == "SAFE" and trust_context_factors:
             drivers = ", ".join(factor.title for factor in trust_context_factors[:2])
-            return (
-                f"The engine produced a {assessment.verdict.value.lower()} outcome supported by {drivers}."
+            return resolve_message(
+                "explanation.headline.safe_with_trust_context",
+                {
+                    "verdict": assessment.verdict.value.lower(),
+                    "drivers": drivers,
+                },
             )
 
         drivers = ", ".join(factor.title for factor in primary_factors[:2])
-        return (
-            f"The engine produced a {assessment.verdict.value.lower()} outcome driven by {drivers}."
+        return resolve_message(
+            "explanation.headline.driven_by",
+            {
+                "verdict": assessment.verdict.value.lower(),
+                "drivers": drivers,
+            },
         )
 
     @staticmethod
@@ -112,23 +129,35 @@ class RiskExplanationBuilder:
             if penalty > 0
         )
         if not category_summary:
-            category_summary = "no category penalties recorded"
-        if trust_context_factors and category_summary == "no category penalties recorded":
-            return (
-                f"Score {assessment.score.rounded()} mapped to {assessment.risk_level.value.lower()} "
-                f"risk with {category_summary}. Supporting trust context: "
-                f"{', '.join(factor.title for factor in trust_context_factors[:2])}."
+            category_summary = resolve_message("phrase.no_category_penalties_recorded")
+        if trust_context_factors and category_summary == resolve_message("phrase.no_category_penalties_recorded"):
+            return resolve_message(
+                "explanation.decision_basis.with_trust_context",
+                {
+                    "score": assessment.score.rounded(),
+                    "risk_level": assessment.risk_level.value.lower(),
+                    "category_summary": category_summary,
+                    "drivers": ", ".join(factor.title for factor in trust_context_factors[:2]),
+                },
             )
 
         if not primary_factors:
-            return (
-                f"Score {assessment.score.rounded()} mapped to {assessment.risk_level.value.lower()} "
-                f"risk with {category_summary}."
+            return resolve_message(
+                "explanation.decision_basis.no_primary_factors",
+                {
+                    "score": assessment.score.rounded(),
+                    "risk_level": assessment.risk_level.value.lower(),
+                    "category_summary": category_summary,
+                },
             )
 
-        return (
-            f"Score {assessment.score.rounded()} mapped to {assessment.risk_level.value.lower()} "
-            f"risk. Main contributing categories: {category_summary}."
+        return resolve_message(
+            "explanation.decision_basis.main_categories",
+            {
+                "score": assessment.score.rounded(),
+                "risk_level": assessment.risk_level.value.lower(),
+                "category_summary": category_summary,
+            },
         )
 
     @staticmethod

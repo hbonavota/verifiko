@@ -154,6 +154,45 @@ def test_verification_api_can_generate_signals_from_url_only(client: TestClient)
     assert created_body["risk_assessment"] is not None
 
 
+def test_verification_api_localizes_backend_generated_text_with_accept_language(
+    client: TestClient,
+) -> None:
+    create_response = client.post(
+        "/api/verifications",
+        json={
+            "url": "http://paypal-login-security-check.example.xyz/verify?redirect=https://example.org",
+        },
+        headers={"Accept-Language": "es"},
+    )
+
+    assert create_response.status_code == 201
+    created_body = create_response.json()
+    signal_titles = {signal["title"] for signal in created_body["signals"]}
+    assert "Cebo de credenciales en la URL" in signal_titles
+    assert created_body["risk_assessment"]["summary"].startswith("Se detectaron")
+    assert created_body["risk_assessment"]["explanation"]["headline"].startswith("El motor produjo")
+
+    verification_id = created_body["id"]
+
+    get_response = client.get(
+        f"/api/verifications/{verification_id}",
+        headers={"Accept-Language": "es-ES,es;q=0.9,en;q=0.8"},
+    )
+    assert get_response.status_code == 200
+    fetched_body = get_response.json()
+    fetched_titles = {signal["title"] for signal in fetched_body["signals"]}
+    assert "Cebo de credenciales en la URL" in fetched_titles
+    assert fetched_body["risk_assessment"]["explanation"]["primary_factors"]
+
+    list_response = client.get(
+        "/api/verifications",
+        headers={"Accept-Language": "es"},
+    )
+    assert list_response.status_code == 200
+    listed_items = list_response.json()
+    assert listed_items[0]["risk_assessment"]["summary"].startswith("Se detectaron")
+
+
 def test_verification_api_returns_404_for_missing_verification(client: TestClient) -> None:
     response = client.get("/api/verifications/550e8400-e29b-41d4-a716-446655440099")
 

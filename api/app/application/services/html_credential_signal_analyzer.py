@@ -4,6 +4,7 @@ from typing import Iterable
 from urllib.parse import urljoin, urlsplit
 
 from app.application.ports.html_fetcher import FetchedHtmlDocument
+from app.application.services.message_resolver import build_localized_signal, evidence_ref
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -99,12 +100,8 @@ class HtmlCredentialSignalAnalyzer:
                     signal_type=SignalType.CREDENTIAL_HARVEST_FORM,
                     severity=SignalSeverity.HIGH,
                     confidence=92 if suspicious_actions else 86,
-                    title="Credential capture form detected",
-                    description=(
-                        "The fetched HTML contains a form pattern consistent with credential "
-                        "collection."
-                    ),
-                    evidence=self._build_evidence(
+                    message_key="signal.credential_capture_form_detected",
+                    message_params=self._build_message_params(
                         form_count=form_count,
                         password_field_count=password_field_count,
                         account_hints=account_hints,
@@ -129,12 +126,8 @@ class HtmlCredentialSignalAnalyzer:
                     signal_type=SignalType.SUSPICIOUS_LOGIN_INTERFACE,
                     severity=SignalSeverity.MEDIUM,
                     confidence=79,
-                    title="Suspicious login-style interface",
-                    description=(
-                        "The fetched HTML exposes login-style wording and input hints that merit "
-                        "credential-harvesting review."
-                    ),
-                    evidence=self._build_evidence(
+                    message_key="signal.suspicious_login_style_interface",
+                    message_params=self._build_message_params(
                         form_count=form_count,
                         password_field_count=password_field_count,
                         account_hints=account_hints,
@@ -179,41 +172,47 @@ class HtmlCredentialSignalAnalyzer:
             return None
 
         if explicit_placeholder:
-            title = "Parked or placeholder landing page"
-            description = (
-                "The fetched HTML looks like a parked domain, default hosting page, or placeholder landing page."
-            )
+            message_key = "signal.parked_or_placeholder_landing_page"
             severity = SignalSeverity.HIGH
             confidence = 88
-            evidence = (
-                f"Visible text tokens found: {visible_token_count}.",
-                f"Matched placeholder markers: {', '.join(low_information_markers[:3])}.",
-            )
+            message_params = {
+                "evidence": [
+                    evidence_ref(
+                        "evidence.visible_text_tokens_found",
+                        visible_token_count=visible_token_count,
+                    ),
+                    evidence_ref(
+                        "evidence.matched_placeholder_markers",
+                        markers=", ".join(low_information_markers[:3]),
+                    ),
+                ],
+            }
             tags = ("parked-page", "placeholder-page")
         else:
-            title = "Low-information landing page"
-            description = (
-                "The fetched HTML contains almost no meaningful visible content, which limits confidence in a clean result."
-            )
+            message_key = "signal.low_information_landing_page"
             severity = SignalSeverity.MEDIUM
             confidence = 72
-            evidence = (
-                f"Visible text tokens found: {visible_token_count}.",
-                "The fetched landing page exposes no forms or meaningful visible copy.",
-            )
+            message_params = {
+                "evidence": [
+                    evidence_ref(
+                        "evidence.visible_text_tokens_found",
+                        visible_token_count=visible_token_count,
+                    ),
+                    evidence_ref("evidence.no_forms_or_meaningful_visible_copy"),
+                ],
+            }
             tags = ("low-information", "thin-content")
 
         return self._signal(
             signal_type=SignalType.LOW_INFORMATION_PAGE,
             severity=severity,
             confidence=confidence,
-            title=title,
-            description=description,
-            evidence=evidence,
+            message_key=message_key,
+            message_params=message_params,
             tags=tags,
         )
 
-    def _build_evidence(
+    def _build_message_params(
         self,
         form_count: int,
         password_field_count: int,
@@ -221,43 +220,64 @@ class HtmlCredentialSignalAnalyzer:
         matched_login_terms: list[str],
         observed_actions: list[str],
         suspicious_actions: list[str],
-    ) -> tuple[str, ...]:
+    ) -> dict[str, object]:
         evidence = [
-            f"HTML forms found: {form_count}.",
-            f"Password fields found: {password_field_count}.",
+            evidence_ref("evidence.html_forms_found", form_count=form_count),
+            evidence_ref(
+                "evidence.password_fields_found",
+                password_field_count=password_field_count,
+            ),
         ]
 
         if account_hints:
-            evidence.append(f"Matched account input hints: {', '.join(account_hints[:4])}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.matched_account_input_hints",
+                    hints=", ".join(account_hints[:4]),
+                )
+            )
         if matched_login_terms:
-            evidence.append(f"Matched login wording: {', '.join(matched_login_terms[:4])}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.matched_login_wording",
+                    terms=", ".join(matched_login_terms[:4]),
+                )
+            )
         if observed_actions:
-            evidence.append(f"Observed form action: {observed_actions[0]}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.observed_form_action",
+                    action=observed_actions[0],
+                )
+            )
         if suspicious_actions:
-            evidence.append(f"Suspicious form action: {suspicious_actions[0]}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.suspicious_form_action",
+                    action=suspicious_actions[0],
+                )
+            )
 
-        return tuple(evidence)
+        return {"evidence": evidence}
 
     def _signal(
         self,
         signal_type: SignalType,
         severity: SignalSeverity,
         confidence: float,
-        title: str,
-        description: str,
-        evidence: tuple[str, ...],
+        message_key: str,
+        message_params: dict[str, object],
         tags: tuple[str, ...],
     ) -> AnalysisSignal:
-        return AnalysisSignal.create(
+        return build_localized_signal(
             signal_type=signal_type,
             category=SIGNAL_CATEGORY_MAP[signal_type],
             severity=severity,
             confidence=ConfidenceScore(confidence),
-            title=title,
-            description=description,
             source=self.source,
             base_weight=BASE_SIGNAL_WEIGHTS[signal_type],
-            evidence=evidence,
+            message_key=message_key,
+            message_params=message_params,
             tags=tags,
         )
 

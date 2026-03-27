@@ -48,6 +48,15 @@ def _build_verification(
         base_weight=BASE_SIGNAL_WEIGHTS[SignalType.PHISHING_KEYWORDS],
         evidence=("Matched phishing keywords in the path.",),
         tags=("login", "verify"),
+        message_key="signal.credential_lure_wording_in_url",
+        message_params={
+            "evidence": [
+                {
+                    "key": "evidence.matched_url_keywords",
+                    "params": {"keywords": "login, verify"},
+                }
+            ]
+        },
     )
     verification.add_signal(signal)
     verification.risk_assessment = RiskAssessment(
@@ -86,6 +95,7 @@ def test_sqlalchemy_repository_persists_create_get_and_list(tmp_path: Path) -> N
     assert fetched.original_input == "https://secure-paypal-login.example.xyz/verify"
     assert fetched.risk_assessment is not None
     assert fetched.signals[0].signal_type is SignalType.PHISHING_KEYWORDS
+    assert fetched.signals[0].message_key == "signal.credential_lure_wording_in_url"
 
     listed = repository.list()
     assert [str(item.id) for item in listed] == [

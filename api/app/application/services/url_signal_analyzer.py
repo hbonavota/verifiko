@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import parse_qsl
 
+from app.application.services.message_resolver import build_localized_signal, evidence_ref
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -138,9 +139,15 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.IP_ADDRESS_URL,
                     severity=SignalSeverity.HIGH,
                     confidence=96,
-                    title="Direct IP address target",
-                    description="The input targets an IP address directly instead of a named host.",
-                    evidence=(f"Host resolves to raw IP {normalized_url.ascii_host}.",),
+                    message_key="signal.direct_ip_address_target",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.host_resolves_to_raw_ip",
+                                ascii_host=normalized_url.ascii_host,
+                            )
+                        ]
+                    },
                     tags=("ip-host", "domain-structure"),
                 )
             )
@@ -148,23 +155,28 @@ class DeterministicUrlSignalAnalyzer:
         if normalized_url.contains_unicode or normalized_url.contains_punycode:
             evidence = []
             if normalized_url.contains_unicode:
-                evidence.append(f"Rendered host: {normalized_url.host}.")
+                evidence.append(
+                    evidence_ref("evidence.rendered_host", host=normalized_url.host)
+                )
             if normalized_url.contains_punycode:
-                evidence.append(f"ASCII host contains punycode label(s): {normalized_url.ascii_host}.")
+                evidence.append(
+                    evidence_ref(
+                        "evidence.ascii_host_contains_punycode_labels",
+                        ascii_host=normalized_url.ascii_host,
+                    )
+                )
             else:
-                evidence.append(f"ASCII host: {normalized_url.ascii_host}.")
+                evidence.append(
+                    evidence_ref("evidence.ascii_host", ascii_host=normalized_url.ascii_host)
+                )
 
             signals.append(
                 self._signal(
                     signal_type=SignalType.UNICODE_HOMOGRAPH,
                     severity=SignalSeverity.HIGH,
                     confidence=88 if normalized_url.contains_unicode else 84,
-                    title="Unicode or punycode hostname pattern",
-                    description=(
-                        "The hostname contains unicode characters or punycode labels that merit "
-                        "homograph review."
-                    ),
-                    evidence=tuple(evidence),
+                    message_key="signal.unicode_or_punycode_hostname_pattern",
+                    message_params={"evidence": list(evidence)},
                     tags=("unicode-host", "homograph-review"),
                 )
             )
@@ -175,9 +187,15 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.ZERO_WIDTH_CHAR_INJECTION,
                     severity=SignalSeverity.CRITICAL,
                     confidence=99,
-                    title="Invisible hostname characters",
-                    description="Zero-width characters were found in the hostname representation.",
-                    evidence=(f"Host contains zero-width characters: {normalized_url.host}.",),
+                    message_key="signal.invisible_hostname_characters",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.host_contains_zero_width_characters",
+                                host=normalized_url.host,
+                            )
+                        ]
+                    },
                     tags=("zero-width", "hostname-obfuscation"),
                 )
             )
@@ -188,9 +206,15 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.NON_STANDARD_PORT_USAGE,
                     severity=SignalSeverity.MEDIUM,
                     confidence=74,
-                    title="Non-standard port usage",
-                    description="The URL uses a non-standard web port, which increases handling risk.",
-                    evidence=(f"Observed explicit port {normalized_url.port}.",),
+                    message_key="signal.non_standard_port_usage",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.observed_explicit_port",
+                                port=normalized_url.port,
+                            )
+                        ]
+                    },
                     tags=("port", "network-transport"),
                 )
             )
@@ -201,9 +225,15 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.SHORTENED_URL,
                     severity=SignalSeverity.MEDIUM,
                     confidence=82,
-                    title="Shortened destination",
-                    description="The URL uses a known shortening service that obscures the eventual destination.",
-                    evidence=(f"Registered domain {normalized_url.registered_domain} is a shortener.",),
+                    message_key="signal.shortened_destination",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.registered_domain_is_shortener",
+                                registered_domain=normalized_url.registered_domain,
+                            )
+                        ]
+                    },
                     tags=("shortener", "navigation"),
                 )
             )
@@ -215,9 +245,10 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.SUSPICIOUS_REDIRECT_CHAIN,
                     severity=SignalSeverity.MEDIUM,
                     confidence=min(90, 68 + len(redirect_indicators) * 6),
-                    title="Redirect-style parameters",
-                    description="The URL contains redirect-style routing hints that can conceal the final destination.",
-                    evidence=tuple(redirect_indicators),
+                    message_key="signal.redirect_style_parameters",
+                    message_params={
+                        "evidence": list(redirect_indicators),
+                    },
                     tags=("redirect", "navigation"),
                 )
             )
@@ -229,9 +260,15 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.PHISHING_KEYWORDS,
                     severity=SignalSeverity.HIGH if len(keyword_matches) >= 3 else SignalSeverity.MEDIUM,
                     confidence=min(92, 62 + len(keyword_matches) * 7),
-                    title="Credential-lure wording in URL",
-                    description="The host or path contains account and verification language commonly used in phishing lures.",
-                    evidence=(f"Matched URL keywords: {keyword_sample}.",),
+                    message_key="signal.credential_lure_wording_in_url",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.matched_url_keywords",
+                                keywords=keyword_sample,
+                            )
+                        ]
+                    },
                     tags=tuple(keyword_matches[:4]),
                 )
             )
@@ -243,12 +280,16 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.BRAND_IMPERSONATION,
                     severity=SignalSeverity.HIGH,
                     confidence=min(95, 76 + len(brand_matches) * 5 + len(keyword_matches) * 2),
-                    title="Brand-like impersonation hints",
-                    description="Brand references are combined with account-action language in a non-official domain.",
-                    evidence=(
-                        f"Matched brand terms: {brand_sample}.",
-                        f"Registered domain under review: {normalized_url.registered_domain}.",
-                    ),
+                    message_key="signal.brand_like_impersonation_hints",
+                    message_params={
+                        "evidence": [
+                            evidence_ref("evidence.matched_brand_terms", brands=brand_sample),
+                            evidence_ref(
+                                "evidence.registered_domain_under_review",
+                                registered_domain=normalized_url.registered_domain,
+                            ),
+                        ]
+                    },
                     tags=tuple((brand_matches + keyword_matches)[:5]),
                 )
             )
@@ -267,16 +308,23 @@ class DeterministicUrlSignalAnalyzer:
                         + len(institution_context_matches) * 5
                         + len(institution_demand_matches) * 4,
                     ),
-                    title="Institution-style payment or penalty lure",
-                    description=(
-                        "Government or authority-style payment, traffic, or penalty wording appears "
-                        "on a non-official domain."
-                    ),
-                    evidence=(
-                        f"Matched institution terms: {', '.join(institution_context_matches[:3])}.",
-                        f"Matched demand terms: {', '.join(institution_demand_matches[:3])}.",
-                        f"Registered domain under review: {normalized_url.registered_domain}.",
-                    ),
+                    message_key="signal.institution_style_payment_or_penalty_lure",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.matched_institution_terms",
+                                terms=", ".join(institution_context_matches[:3]),
+                            ),
+                            evidence_ref(
+                                "evidence.matched_demand_terms",
+                                terms=", ".join(institution_demand_matches[:3]),
+                            ),
+                            evidence_ref(
+                                "evidence.registered_domain_under_review",
+                                registered_domain=normalized_url.registered_domain,
+                            ),
+                        ]
+                    },
                     tags=tuple((institution_context_matches + institution_demand_matches)[:5]),
                 )
             )
@@ -288,9 +336,15 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.TACTICAL_EMAIL_STAGING,
                     severity=SignalSeverity.MEDIUM,
                     confidence=min(90, 72 + len(email_terms) * 6),
-                    title="Mailbox access lure pattern",
-                    description="The URL combines mailbox-style terms with account-action cues.",
-                    evidence=(f"Matched mailbox terms: {', '.join(email_terms)}.",),
+                    message_key="signal.mailbox_access_lure_pattern",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.matched_mailbox_terms",
+                                terms=", ".join(email_terms),
+                            )
+                        ]
+                    },
                     tags=tuple((email_terms + keyword_matches)[:5]),
                 )
             )
@@ -301,12 +355,19 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.DECEPTIVE_BRAND_SUBDOMAIN,
                     severity=SignalSeverity.HIGH,
                     confidence=94,
-                    title="Deceptive brand-in-subdomain pattern",
-                    description="The subdomain embeds a brand-like domain fragment before the actual registered domain.",
-                    evidence=(
-                        f"Observed deceptive fragment: {deceptive_brand_pattern}.",
-                        f"Registered domain observed: {normalized_url.registered_domain}.",
-                    ),
+                    message_key="signal.deceptive_brand_in_subdomain_pattern",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.observed_deceptive_fragment",
+                                fragment=deceptive_brand_pattern,
+                            ),
+                            evidence_ref(
+                                "evidence.registered_domain_observed",
+                                registered_domain=normalized_url.registered_domain,
+                            ),
+                        ]
+                    },
                     tags=("brand-subdomain", "domain-structure"),
                 )
             )
@@ -321,12 +382,19 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.MISLEADING_SUBDOMAIN,
                     severity=SignalSeverity.HIGH if len(subdomain_labels) >= 3 else SignalSeverity.MEDIUM,
                     confidence=min(91, 70 + len(subdomain_labels) * 5 + len(keyword_matches) * 3),
-                    title="Misleading subdomain structure",
-                    description="The subdomain structure adds unusual depth or trust-signaling lure wording ahead of the registered domain.",
-                    evidence=(
-                        f"Subdomain observed: {normalized_url.subdomain or '(none)'}.",
-                        f"Registered domain observed: {normalized_url.registered_domain}.",
-                    ),
+                    message_key="signal.misleading_subdomain_structure",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.subdomain_observed",
+                                subdomain=normalized_url.subdomain or "(none)",
+                            ),
+                            evidence_ref(
+                                "evidence.registered_domain_observed",
+                                registered_domain=normalized_url.registered_domain,
+                            ),
+                        ]
+                    },
                     tags=tuple(subdomain_labels[:4]),
                 )
             )
@@ -338,9 +406,12 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.HIGH_DOMAIN_ENTROPY,
                     severity=SignalSeverity.MEDIUM,
                     confidence=73,
-                    title="High-entropy hostname token",
-                    description="One hostname label appears algorithmically generated or unusually noisy.",
-                    evidence=(f"Suspicious label: {entropy_label}.",),
+                    message_key="signal.high_entropy_hostname_token",
+                    message_params={
+                        "evidence": [
+                            evidence_ref("evidence.suspicious_label", label=entropy_label)
+                        ]
+                    },
                     tags=("entropy", "hostname"),
                 )
             )
@@ -355,9 +426,10 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.TLD_TYPOSQUATTING,
                     severity=SignalSeverity.MEDIUM,
                     confidence=75,
-                    title="Brand-like domain on uncommon TLD",
-                    description="The hostname mixes brand or account language with a higher-risk TLD choice.",
-                    evidence=(f"Observed TLD: .{tld}.",),
+                    message_key="signal.brand_like_domain_on_uncommon_tld",
+                    message_params={
+                        "evidence": [evidence_ref("evidence.observed_tld", tld=tld)]
+                    },
                     tags=("tld", tld),
                 )
             )
@@ -368,12 +440,15 @@ class DeterministicUrlSignalAnalyzer:
                     signal_type=SignalType.RECOGNIZED_REPUTABLE_DOMAIN,
                     severity=SignalSeverity.LOW,
                     confidence=96,
-                    title="Recognized reputable domain",
-                    description=(
-                        "The registered domain matches a conservative curated set of widely used "
-                        "reputable destinations."
-                    ),
-                    evidence=(f"Registered domain observed: {normalized_url.registered_domain}.",),
+                    message_key="signal.recognized_reputable_domain",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.registered_domain_observed",
+                                registered_domain=normalized_url.registered_domain,
+                            )
+                        ]
+                    },
                     tags=("trust-context", normalized_url.registered_domain),
                 )
             )
@@ -385,37 +460,49 @@ class DeterministicUrlSignalAnalyzer:
         signal_type: SignalType,
         severity: SignalSeverity,
         confidence: float,
-        title: str,
-        description: str,
-        evidence: tuple[str, ...],
+        message_key: str,
+        message_params: dict[str, object],
         tags: tuple[str, ...] = (),
     ) -> AnalysisSignal:
-        return AnalysisSignal.create(
+        return build_localized_signal(
             signal_type=signal_type,
             category=SIGNAL_CATEGORY_MAP[signal_type],
             severity=severity,
             confidence=ConfidenceScore(confidence),
-            title=title,
-            description=description,
             source=self.source,
             base_weight=BASE_SIGNAL_WEIGHTS[signal_type],
-            evidence=evidence,
+            message_key=message_key,
+            message_params=message_params,
             tags=tags,
         )
 
     def _redirect_indicators(self, normalized_url: NormalizedUrl) -> list[str]:
-        indicators: list[str] = []
+        indicators: list[dict[str, object]] = []
         path_tokens = _tokenize(normalized_url.decoded_path.replace("/", " "))
         if {"redirect", "continue", "out", "away"}.intersection(path_tokens):
             indicators.append(
-                f"Path contains redirect-style token(s): {normalized_url.decoded_path}."
+                evidence_ref(
+                    "evidence.path_contains_redirect_style_tokens",
+                    decoded_path=normalized_url.decoded_path,
+                )
             )
 
         for key, value in parse_qsl(normalized_url.query, keep_blank_values=True):
             if key.lower() in _REDIRECT_KEYS:
-                indicators.append(f"Query parameter {key}={value or '(empty)'} may steer navigation.")
+                indicators.append(
+                    evidence_ref(
+                        "evidence.query_parameter_may_steer_navigation",
+                        key=key,
+                        value=value or "(empty)",
+                    )
+                )
             if value.startswith("http://") or value.startswith("https://"):
-                indicators.append(f"Query parameter {key} embeds a nested URL destination.")
+                indicators.append(
+                    evidence_ref(
+                        "evidence.query_parameter_embeds_nested_url",
+                        key=key,
+                    )
+                )
 
         return indicators
 

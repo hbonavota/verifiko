@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +18,8 @@ class AnalysisSignalDTO:
     score_contribution: float
     tags: tuple[str, ...]
     created_at: str
+    message_key: str | None = None
+    message_params: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +30,8 @@ class ExplanationFactorDTO:
     severity: str
     score_contribution: float
     evidence: tuple[str, ...]
+    message_key: str | None = None
+    message_params: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)

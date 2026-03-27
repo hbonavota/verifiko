@@ -36,6 +36,8 @@ class VerificationMapper:
                 title=signal.title,
                 description=signal.description,
                 evidence=signal.evidence,
+                message_key=signal.message_key,
+                message_params=signal.message_params,
                 source=signal.source,
                 base_weight=signal.base_weight,
                 score_contribution=round(
@@ -97,6 +99,8 @@ class VerificationMapper:
                             severity=factor.severity,
                             score_contribution=factor.score_contribution,
                             evidence=factor.evidence,
+                            message_key=getattr(factor, "message_key", None),
+                            message_params=getattr(factor, "message_params", None),
                         )
                         for factor in explanation.primary_factors
                     ),

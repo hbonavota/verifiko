@@ -7,6 +7,7 @@ from app.application.ports.infrastructure_lookup import (
 )
 from app.application.ports.redirect_resolver import RedirectResolution
 from app.application.services.analysis_result import SignalAnalysisResult
+from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -91,7 +92,7 @@ class InfrastructureSignalAnalyzer:
             )
         except InfrastructureLookupError:
             return SignalAnalysisResult(
-                warnings=("Infrastructure intelligence could not be completed for this run.",)
+                warnings=(resolve_message("warning.infrastructure_unavailable"),)
             )
 
         matched_patterns = self._matched_patterns(profile)
@@ -105,12 +106,19 @@ class InfrastructureSignalAnalyzer:
             68 + len(matched_patterns) * 8 + (6 if sensitive_terms else 0),
         )
         evidence = [
-            f"Effective target host: {effective_target.ascii_host}.",
-            f"Infrastructure provider: {profile.provider_name}.",
-            "Resolved addresses: "
-            + ", ".join(address.ip_address for address in profile.resolved_addresses[:3])
-            + ".",
-            f"Matched infrastructure patterns: {', '.join(matched_patterns)}.",
+            evidence_ref("evidence.effective_target_host", host=effective_target.ascii_host),
+            evidence_ref(
+                "evidence.infrastructure_provider",
+                provider_name=profile.provider_name,
+            ),
+            evidence_ref(
+                "evidence.resolved_addresses",
+                addresses=", ".join(address.ip_address for address in profile.resolved_addresses[:3]),
+            ),
+            evidence_ref(
+                "evidence.matched_infrastructure_patterns",
+                patterns=", ".join(matched_patterns),
+            ),
         ]
         reverse_samples = [
             address.reverse_hostname
@@ -118,27 +126,35 @@ class InfrastructureSignalAnalyzer:
             if address.reverse_hostname
         ]
         if reverse_samples:
-            evidence.append(f"Reverse DNS sample: {reverse_samples[0]}.")
+            evidence.append(
+                evidence_ref("evidence.reverse_dns_sample", reverse_hostname=reverse_samples[0])
+            )
         if sensitive_terms:
-            evidence.append(f"Matched sensitive URL terms: {', '.join(sensitive_terms[:4])}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.matched_sensitive_url_terms",
+                    terms=", ".join(sensitive_terms[:4]),
+                )
+            )
         if redirect_resolution is not None and redirect_resolution.hops:
-            evidence.append(f"Effective target derived from redirect chain: {redirect_resolution.final_url}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.effective_target_derived_from_redirect_chain",
+                    final_url=redirect_resolution.final_url,
+                )
+            )
 
         return SignalAnalysisResult(
             signals=(
-                AnalysisSignal.create(
+                build_localized_signal(
                     signal_type=SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN,
                     category=SIGNAL_CATEGORY_MAP[SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN],
                     severity=severity,
                     confidence=ConfidenceScore(confidence),
-                    title="Suspicious infrastructure pattern",
-                    description=(
-                        "The effective target resolves to infrastructure with reverse-DNS patterns "
-                        "consistent with disposable, dynamic, or residential hosting."
-                    ),
                     source=self.source,
                     base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN],
-                    evidence=tuple(evidence),
+                    message_key="signal.suspicious_infrastructure_pattern",
+                    message_params={"evidence": evidence},
                     tags=("infrastructure", *matched_patterns[:3]),
                 ),
             )

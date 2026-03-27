@@ -7,6 +7,7 @@ from app.application.ports.redirect_resolver import (
     RedirectResolverPort,
 )
 from app.application.services.analysis_result import SignalAnalysisResult
+from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -67,7 +68,7 @@ class RedirectSignalAnalyzer:
             resolution = self.redirect_resolver.resolve(normalized_url.normalized)
         except RedirectResolutionError:
             return SignalAnalysisResult(
-                warnings=("Redirect resolution could not be completed for this run.",)
+                warnings=(resolve_message("warning.redirect_resolution_unavailable"),)
             )
 
         if not resolution.hops:
@@ -129,19 +130,23 @@ class RedirectSignalAnalyzer:
 
         return SignalAnalysisResult(
             signals=(
-                AnalysisSignal.create(
+                build_localized_signal(
                     signal_type=SignalType.SUSPICIOUS_REDIRECT_CHAIN,
                     category=SIGNAL_CATEGORY_MAP[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
                     severity=severity,
                     confidence=ConfidenceScore(confidence),
-                    title="Observed redirect chain",
-                    description=(
-                        "The submitted URL resolved through one or more redirects before reaching "
-                        "its final destination."
-                    ),
                     source=self.source,
                     base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
-                    evidence=tuple(evidence),
+                    message_key="signal.observed_redirect_chain",
+                    message_params={
+                        "evidence": _build_redirect_evidence_refs(
+                            hop_count=len(resolution.hops),
+                            final_url=resolution.final_url,
+                            provider_name=resolution.provider_name,
+                            domain_crossings=domain_crossings,
+                            scheme_downgrade=scheme_downgrade,
+                        ),
+                    },
                     tags=("redirect-chain", resolved_final.registered_domain),
                 ),
             ),
@@ -195,3 +200,27 @@ class RedirectSignalAnalyzer:
             ]
         ).lower()
         return {match.group(0) for match in _TOKEN_PATTERN.finditer(combined)}
+
+
+def _build_redirect_evidence_refs(
+    hop_count: int,
+    final_url: str,
+    provider_name: str,
+    domain_crossings: list[str],
+    scheme_downgrade: bool,
+) -> list[dict[str, object]]:
+    evidence = [
+        evidence_ref("evidence.redirect_hops_observed", hop_count=hop_count),
+        evidence_ref("evidence.final_url_after_redirects", final_url=final_url),
+        evidence_ref("evidence.redirect_resolver", provider_name=provider_name),
+    ]
+    if domain_crossings:
+        evidence.append(
+            evidence_ref(
+                "evidence.redirect_chain_crossed_registered_domains",
+                crossings=", ".join(domain_crossings[:3]),
+            )
+        )
+    if scheme_downgrade:
+        evidence.append(evidence_ref("evidence.redirect_chain_downgraded_transport"))
+    return evidence

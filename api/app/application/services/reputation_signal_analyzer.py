@@ -8,6 +8,7 @@ from app.application.ports.reputation_lookup import (
     ReputationMatch,
 )
 from app.application.services.analysis_result import SignalAnalysisResult
+from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -34,7 +35,7 @@ class ReputationSignalAnalyzer:
             try:
                 match = self.reputation_lookup.lookup(candidate_value)
             except ReputationLookupError:
-                warnings.append("Blacklist reputation intelligence was unavailable for this run.")
+                warnings.append(resolve_message("warning.blacklist_reputation_unavailable"))
                 continue
 
             if match is not None:
@@ -57,29 +58,39 @@ class ReputationSignalAnalyzer:
         )
         confidence = strongest_match.confidence
         evidence = [
-            f"Listed value: {strongest_match.queried_value}.",
-            f"Reputation provider: {strongest_match.provider_name}.",
-            f"Provider references: {strongest_match.reference_count}.",
-            strongest_match.description,
+            evidence_ref("evidence.listed_value", value=strongest_match.queried_value),
+            evidence_ref(
+                "evidence.reputation_provider",
+                provider_name=strongest_match.provider_name,
+            ),
+            evidence_ref(
+                "evidence.provider_references",
+                reference_count=strongest_match.reference_count,
+            ),
+            evidence_ref(
+                "evidence.urlhaus_records",
+                reference_count=strongest_match.reference_count,
+            ),
         ]
         if redirect_resolution is not None and redirect_resolution.hops:
-            evidence.append(f"Final redirect target: {redirect_resolution.final_url}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.final_redirect_target",
+                    final_url=redirect_resolution.final_url,
+                )
+            )
 
         return SignalAnalysisResult(
             signals=(
-                AnalysisSignal.create(
+                build_localized_signal(
                     signal_type=SignalType.BLACKLIST_MATCH,
                     category=SIGNAL_CATEGORY_MAP[SignalType.BLACKLIST_MATCH],
                     severity=severity,
                     confidence=ConfidenceScore(confidence),
-                    title="Reputation blacklist match",
-                    description=(
-                        "The target or a resolved redirect destination matched external malicious "
-                        "URL reputation intelligence."
-                    ),
                     source=self.source,
                     base_weight=BASE_SIGNAL_WEIGHTS[SignalType.BLACKLIST_MATCH],
-                    evidence=tuple(evidence),
+                    message_key="signal.reputation_blacklist_match",
+                    message_params={"evidence": evidence},
                     tags=("reputation", strongest_match.match_scope),
                 ),
             ),

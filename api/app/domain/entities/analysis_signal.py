@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID, uuid4
 
 from app.domain.enums.signal_category import SignalCategory
@@ -19,6 +20,8 @@ class AnalysisSignal:
     title: str
     description: str
     evidence: tuple[str, ...]
+    message_key: str | None
+    message_params: dict[str, Any]
     source: str
     base_weight: float
     tags: tuple[str, ...]
@@ -37,6 +40,8 @@ class AnalysisSignal:
         evidence: tuple[str, ...] = (),
         detected: bool = True,
         tags: tuple[str, ...] = (),
+        message_key: str | None = None,
+        message_params: dict[str, Any] | None = None,
     ) -> "AnalysisSignal":
         return AnalysisSignal(
             id=uuid4(),
@@ -48,6 +53,8 @@ class AnalysisSignal:
             title=title,
             description=description,
             evidence=evidence,
+            message_key=message_key,
+            message_params=dict(message_params or {}),
             source=source,
             base_weight=base_weight,
             tags=tags,

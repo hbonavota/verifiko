@@ -46,6 +46,8 @@ class SignalModel(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     evidence: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    message_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    message_params: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
     base_weight: Mapped[float] = mapped_column(Float, nullable=False)
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)

@@ -1,0 +1,588 @@
+MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
+    "signal.direct_ip_address_target": {
+        "en": {
+            "title": "Direct IP address target",
+            "description": "The input targets an IP address directly instead of a named host.",
+        },
+        "es": {
+            "title": "Destino directo por dirección IP",
+            "description": "La entrada apunta directamente a una dirección IP en lugar de a un host con nombre.",
+        },
+    },
+    "signal.unicode_or_punycode_hostname_pattern": {
+        "en": {
+            "title": "Unicode or punycode hostname pattern",
+            "description": "The hostname contains unicode characters or punycode labels that merit homograph review.",
+        },
+        "es": {
+            "title": "Patrón de hostname con Unicode o punycode",
+            "description": "El hostname contiene caracteres Unicode o etiquetas punycode que requieren revisión de homógrafos.",
+        },
+    },
+    "signal.invisible_hostname_characters": {
+        "en": {
+            "title": "Invisible hostname characters",
+            "description": "Zero-width characters were found in the hostname representation.",
+        },
+        "es": {
+            "title": "Caracteres invisibles en el hostname",
+            "description": "Se encontraron caracteres de ancho cero en la representación del hostname.",
+        },
+    },
+    "signal.non_standard_port_usage": {
+        "en": {
+            "title": "Non-standard port usage",
+            "description": "The URL uses a non-standard web port, which increases handling risk.",
+        },
+        "es": {
+            "title": "Uso de puerto no estándar",
+            "description": "La URL utiliza un puerto web no estándar, lo que aumenta el riesgo de manejo.",
+        },
+    },
+    "signal.shortened_destination": {
+        "en": {
+            "title": "Shortened destination",
+            "description": "The URL uses a known shortening service that obscures the eventual destination.",
+        },
+        "es": {
+            "title": "Destino acortado",
+            "description": "La URL utiliza un servicio de acortamiento conocido que oculta el destino final.",
+        },
+    },
+    "signal.redirect_style_parameters": {
+        "en": {
+            "title": "Redirect-style parameters",
+            "description": "The URL contains redirect-style routing hints that can conceal the final destination.",
+        },
+        "es": {
+            "title": "Parámetros con patrón de redirección",
+            "description": "La URL contiene indicios de redirección que pueden ocultar el destino final.",
+        },
+    },
+    "signal.credential_lure_wording_in_url": {
+        "en": {
+            "title": "Credential-lure wording in URL",
+            "description": "The host or path contains account and verification language commonly used in phishing lures.",
+        },
+        "es": {
+            "title": "Cebo de credenciales en la URL",
+            "description": "El host o la ruta contienen lenguaje de cuenta y verificación usado habitualmente en cebos de phishing.",
+        },
+    },
+    "signal.brand_like_impersonation_hints": {
+        "en": {
+            "title": "Brand-like impersonation hints",
+            "description": "Brand references are combined with account-action language in a non-official domain.",
+        },
+        "es": {
+            "title": "Indicios de suplantación de marca",
+            "description": "Las referencias de marca se combinan con lenguaje de acción sobre la cuenta en un dominio no oficial.",
+        },
+    },
+    "signal.institution_style_payment_or_penalty_lure": {
+        "en": {
+            "title": "Institution-style payment or penalty lure",
+            "description": "Government or authority-style payment, traffic, or penalty wording appears on a non-official domain.",
+        },
+        "es": {
+            "title": "Cebo institucional de pago o sanción",
+            "description": "Aparece lenguaje de pago, tráfico o sanciones con apariencia gubernamental o institucional en un dominio no oficial.",
+        },
+    },
+    "signal.mailbox_access_lure_pattern": {
+        "en": {
+            "title": "Mailbox access lure pattern",
+            "description": "The URL combines mailbox-style terms with account-action cues.",
+        },
+        "es": {
+            "title": "Patrón de cebo de acceso al correo",
+            "description": "La URL combina términos de buzón de correo con indicios de acciones sobre la cuenta.",
+        },
+    },
+    "signal.deceptive_brand_in_subdomain_pattern": {
+        "en": {
+            "title": "Deceptive brand-in-subdomain pattern",
+            "description": "The subdomain embeds a brand-like domain fragment before the actual registered domain.",
+        },
+        "es": {
+            "title": "Patrón engañoso de marca en subdominio",
+            "description": "El subdominio incrusta un fragmento con apariencia de marca antes del dominio registrado real.",
+        },
+    },
+    "signal.misleading_subdomain_structure": {
+        "en": {
+            "title": "Misleading subdomain structure",
+            "description": "The subdomain structure adds unusual depth or trust-signaling lure wording ahead of the registered domain.",
+        },
+        "es": {
+            "title": "Estructura de subdominio engañosa",
+            "description": "La estructura del subdominio añade una profundidad inusual o lenguaje de señuelo que transmite confianza antes del dominio registrado.",
+        },
+    },
+    "signal.high_entropy_hostname_token": {
+        "en": {
+            "title": "High-entropy hostname token",
+            "description": "One hostname label appears algorithmically generated or unusually noisy.",
+        },
+        "es": {
+            "title": "Token de hostname con alta entropía",
+            "description": "Una etiqueta del hostname parece generada algorítmicamente o inusualmente ruidosa.",
+        },
+    },
+    "signal.brand_like_domain_on_uncommon_tld": {
+        "en": {
+            "title": "Brand-like domain on uncommon TLD",
+            "description": "The hostname mixes brand or account language with a higher-risk TLD choice.",
+        },
+        "es": {
+            "title": "Dominio con apariencia de marca en un TLD inusual",
+            "description": "El hostname mezcla lenguaje de marca o cuenta con un TLD de mayor riesgo.",
+        },
+    },
+    "signal.recognized_reputable_domain": {
+        "en": {
+            "title": "Recognized reputable domain",
+            "description": "The registered domain matches a conservative curated set of widely used reputable destinations.",
+        },
+        "es": {
+            "title": "Dominio reputado reconocido",
+            "description": "El dominio registrado coincide con un conjunto conservador y curado de destinos reputados y ampliamente utilizados.",
+        },
+    },
+    "signal.very_recent_domain_registration": {
+        "en": {
+            "title": "Very recent domain registration",
+            "description": "The registered domain appears to have been created within the last {threshold_days} days.",
+        },
+        "es": {
+            "title": "Registro de dominio muy reciente",
+            "description": "El dominio registrado parece haberse creado en los últimos {threshold_days} días.",
+        },
+    },
+    "signal.recent_domain_registration": {
+        "en": {
+            "title": "Recent domain registration",
+            "description": "The registered domain appears to have been created within the last {threshold_days} days.",
+        },
+        "es": {
+            "title": "Registro de dominio reciente",
+            "description": "El dominio registrado parece haberse creado en los últimos {threshold_days} días.",
+        },
+    },
+    "signal.observed_redirect_chain": {
+        "en": {
+            "title": "Observed redirect chain",
+            "description": "The submitted URL resolved through one or more redirects before reaching its final destination.",
+        },
+        "es": {
+            "title": "Cadena de redirecciones observada",
+            "description": "La URL enviada se resolvió mediante una o más redirecciones antes de alcanzar su destino final.",
+        },
+    },
+    "signal.credential_capture_form_detected": {
+        "en": {
+            "title": "Credential capture form detected",
+            "description": "The fetched HTML contains a form pattern consistent with credential collection.",
+        },
+        "es": {
+            "title": "Formulario de captura de credenciales detectado",
+            "description": "El HTML recuperado contiene un patrón de formulario coherente con la recopilación de credenciales.",
+        },
+    },
+    "signal.suspicious_login_style_interface": {
+        "en": {
+            "title": "Suspicious login-style interface",
+            "description": "The fetched HTML exposes login-style wording and input hints that merit credential-harvesting review.",
+        },
+        "es": {
+            "title": "Interfaz de inicio de sesión sospechosa",
+            "description": "El HTML recuperado expone lenguaje de inicio de sesión e indicios de entrada que requieren revisión por posible captura de credenciales.",
+        },
+    },
+    "signal.parked_or_placeholder_landing_page": {
+        "en": {
+            "title": "Parked or placeholder landing page",
+            "description": "The fetched HTML looks like a parked domain, default hosting page, or placeholder landing page.",
+        },
+        "es": {
+            "title": "Página de aterrizaje aparcada o provisional",
+            "description": "El HTML recuperado parece corresponder a un dominio aparcado, una página por defecto del hosting o una página provisional.",
+        },
+    },
+    "signal.low_information_landing_page": {
+        "en": {
+            "title": "Low-information landing page",
+            "description": "The fetched HTML contains almost no meaningful visible content, which limits confidence in a clean result.",
+        },
+        "es": {
+            "title": "Página de aterrizaje con poca información",
+            "description": "El HTML recuperado contiene muy poco contenido visible con significado, lo que limita la confianza en un resultado limpio.",
+        },
+    },
+    "signal.insecure_transport_scheme_plain": {
+        "en": {
+            "title": "Insecure transport scheme",
+            "description": "The target uses plain HTTP without TLS protection.",
+        },
+        "es": {
+            "title": "Esquema de transporte inseguro",
+            "description": "El destino utiliza HTTP en claro sin protección TLS.",
+        },
+    },
+    "signal.insecure_transport_scheme_sensitive": {
+        "en": {
+            "title": "Insecure transport scheme",
+            "description": "The target uses plain HTTP despite exposing login-oriented or brand-sensitive cues.",
+        },
+        "es": {
+            "title": "Esquema de transporte inseguro",
+            "description": "El destino utiliza HTTP en claro a pesar de exponer indicios orientados a inicio de sesión o sensibles para la marca.",
+        },
+    },
+    "signal.tls_validation_failure": {
+        "en": {
+            "title": "TLS validation failure",
+            "description": "The HTTPS endpoint could not be validated with the system TLS trust store.",
+        },
+        "es": {
+            "title": "Fallo de validación TLS",
+            "description": "El endpoint HTTPS no pudo validarse con el almacén de confianza TLS del sistema.",
+        },
+    },
+    "signal.reputation_blacklist_match": {
+        "en": {
+            "title": "Reputation blacklist match",
+            "description": "The target or a resolved redirect destination matched external malicious URL reputation intelligence.",
+        },
+        "es": {
+            "title": "Coincidencia en lista negra de reputación",
+            "description": "El destino o un destino final resuelto por redirección coincidió con inteligencia externa de reputación maliciosa.",
+        },
+    },
+    "signal.suspicious_infrastructure_pattern": {
+        "en": {
+            "title": "Suspicious infrastructure pattern",
+            "description": "The effective target resolves to infrastructure with reverse-DNS patterns consistent with disposable, dynamic, or residential hosting.",
+        },
+        "es": {
+            "title": "Patrón de infraestructura sospechoso",
+            "description": "El destino efectivo resuelve a una infraestructura con patrones de DNS inverso coherentes con alojamiento desechable, dinámico o residencial.",
+        },
+    },
+    "summary.terminal_blacklist_override": {
+        "en": "Terminal override triggered by high-confidence blacklist match.",
+        "es": "Se activó una invalidación terminal por una coincidencia de lista negra de alta confianza.",
+    },
+    "summary.risk_detected": {
+        "en": "Detected {risk_signal_count} risk signal(s) with {risk_level} risk output. Category penalties totaled {category_total_penalty:.2f} and compound penalties totaled {compound_penalty:.2f}.",
+        "es": "Se detectaron {risk_signal_count} señal(es) de riesgo con un resultado de riesgo {risk_level}. Las penalizaciones por categoría sumaron {category_total_penalty:.2f} y los ajustes compuestos sumaron {compound_penalty:.2f}.",
+    },
+    "summary.main_drivers": {
+        "en": "{summary} Main drivers: {drivers}.",
+        "es": "{summary} Factores principales: {drivers}.",
+    },
+    "summary.rules": {
+        "en": "{summary} Rules: {rules}.",
+        "es": "{summary} Reglas: {rules}.",
+    },
+    "summary.supporting_trust_context": {
+        "en": "{summary} Supporting trust context: {trust_context}.",
+        "es": "{summary} Contexto de confianza de apoyo: {trust_context}.",
+    },
+    "summary.analysis_coverage_degraded": {
+        "en": "Analysis coverage degraded: {warnings} {summary}",
+        "es": "Cobertura del análisis degradada: {warnings} {summary}",
+    },
+    "explanation.headline.terminal_override": {
+        "en": "The result was forced to a terminal malicious outcome by trusted backend intelligence.",
+        "es": "El resultado se forzó a un desenlace malicioso terminal mediante inteligencia de backend de alta confianza.",
+    },
+    "explanation.headline.no_high_confidence": {
+        "en": "The engine produced a {verdict} outcome without high-confidence driver signals.",
+        "es": "El motor produjo un resultado {verdict} sin señales impulsoras de alta confianza.",
+    },
+    "explanation.headline.safe_with_trust_context": {
+        "en": "The engine produced a {verdict} outcome supported by {drivers}.",
+        "es": "El motor produjo un resultado {verdict} respaldado por {drivers}.",
+    },
+    "explanation.headline.driven_by": {
+        "en": "The engine produced a {verdict} outcome driven by {drivers}.",
+        "es": "El motor produjo un resultado {verdict} impulsado por {drivers}.",
+    },
+    "explanation.decision_basis.with_trust_context": {
+        "en": "Score {score} mapped to {risk_level} risk with {category_summary}. Supporting trust context: {drivers}.",
+        "es": "La puntuación {score} se asignó al nivel de riesgo {risk_level} con {category_summary}. Contexto de confianza de apoyo: {drivers}.",
+    },
+    "explanation.decision_basis.no_primary_factors": {
+        "en": "Score {score} mapped to {risk_level} risk with {category_summary}.",
+        "es": "La puntuación {score} se asignó al nivel de riesgo {risk_level} con {category_summary}.",
+    },
+    "explanation.decision_basis.main_categories": {
+        "en": "Score {score} mapped to {risk_level} risk. Main contributing categories: {category_summary}.",
+        "es": "La puntuación {score} se asignó al nivel de riesgo {risk_level}. Principales categorías contribuyentes: {category_summary}.",
+    },
+    "phrase.no_category_penalties_recorded": {
+        "en": "no category penalties recorded",
+        "es": "sin penalizaciones por categoría registradas",
+    },
+    "warning.domain_registration_unavailable": {
+        "en": "Domain registration intelligence was unavailable for this run.",
+        "es": "La inteligencia de registro del dominio no estuvo disponible en esta ejecución.",
+    },
+    "warning.redirect_resolution_unavailable": {
+        "en": "Redirect resolution could not be completed for this run.",
+        "es": "La resolución de redirecciones no pudo completarse en esta ejecución.",
+    },
+    "warning.blacklist_reputation_unavailable": {
+        "en": "Blacklist reputation intelligence was unavailable for this run.",
+        "es": "La inteligencia de reputación de listas negras no estuvo disponible en esta ejecución.",
+    },
+    "warning.infrastructure_unavailable": {
+        "en": "Infrastructure intelligence could not be completed for this run.",
+        "es": "La inteligencia de infraestructura no pudo completarse en esta ejecución.",
+    },
+    "warning.tls_validation_unavailable": {
+        "en": "TLS validation could not be completed for this run.",
+        "es": "La validación TLS no pudo completarse en esta ejecución.",
+    },
+    "warning.html_content_inspection_unavailable": {
+        "en": "HTML content inspection could not be completed.",
+        "es": "La inspección del contenido HTML no pudo completarse.",
+    },
+    "warning.resolved_destination_html_unavailable": {
+        "en": "Resolved destination HTML inspection could not be completed.",
+        "es": "La inspección HTML del destino resuelto no pudo completarse.",
+    },
+    "warning.html_fetch_blocked_private_target": {
+        "en": "HTML content fetch was blocked for a private or special-use target.",
+        "es": "La obtención del contenido HTML fue bloqueada por apuntar a un destino privado o de uso especial.",
+    },
+    "evidence.host_resolves_to_raw_ip": {
+        "en": "Host resolves to raw IP {ascii_host}.",
+        "es": "El host apunta directamente a la IP {ascii_host}.",
+    },
+    "evidence.rendered_host": {
+        "en": "Rendered host: {host}.",
+        "es": "Host mostrado: {host}.",
+    },
+    "evidence.ascii_host_contains_punycode_labels": {
+        "en": "ASCII host contains punycode label(s): {ascii_host}.",
+        "es": "El host ASCII contiene etiquetas punycode: {ascii_host}.",
+    },
+    "evidence.ascii_host": {
+        "en": "ASCII host: {ascii_host}.",
+        "es": "Host ASCII: {ascii_host}.",
+    },
+    "evidence.host_contains_zero_width_characters": {
+        "en": "Host contains zero-width characters: {host}.",
+        "es": "El host contiene caracteres de ancho cero: {host}.",
+    },
+    "evidence.observed_explicit_port": {
+        "en": "Observed explicit port {port}.",
+        "es": "Puerto explícito observado: {port}.",
+    },
+    "evidence.registered_domain_is_shortener": {
+        "en": "Registered domain {registered_domain} is a shortener.",
+        "es": "El dominio registrado {registered_domain} es un acortador.",
+    },
+    "evidence.path_contains_redirect_style_tokens": {
+        "en": "Path contains redirect-style token(s): {decoded_path}.",
+        "es": "La ruta contiene tokens de redirección: {decoded_path}.",
+    },
+    "evidence.query_parameter_may_steer_navigation": {
+        "en": "Query parameter {key}={value} may steer navigation.",
+        "es": "El parámetro de consulta {key}={value} puede dirigir la navegación.",
+    },
+    "evidence.query_parameter_embeds_nested_url": {
+        "en": "Query parameter {key} embeds a nested URL destination.",
+        "es": "El parámetro de consulta {key} incrusta un destino URL anidado.",
+    },
+    "evidence.matched_url_keywords": {
+        "en": "Matched URL keywords: {keywords}.",
+        "es": "Palabras clave de URL coincidentes: {keywords}.",
+    },
+    "evidence.matched_brand_terms": {
+        "en": "Matched brand terms: {brands}.",
+        "es": "Términos de marca coincidentes: {brands}.",
+    },
+    "evidence.registered_domain_under_review": {
+        "en": "Registered domain under review: {registered_domain}.",
+        "es": "Dominio registrado bajo revisión: {registered_domain}.",
+    },
+    "evidence.matched_institution_terms": {
+        "en": "Matched institution terms: {terms}.",
+        "es": "Términos institucionales coincidentes: {terms}.",
+    },
+    "evidence.matched_demand_terms": {
+        "en": "Matched demand terms: {terms}.",
+        "es": "Términos de exigencia coincidentes: {terms}.",
+    },
+    "evidence.matched_mailbox_terms": {
+        "en": "Matched mailbox terms: {terms}.",
+        "es": "Términos de buzón coincidentes: {terms}.",
+    },
+    "evidence.observed_deceptive_fragment": {
+        "en": "Observed deceptive fragment: {fragment}.",
+        "es": "Fragmento engañoso observado: {fragment}.",
+    },
+    "evidence.registered_domain_observed": {
+        "en": "Registered domain observed: {registered_domain}.",
+        "es": "Dominio registrado observado: {registered_domain}.",
+    },
+    "evidence.subdomain_observed": {
+        "en": "Subdomain observed: {subdomain}.",
+        "es": "Subdominio observado: {subdomain}.",
+    },
+    "evidence.suspicious_label": {
+        "en": "Suspicious label: {label}.",
+        "es": "Etiqueta sospechosa: {label}.",
+    },
+    "evidence.observed_tld": {
+        "en": "Observed TLD: .{tld}.",
+        "es": "TLD observado: .{tld}.",
+    },
+    "evidence.observed_domain": {
+        "en": "Observed domain: {observed_domain}.",
+        "es": "Dominio observado: {observed_domain}.",
+    },
+    "evidence.registration_date": {
+        "en": "Registration date: {registration_date}.",
+        "es": "Fecha de registro: {registration_date}.",
+    },
+    "evidence.computed_domain_age_days": {
+        "en": "Computed domain age: {age_in_days} day(s).",
+        "es": "Antigüedad calculada del dominio: {age_in_days} día(s).",
+    },
+    "evidence.lookup_provider": {
+        "en": "Lookup provider: {provider_name}.",
+        "es": "Proveedor de consulta: {provider_name}.",
+    },
+    "evidence.redirect_hops_observed": {
+        "en": "Redirect hops observed: {hop_count}.",
+        "es": "Saltos de redirección observados: {hop_count}.",
+    },
+    "evidence.final_url_after_redirects": {
+        "en": "Final URL after redirects: {final_url}.",
+        "es": "URL final tras las redirecciones: {final_url}.",
+    },
+    "evidence.redirect_resolver": {
+        "en": "Redirect resolver: {provider_name}.",
+        "es": "Resolvedor de redirecciones: {provider_name}.",
+    },
+    "evidence.redirect_chain_crossed_registered_domains": {
+        "en": "Redirect chain crossed registered domains: {crossings}.",
+        "es": "La cadena de redirección cruzó dominios registrados: {crossings}.",
+    },
+    "evidence.redirect_chain_downgraded_transport": {
+        "en": "Redirect chain downgraded transport from HTTPS to HTTP.",
+        "es": "La cadena de redirección degradó el transporte de HTTPS a HTTP.",
+    },
+    "evidence.listed_value": {
+        "en": "Listed value: {value}.",
+        "es": "Valor listado: {value}.",
+    },
+    "evidence.reputation_provider": {
+        "en": "Reputation provider: {provider_name}.",
+        "es": "Proveedor de reputación: {provider_name}.",
+    },
+    "evidence.provider_references": {
+        "en": "Provider references: {reference_count}.",
+        "es": "Referencias del proveedor: {reference_count}.",
+    },
+    "evidence.urlhaus_records": {
+        "en": "URLhaus returned {reference_count} malicious URL record(s) for the queried host.",
+        "es": "URLhaus devolvió {reference_count} registro(s) de URL maliciosa para el host consultado.",
+    },
+    "evidence.final_redirect_target": {
+        "en": "Final redirect target: {final_url}.",
+        "es": "Destino final de la redirección: {final_url}.",
+    },
+    "evidence.effective_target_host": {
+        "en": "Effective target host: {host}.",
+        "es": "Host del destino efectivo: {host}.",
+    },
+    "evidence.infrastructure_provider": {
+        "en": "Infrastructure provider: {provider_name}.",
+        "es": "Proveedor de infraestructura: {provider_name}.",
+    },
+    "evidence.resolved_addresses": {
+        "en": "Resolved addresses: {addresses}.",
+        "es": "Direcciones resueltas: {addresses}.",
+    },
+    "evidence.matched_infrastructure_patterns": {
+        "en": "Matched infrastructure patterns: {patterns}.",
+        "es": "Patrones de infraestructura coincidentes: {patterns}.",
+    },
+    "evidence.reverse_dns_sample": {
+        "en": "Reverse DNS sample: {reverse_hostname}.",
+        "es": "Muestra de DNS inverso: {reverse_hostname}.",
+    },
+    "evidence.matched_sensitive_url_terms": {
+        "en": "Matched sensitive URL terms: {terms}.",
+        "es": "Términos sensibles de URL coincidentes: {terms}.",
+    },
+    "evidence.effective_target_derived_from_redirect_chain": {
+        "en": "Effective target derived from redirect chain: {final_url}.",
+        "es": "Destino efectivo derivado de la cadena de redirección: {final_url}.",
+    },
+    "evidence.observed_url_scheme": {
+        "en": "Observed URL scheme: {scheme}.",
+        "es": "Esquema URL observado: {scheme}.",
+    },
+    "evidence.observed_host": {
+        "en": "Observed host: {host}.",
+        "es": "Host observado: {host}.",
+    },
+    "evidence.validated_host": {
+        "en": "Validated host: {host}.",
+        "es": "Host validado: {host}.",
+    },
+    "evidence.validation_provider": {
+        "en": "Validation provider: {provider_name}.",
+        "es": "Proveedor de validación: {provider_name}.",
+    },
+    "evidence.tls_failure_reason": {
+        "en": "TLS failure reason: {failure_reason}.",
+        "es": "Motivo del fallo TLS: {failure_reason}.",
+    },
+    "evidence.html_forms_found": {
+        "en": "HTML forms found: {form_count}.",
+        "es": "Formularios HTML encontrados: {form_count}.",
+    },
+    "evidence.password_fields_found": {
+        "en": "Password fields found: {password_field_count}.",
+        "es": "Campos de contraseña encontrados: {password_field_count}.",
+    },
+    "evidence.matched_account_input_hints": {
+        "en": "Matched account input hints: {hints}.",
+        "es": "Indicadores coincidentes de campos de cuenta: {hints}.",
+    },
+    "evidence.matched_login_wording": {
+        "en": "Matched login wording: {terms}.",
+        "es": "Texto coincidente de inicio de sesión: {terms}.",
+    },
+    "evidence.observed_form_action": {
+        "en": "Observed form action: {action}.",
+        "es": "Acción de formulario observada: {action}.",
+    },
+    "evidence.suspicious_form_action": {
+        "en": "Suspicious form action: {action}.",
+        "es": "Acción de formulario sospechosa: {action}.",
+    },
+    "evidence.visible_text_tokens_found": {
+        "en": "Visible text tokens found: {visible_token_count}.",
+        "es": "Tokens de texto visible encontrados: {visible_token_count}.",
+    },
+    "evidence.matched_placeholder_markers": {
+        "en": "Matched placeholder markers: {markers}.",
+        "es": "Marcadores coincidentes de página provisional: {markers}.",
+    },
+    "evidence.no_forms_or_meaningful_visible_copy": {
+        "en": "The fetched landing page exposes no forms or meaningful visible copy.",
+        "es": "La página de aterrizaje recuperada no expone formularios ni contenido visible con significado.",
+    },
+    "evidence.resolved_final_url": {
+        "en": "Resolved final URL: {final_url}.",
+        "es": "URL final resuelta: {final_url}.",
+    },
+}

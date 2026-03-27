@@ -7,6 +7,7 @@ from app.application.ports.tls_validator import (
     TlsValidatorPort,
 )
 from app.application.services.analysis_result import SignalAnalysisResult
+from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -59,7 +60,7 @@ class TransportSecuritySignalAnalyzer:
             )
         except TlsValidationError:
             return SignalAnalysisResult(
-                warnings=("TLS validation could not be completed for this run.",)
+                warnings=(resolve_message("warning.tls_validation_unavailable"),)
             )
 
         if not validation_result.is_valid:
@@ -80,23 +81,27 @@ class TransportSecuritySignalAnalyzer:
     ) -> AnalysisSignal:
         is_sensitive_target = bool(sensitive_terms)
         evidence = [
-            f"Observed URL scheme: {normalized_url.scheme}.",
-            f"Observed host: {normalized_url.ascii_host}.",
+            evidence_ref("evidence.observed_url_scheme", scheme=normalized_url.scheme),
+            evidence_ref("evidence.observed_host", host=normalized_url.ascii_host),
         ]
         if sensitive_terms:
-            evidence.append(f"Matched sensitive URL terms: {', '.join(sensitive_terms[:4])}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.matched_sensitive_url_terms",
+                    terms=", ".join(sensitive_terms[:4]),
+                )
+            )
 
         return self._signal(
             signal_type=SignalType.INSECURE_TRANSPORT,
             severity=SignalSeverity.HIGH if is_sensitive_target else SignalSeverity.MEDIUM,
             confidence=92 if is_sensitive_target else 80,
-            title="Insecure transport scheme",
-            description=(
-                "The target uses plain HTTP without TLS protection."
-                if not is_sensitive_target
-                else "The target uses plain HTTP despite exposing login-oriented or brand-sensitive cues."
+            message_key=(
+                "signal.insecure_transport_scheme_sensitive"
+                if is_sensitive_target
+                else "signal.insecure_transport_scheme_plain"
             ),
-            evidence=tuple(evidence),
+            message_params={"evidence": evidence},
             tags=("http", "transport-security"),
         )
 
@@ -107,24 +112,34 @@ class TransportSecuritySignalAnalyzer:
         sensitive_terms: list[str],
     ) -> AnalysisSignal:
         evidence = [
-            f"Observed URL scheme: {normalized_url.scheme}.",
-            f"Validated host: {normalized_url.ascii_host}.",
-            f"Validation provider: {validation_result.provider_name}.",
+            evidence_ref("evidence.observed_url_scheme", scheme=normalized_url.scheme),
+            evidence_ref("evidence.validated_host", host=normalized_url.ascii_host),
+            evidence_ref(
+                "evidence.validation_provider",
+                provider_name=validation_result.provider_name,
+            ),
         ]
         if validation_result.failure_reason:
-            evidence.append(f"TLS failure reason: {validation_result.failure_reason}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.tls_failure_reason",
+                    failure_reason=validation_result.failure_reason,
+                )
+            )
         if sensitive_terms:
-            evidence.append(f"Matched sensitive URL terms: {', '.join(sensitive_terms[:4])}.")
+            evidence.append(
+                evidence_ref(
+                    "evidence.matched_sensitive_url_terms",
+                    terms=", ".join(sensitive_terms[:4]),
+                )
+            )
 
         return self._signal(
             signal_type=SignalType.TLS_VALIDATION_FAILURE,
             severity=SignalSeverity.HIGH if sensitive_terms else SignalSeverity.MEDIUM,
             confidence=91 if sensitive_terms else 84,
-            title="TLS validation failure",
-            description=(
-                "The HTTPS endpoint could not be validated with the system TLS trust store."
-            ),
-            evidence=tuple(evidence),
+            message_key="signal.tls_validation_failure",
+            message_params={"evidence": evidence},
             tags=("tls", "transport-security"),
         )
 
@@ -133,21 +148,19 @@ class TransportSecuritySignalAnalyzer:
         signal_type: SignalType,
         severity: SignalSeverity,
         confidence: float,
-        title: str,
-        description: str,
-        evidence: tuple[str, ...],
+        message_key: str,
+        message_params: dict[str, object],
         tags: tuple[str, ...],
     ) -> AnalysisSignal:
-        return AnalysisSignal.create(
+        return build_localized_signal(
             signal_type=signal_type,
             category=SIGNAL_CATEGORY_MAP[signal_type],
             severity=severity,
             confidence=ConfidenceScore(confidence),
-            title=title,
-            description=description,
             source=self.source,
             base_weight=BASE_SIGNAL_WEIGHTS[signal_type],
-            evidence=evidence,
+            message_key=message_key,
+            message_params=message_params,
             tags=tags,
         )
 
