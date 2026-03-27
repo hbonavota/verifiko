@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from dataclasses import replace
+from typing import Callable
 
 from app.application.commands.create_verification_command import CreateVerificationCommand
 from app.application.dto.verification_dto import VerificationDTO
@@ -25,12 +26,14 @@ from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.entities.analysis_trace_stage import AnalysisTraceStage
 from app.domain.entities.risk_assessment import RiskAssessment
 from app.domain.entities.verification import Verification
+from app.domain.exceptions.domain_exception import DomainException
 from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.services.risk_scoring_engine import risk_level_for_score, verdict_for_level
 from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS
 from app.domain.services.scoring_service import ScoringService
 from app.domain.value_objects.confidence_score import ConfidenceScore
+from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
 
 
 @dataclass(slots=True)
@@ -47,6 +50,7 @@ class CreateURLVerificationUseCase:
     html_fetcher: HtmlFetcherPort
     html_credential_signal_analyzer: HtmlCredentialSignalAnalyzer
     transport_security_signal_analyzer: TransportSecuritySignalAnalyzer
+    public_target_validator: Callable[[str], None] | None = None
 
     def execute(self, command: CreateVerificationCommand) -> VerificationDTO:
         verification = Verification.create_url(
@@ -54,6 +58,7 @@ class CreateURLVerificationUseCase:
             verification_id=self.id_generator.next_verification_id(),
             calculation_version=command.calculation_version,
         )
+        self._assert_public_target(verification)
         verification.set_analyzing()
 
         analysis_warnings: list[str] = []
@@ -254,6 +259,7 @@ class CreateURLVerificationUseCase:
             deduplicated_warnings
             and not risk_assessment.terminal_override
             and risk_assessment.score.value > 80
+            and bool(risk_assessment.top_signals)
         ):
             adjusted_score = ConfidenceScore(80)
             adjusted_risk_level = risk_level_for_score(adjusted_score.value)
@@ -320,3 +326,11 @@ class CreateURLVerificationUseCase:
         if command.signals:
             layers.extend(signal.source for signal in command.signals)
         return tuple(dict.fromkeys(layers))
+
+    def _assert_public_target(self, verification: Verification) -> None:
+        if self.public_target_validator is None:
+            return
+        try:
+            self.public_target_validator(verification.normalized_input.normalized)
+        except UnsafeOutboundTargetError as exc:
+            raise DomainException(str(exc)) from exc

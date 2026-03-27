@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from app.application.commands.create_verification_command import CreateVerificationCommand, SignalInput
 from app.application.ports.domain_age_lookup import (
     DomainAgeLookupPort,
@@ -45,6 +47,7 @@ from app.application.services.transport_security_signal_analyzer import (
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
 from app.domain.entities.verification import Verification
+from app.domain.exceptions.domain_exception import DomainException
 from app.domain.enums.signal_category import SignalCategory
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
@@ -53,6 +56,7 @@ from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
 from app.domain.value_objects.verification_id import VerificationId
+from app.infrastructure.external_services.outbound_target_guard import assert_safe_outbound_url
 
 
 class FakeRepository(VerificationRepository):
@@ -183,6 +187,7 @@ def _build_use_case(
     redirect_resolver: RedirectResolverPort | None = None,
     reputation_lookup: ReputationLookupPort | None = None,
     infrastructure_lookup: InfrastructureLookupPort | None = None,
+    public_target_validator=None,
 ) -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=FakeRepository(),
@@ -212,6 +217,7 @@ def _build_use_case(
         transport_security_signal_analyzer=TransportSecuritySignalAnalyzer(
             tls_validator=tls_validator or FakeTlsValidator()
         ),
+        public_target_validator=public_target_validator,
     )
 
 
@@ -447,9 +453,9 @@ def test_create_url_verification_use_case_caps_safe_result_when_coverage_is_degr
     dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
 
     assert dto.risk_assessment is not None
-    assert dto.risk_assessment.score == 80
-    assert dto.risk_assessment.risk_level == "LOW"
-    assert dto.risk_assessment.verdict == "CAUTION"
+    assert dto.risk_assessment.score == 100
+    assert dto.risk_assessment.risk_level == "SAFE"
+    assert dto.risk_assessment.verdict == "TRUSTED"
     assert "Analysis coverage degraded:" in dto.risk_assessment.summary
 
 
@@ -518,7 +524,7 @@ def test_create_url_verification_use_case_records_degraded_coverage_when_reputat
     dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
 
     assert dto.risk_assessment is not None
-    assert dto.risk_assessment.risk_level == "LOW"
+    assert dto.risk_assessment.risk_level == "SAFE"
     assert "Blacklist reputation intelligence was unavailable for this run." in (
         dto.risk_assessment.summary
     )
@@ -551,9 +557,100 @@ def test_create_url_verification_use_case_records_degraded_coverage_when_infrast
     dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
 
     assert dto.risk_assessment is not None
-    assert dto.risk_assessment.risk_level == "LOW"
+    assert dto.risk_assessment.risk_level == "SAFE"
     assert "Infrastructure intelligence could not be completed for this run." in (
         dto.risk_assessment.summary
+    )
+
+
+def test_create_url_verification_use_case_caps_warning_degraded_result_when_signals_exist() -> None:
+    use_case = _build_use_case(html_fetcher=FakeHtmlFetcher(fail=True))
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://g.co/openai"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.score == 80
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert dto.risk_assessment.verdict == "CAUTION"
+    assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_rejects_unsafe_local_targets() -> None:
+    use_case = _build_use_case(public_target_validator=assert_safe_outbound_url)
+
+    try:
+        use_case.execute(CreateVerificationCommand(url="https://localhost/login"))
+    except DomainException as exc:
+        assert str(exc) == "Outbound target is a local or special-use hostname and was blocked."
+    else:
+        raise AssertionError("Expected unsafe local target to be rejected.")
+
+
+def test_create_url_verification_use_case_rejects_single_label_targets() -> None:
+    use_case = _build_use_case(public_target_validator=assert_safe_outbound_url)
+
+    with pytest.raises(
+        DomainException,
+        match="Outbound target uses a single-label hostname and was blocked.",
+    ):
+        use_case.execute(CreateVerificationCommand(url="A"))
+
+
+def test_create_url_verification_use_case_strengthens_branded_shortener_lures() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://g.co/account/security"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert "shortened_credential_lure_pattern" in dto.risk_assessment.summary
+
+
+@pytest.mark.parametrize("url", ("https://google.com", "https://www.verifiko.es/"))
+def test_create_url_verification_use_case_keeps_benign_targets_safe_under_minor_warnings(
+    url: str,
+) -> None:
+    use_case = _build_use_case(
+        html_fetcher=FakeHtmlFetcher(fail=True),
+        reputation_lookup=FakeReputationLookup(fail=True),
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url=url))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "SAFE"
+    assert dto.risk_assessment.verdict == "TRUSTED"
+    assert dto.risk_assessment.score == 100
+    assert dto.risk_assessment.analysis_warnings
+
+
+def test_create_url_verification_use_case_strengthens_shortener_redirected_lures() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://traffic-fine-payment.example.top/notice",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://g.co/pay-now",
+                        target_url="https://traffic-fine-payment.example.top/notice",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://g.co/pay-now"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.score < 61
+    assert "shortened_redirected_lure_pattern" in dto.risk_assessment.summary
+    assert any(
+        signal.signal_type == "brand_impersonation"
+        and signal.title == "Institution-style payment or penalty lure"
+        for signal in dto.signals
     )
 
 

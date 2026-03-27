@@ -11,6 +11,8 @@ from app.domain.services.compound_rules import (
     EmailFraudStagingPatternRule,
     InfrastructureBackedCredentialLureRule,
     RedirectedDeceptionPatternRule,
+    ShortenedCredentialLureRule,
+    ShortenedRedirectedLureRule,
     detected_types,
 )
 from app.domain.services.score_breakdown_builder import build_score_breakdown
@@ -27,6 +29,8 @@ class RiskScoringEngine(ScoringService):
             DeceptiveBrandSubdomainRule(),
             EmailFraudStagingPatternRule(),
             RedirectedDeceptionPatternRule(),
+            ShortenedCredentialLureRule(),
+            ShortenedRedirectedLureRule(),
             InfrastructureBackedCredentialLureRule(),
         ]
 

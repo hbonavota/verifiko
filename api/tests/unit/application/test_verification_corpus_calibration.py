@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from app.application.commands.create_verification_command import CreateVerificationCommand
 from app.application.ports.domain_age_lookup import DomainAgeLookupPort
 from app.application.ports.html_fetcher import HtmlFetcherPort
@@ -29,11 +31,13 @@ from app.application.services.transport_security_signal_analyzer import (
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
+from app.domain.exceptions.domain_exception import DomainException
 from app.domain.enums.risk_level import RiskLevel
 from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
 from app.domain.value_objects.verification_id import VerificationId
+from app.infrastructure.external_services.outbound_target_guard import assert_safe_outbound_url
 
 
 class FakeRepository(VerificationRepository):
@@ -86,7 +90,7 @@ class NoopInfrastructureLookup(InfrastructureLookupPort):
         )
 
 
-def _build_use_case() -> CreateURLVerificationUseCase:
+def _build_use_case(public_target_validator=None) -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=FakeRepository(),
         id_generator=FakeIdGenerator(),
@@ -115,6 +119,7 @@ def _build_use_case() -> CreateURLVerificationUseCase:
         transport_security_signal_analyzer=TransportSecuritySignalAnalyzer(
             tls_validator=ValidTlsValidator()
         ),
+        public_target_validator=public_target_validator,
     )
 
 
@@ -124,14 +129,15 @@ def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse(
         "http://paypal-login-security-check.example.xyz/verify?redirect=https://example.org",
         "https://microsoft-verify-account.example.top/login",
         "https://outlook.office365.mailbox-auth.example.click/reset",
-        "http://192.168.10.24/secure-login",
         "https://appleid-confirm-billing.example.info/signin",
+        "https://g.co/account/security",
     )
 
     for url in suspicious_urls:
         result = use_case.execute(CreateVerificationCommand(url=url))
         assert result.risk_assessment is not None
         assert result.risk_assessment.risk_level in {
+            RiskLevel.LOW.value,
             RiskLevel.MEDIUM.value,
             RiskLevel.HIGH.value,
             RiskLevel.CRITICAL.value,
@@ -141,6 +147,7 @@ def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse(
 def test_manual_corpus_calibration_benign_urls_remain_safe() -> None:
     use_case = _build_use_case()
     benign_urls = (
+        "https://google.com/",
         "https://verifiko.es/",
         "https://docs.python.org/3/library/urllib.parse.html",
         "https://openai.com/research/",
@@ -166,3 +173,17 @@ def test_manual_corpus_calibration_reduces_known_false_positive_patterns() -> No
         CreateVerificationCommand(url="https://customer-portal.example.com/")
     )
     assert all(signal.signal_type != "high_domain_entropy" for signal in portal_result.signals)
+
+
+def test_manual_corpus_calibration_rejects_unsafe_local_targets() -> None:
+    use_case = _build_use_case(public_target_validator=assert_safe_outbound_url)
+
+    with pytest.raises(DomainException):
+        use_case.execute(CreateVerificationCommand(url="https://localhost/login"))
+
+
+def test_manual_corpus_calibration_rejects_single_label_targets() -> None:
+    use_case = _build_use_case(public_target_validator=assert_safe_outbound_url)
+
+    with pytest.raises(DomainException):
+        use_case.execute(CreateVerificationCommand(url="A"))

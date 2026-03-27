@@ -105,3 +105,85 @@ def test_infrastructure_compound_rule_adds_penalty() -> None:
         entry.rule_name == "infrastructure_backed_credential_lure"
         for entry in result.score_breakdown.compound_rules_applied
     )
+
+
+def test_shortened_credential_lure_rule_adds_penalty() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.SHORTENED_URL,
+            category=SignalCategory.NAVIGATION_BEHAVIOR,
+            severity=SignalSeverity.MEDIUM,
+            confidence=ConfidenceScore(82),
+            title="Shortened destination",
+            description="Known URL shortener.",
+            source="url-rule-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SHORTENED_URL],
+        ),
+        AnalysisSignal.create(
+            signal_type=SignalType.PHISHING_KEYWORDS,
+            category=SignalCategory.CONTENT_BEHAVIOR,
+            severity=SignalSeverity.MEDIUM,
+            confidence=ConfidenceScore(69),
+            title="Credential lure wording in URL",
+            description="Credential lure terms present.",
+            source="url-rule-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.PHISHING_KEYWORDS],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.score.value < 100
+    assert "shortened_credential_lure_pattern" in result.summary
+    assert result.score_breakdown is not None
+    assert any(
+        entry.rule_name == "shortened_credential_lure_pattern"
+        for entry in result.score_breakdown.compound_rules_applied
+    )
+
+
+def test_shortened_redirected_lure_rule_adds_penalty() -> None:
+    engine = RiskScoringEngine()
+    signals = [
+        AnalysisSignal.create(
+            signal_type=SignalType.SHORTENED_URL,
+            category=SignalCategory.NAVIGATION_BEHAVIOR,
+            severity=SignalSeverity.MEDIUM,
+            confidence=ConfidenceScore(82),
+            title="Shortened destination",
+            description="Known URL shortener.",
+            source="url-rule-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SHORTENED_URL],
+        ),
+        AnalysisSignal.create(
+            signal_type=SignalType.SUSPICIOUS_REDIRECT_CHAIN,
+            category=SignalCategory.NAVIGATION_BEHAVIOR,
+            severity=SignalSeverity.HIGH,
+            confidence=ConfidenceScore(88),
+            title="Redirect chain crosses unrelated domains",
+            description="Observed redirect chain changed domains.",
+            source="redirect-resolver",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_REDIRECT_CHAIN],
+        ),
+        AnalysisSignal.create(
+            signal_type=SignalType.BRAND_IMPERSONATION,
+            category=SignalCategory.CONTENT_BEHAVIOR,
+            severity=SignalSeverity.HIGH,
+            confidence=ConfidenceScore(92),
+            title="Institution-style payment or penalty lure",
+            description="Authority-style payment language on a non-official domain.",
+            source="resolved-destination-url-analyzer",
+            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.BRAND_IMPERSONATION],
+        ),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.score.value < 100
+    assert "shortened_redirected_lure_pattern" in result.summary
+    assert result.score_breakdown is not None
+    assert any(
+        entry.rule_name == "shortened_redirected_lure_pattern"
+        for entry in result.score_breakdown.compound_rules_applied
+    )

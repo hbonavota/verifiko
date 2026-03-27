@@ -26,6 +26,7 @@ from app.infrastructure.external_services.dns.socket_infrastructure_lookup impor
     SocketInfrastructureLookup,
 )
 from app.infrastructure.external_services.html.simple_html_fetcher import SimpleHtmlFetcher
+from app.infrastructure.external_services.outbound_target_guard import assert_safe_outbound_url
 from app.infrastructure.external_services.redirects.http_redirect_resolver import (
     HttpRedirectResolver,
 )
@@ -149,6 +150,7 @@ def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:
         html_fetcher=get_html_fetcher(),
         html_credential_signal_analyzer=get_html_credential_signal_analyzer(),
         transport_security_signal_analyzer=get_transport_security_signal_analyzer(),
+        public_target_validator=assert_safe_outbound_url,
     )
 
 

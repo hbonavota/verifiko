@@ -46,13 +46,45 @@ _BRAND_KEYWORDS = {
     "onedrive",
     "outlook",
     "paypal",
+    "hmrc",
+    "irs",
+    "ssa",
+    "usps",
 }
 _EMAIL_LURE_KEYWORDS = {"mail", "mailbox", "office365", "outlook", "webmail"}
+_INSTITUTION_CONTEXT_KEYWORDS = {
+    "authority",
+    "customs",
+    "dgt",
+    "government",
+    "hmrc",
+    "irs",
+    "revenue",
+    "ssa",
+    "traffic",
+    "trafico",
+    "usps",
+}
+_INSTITUTION_DEMAND_KEYWORDS = {
+    "appeal",
+    "fine",
+    "notice",
+    "pay",
+    "payment",
+    "penalty",
+    "settle",
+    "ticket",
+    "toll",
+    "violation",
+}
 _SHORTENER_DOMAINS = {
+    "amzn.to",
     "bit.ly",
     "cutt.ly",
+    "g.co",
     "goo.gl",
     "is.gd",
+    "lnkd.in",
     "ow.ly",
     "rebrand.ly",
     "rb.gy",
@@ -61,6 +93,7 @@ _SHORTENER_DOMAINS = {
 }
 _UNCOMMON_BRANDISH_TLDS = {"buzz", "click", "gq", "info", "link", "live", "rest", "shop", "top", "xyz"}
 _COMMON_DOMAIN_SUFFIXES = {"ac", "app", "biz", "co", "com", "dev", "edu", "gov", "info", "io", "net", "org"}
+_OFFICIAL_INSTITUTION_SUFFIXES = (".gov", ".gov.uk", ".gob.es", ".gov.es", ".gc.ca")
 _REDIRECT_KEYS = {"continue", "next", "redirect", "return", "target", "url"}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
@@ -86,6 +119,8 @@ class DeterministicUrlSignalAnalyzer:
         )
         keyword_matches = sorted(_SUSPICIOUS_KEYWORDS.intersection(text_tokens))
         brand_matches = sorted(_BRAND_KEYWORDS.intersection(text_tokens))
+        institution_context_matches = sorted(_INSTITUTION_CONTEXT_KEYWORDS.intersection(text_tokens))
+        institution_demand_matches = sorted(_INSTITUTION_DEMAND_KEYWORDS.intersection(text_tokens))
         deceptive_brand_pattern = self._deceptive_brand_subdomain_pattern(subdomain_labels)
         tld = host_labels[-1] if len(host_labels) >= 2 else ""
 
@@ -193,7 +228,7 @@ class DeterministicUrlSignalAnalyzer:
                 )
             )
 
-        if brand_matches and keyword_matches and normalized_url.registered_domain not in self._official_brand_domains():
+        if brand_matches and keyword_matches and not self._is_official_brand_target(normalized_url):
             brand_sample = ", ".join(brand_matches[:3])
             signals.append(
                 self._signal(
@@ -207,6 +242,34 @@ class DeterministicUrlSignalAnalyzer:
                         f"Registered domain under review: {normalized_url.registered_domain}.",
                     ),
                     tags=tuple((brand_matches + keyword_matches)[:5]),
+                )
+            )
+        elif (
+            institution_context_matches
+            and institution_demand_matches
+            and not self._is_official_institution_target(normalized_url)
+        ):
+            signals.append(
+                self._signal(
+                    signal_type=SignalType.BRAND_IMPERSONATION,
+                    severity=SignalSeverity.HIGH,
+                    confidence=min(
+                        94,
+                        78
+                        + len(institution_context_matches) * 5
+                        + len(institution_demand_matches) * 4,
+                    ),
+                    title="Institution-style payment or penalty lure",
+                    description=(
+                        "Government or authority-style payment, traffic, or penalty wording appears "
+                        "on a non-official domain."
+                    ),
+                    evidence=(
+                        f"Matched institution terms: {', '.join(institution_context_matches[:3])}.",
+                        f"Matched demand terms: {', '.join(institution_demand_matches[:3])}.",
+                        f"Registered domain under review: {normalized_url.registered_domain}.",
+                    ),
+                    tags=tuple((institution_context_matches + institution_demand_matches)[:5]),
                 )
             )
 
@@ -360,14 +423,31 @@ class DeterministicUrlSignalAnalyzer:
             "dropbox.com",
             "facebook.com",
             "google.com",
+            "hmrc.gov.uk",
             "instagram.com",
+            "irs.gov",
             "microsoft.com",
             "netflix.com",
             "openai.com",
             "onedrive.live.com",
             "outlook.com",
             "paypal.com",
+            "ssa.gov",
+            "usps.com",
         }
+
+    def _is_official_brand_target(self, normalized_url: NormalizedUrl) -> bool:
+        official_domains = self._official_brand_domains()
+        return (
+            normalized_url.ascii_host in official_domains
+            or normalized_url.registered_domain in official_domains
+        )
+
+    def _is_official_institution_target(self, normalized_url: NormalizedUrl) -> bool:
+        if self._is_official_brand_target(normalized_url):
+            return True
+
+        return normalized_url.ascii_host.endswith(_OFFICIAL_INSTITUTION_SUFFIXES)
 
     def _deceptive_brand_subdomain_pattern(self, subdomain_labels: list[str]) -> str | None:
         if len(subdomain_labels) < 2:

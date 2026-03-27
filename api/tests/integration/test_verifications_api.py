@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi.testclient import TestClient
 import pytest
@@ -20,6 +21,7 @@ import app.entrypoints.api.dependencies.container as container
 from app.entrypoints.api.dependencies.container import get_verification_repository
 from app.entrypoints.api.main import app
 from app.infrastructure.config.settings import get_settings
+from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
 from app.infrastructure.persistence.database import drop_db, get_engine, get_session_factory
 from tests.integration.alembic_helpers import upgrade_to_head
 
@@ -40,6 +42,18 @@ class NoopInfrastructureLookup(InfrastructureLookupPort):
             queried_host=hostname,
             provider_name="stub-infrastructure",
             resolved_addresses=(ResolvedAddress(ip_address="203.0.113.10"),),
+        )
+
+
+def _test_public_target_validator(url: str) -> None:
+    hostname = (urlsplit(url).hostname or "").lower()
+    if hostname == "localhost":
+        raise UnsafeOutboundTargetError(
+            "Outbound target is a local or special-use hostname and was blocked."
+        )
+    if hostname and "." not in hostname:
+        raise UnsafeOutboundTargetError(
+            "Outbound target uses a single-label hostname and was blocked."
         )
 
 
@@ -74,6 +88,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         "get_infrastructure_signal_analyzer",
         lambda: InfrastructureSignalAnalyzer(infrastructure_lookup=NoopInfrastructureLookup()),
     )
+    monkeypatch.setattr(container, "assert_safe_outbound_url", _test_public_target_validator)
 
     upgrade_to_head(database_url)
 
@@ -170,4 +185,32 @@ def test_verification_api_rejects_client_supplied_signals(client: TestClient) ->
     assert response.status_code == 422
     assert response.json()["detail"] == (
         "Client-supplied signals are not accepted on this endpoint."
+    )
+
+
+def test_verification_api_rejects_unsafe_local_targets(client: TestClient) -> None:
+    response = client.post(
+        "/api/verifications",
+        json={
+            "url": "https://localhost/login",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "Outbound target is a local or special-use hostname and was blocked."
+    )
+
+
+def test_verification_api_rejects_single_label_targets(client: TestClient) -> None:
+    response = client.post(
+        "/api/verifications",
+        json={
+            "url": "A",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "Outbound target uses a single-label hostname and was blocked."
     )
