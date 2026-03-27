@@ -116,7 +116,10 @@ export function DashboardPage() {
                   />
                 </div>
                 <p className="metric-card__label">{copy.dashboard.verdict}</p>
-                <p className="dashboard-card__verdict" title={activeVerification.verdict}>
+                <p
+                  className="dashboard-card__verdict"
+                  title={`${copy.common.verificationResult}: ${formatVerdict(activeVerification.verdict, language)}`}
+                >
                   {formatVerdict(activeVerification.verdict, language)}
                 </p>
                 <p className="dashboard-card__posture">{activeVerification.executiveSummary.posture}</p>
