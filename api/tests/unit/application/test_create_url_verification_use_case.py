@@ -896,6 +896,36 @@ def test_create_url_verification_use_case_marks_redirected_reset_destinations_as
     )
 
 
+def test_create_url_verification_use_case_marks_redirected_recovery_destinations_as_caution() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://collector.bad.example/recovery",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link/123",
+                        target_url="https://collector.bad.example/recovery",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert dto.risk_assessment.verdict == "CAUTION"
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "phishing_keywords"
+        and signal.source == "resolved-destination-url-analyzer"
+        for signal in dto.signals
+    )
+
+
 def test_create_url_verification_use_case_analyzes_resolved_destination_html() -> None:
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(

@@ -43,12 +43,30 @@ def test_url_signal_analyzer_does_not_flag_official_auth_hosts_with_generic_logi
     analyzer = DeterministicUrlSignalAnalyzer()
 
     google_signals = analyzer.analyze(NormalizedUrl.from_raw("https://accounts.google.com/signin"))
+    google_recovery_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://accounts.google.com/recovery")
+    )
     microsoft_signals = analyzer.analyze(NormalizedUrl.from_raw("https://login.microsoftonline.com/"))
 
     assert {signal.signal_type for signal in google_signals} == {
         SignalType.RECOGNIZED_REPUTABLE_DOMAIN
     }
+    assert {signal.signal_type for signal in google_recovery_signals} == {
+        SignalType.RECOGNIZED_REPUTABLE_DOMAIN
+    }
     assert microsoft_signals == []
+
+
+def test_url_signal_analyzer_flags_recovery_and_verification_variants() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    recovery_signals = analyzer.analyze(NormalizedUrl.from_raw("https://collector.bad.example/recovery"))
+    verification_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://collector.bad.example/verification")
+    )
+
+    assert any(signal.signal_type == SignalType.PHISHING_KEYWORDS for signal in recovery_signals)
+    assert any(signal.signal_type == SignalType.PHISHING_KEYWORDS for signal in verification_signals)
 
 
 def test_url_signal_analyzer_flags_government_brand_lure_domains() -> None:

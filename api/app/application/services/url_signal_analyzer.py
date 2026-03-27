@@ -21,6 +21,7 @@ _SUSPICIOUS_KEYWORDS = {
     "password",
     "payroll",
     "recover",
+    "recovery",
     "reset",
     "secure",
     "signin",
@@ -28,6 +29,7 @@ _SUSPICIOUS_KEYWORDS = {
     "update",
     "validate",
     "verify",
+    "verification",
     "wallet",
     "webmail",
 }
@@ -104,7 +106,16 @@ _COMMON_DOMAIN_SUFFIXES = {"ac", "app", "biz", "co", "com", "dev", "edu", "gov",
 _OFFICIAL_INSTITUTION_SUFFIXES = (".gov", ".gov.uk", ".gob.es", ".gov.es", ".gc.ca")
 _REDIRECT_KEYS = {"continue", "next", "redirect", "return", "target", "url"}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
-_GENERIC_AUTH_KEYWORDS = {"account", "auth", "login", "secure", "signin", "verify"}
+_GENERIC_AUTH_KEYWORDS = {
+    "account",
+    "auth",
+    "login",
+    "recovery",
+    "secure",
+    "signin",
+    "verification",
+    "verify",
+}
 
 
 @dataclass(slots=True)
