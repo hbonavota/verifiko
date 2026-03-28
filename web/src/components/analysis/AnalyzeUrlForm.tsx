@@ -16,6 +16,7 @@ import { adaptApiVerification } from "../../lib/verificationAdapter";
 import { useI18n } from "../../lib/i18n";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
+import { UpgradeModal } from "../ui/UpgradeModal";
 
 function PasteIcon() {
   return (
@@ -79,6 +80,7 @@ export function AnalyzeUrlForm({
   const [quotaExceededPlan, setQuotaExceededPlan] = useState<ApiQuotaStatus["plan"] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isQuotaRetrying, setIsQuotaRetrying] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [inputType, setInputType] = useState<"manual" | "paste">("manual");
 
   const resolvedButtonLabel = buttonLabel ?? copy.analyzeForm.buttonLabel;
@@ -242,11 +244,31 @@ export function AnalyzeUrlForm({
           </div>
           {quotaIndicator.cta === "google" ? (
             <div className="analysis-form__quota-indicator-actions">
+              {quotaIndicator.valueCue ? (
+                <p className="analysis-form__quota-indicator-promo">{quotaIndicator.valueCue}</p>
+              ) : null}
               <GoogleSignInButton className="analysis-form__quota-inline-signin" />
             </div>
-          ) : quotaIndicator.ctaNote ? (
+          ) : quotaIndicator.ctaNote || quotaIndicator.valueCue ? (
             <div className="analysis-form__quota-indicator-actions">
-              <p className="analysis-form__quota-indicator-note">{quotaIndicator.ctaNote}</p>
+              {quotaIndicator.valueCue ? (
+                <p className="analysis-form__quota-indicator-promo">{quotaIndicator.valueCue}</p>
+              ) : null}
+              {quotaIndicator.ctaNote ? (
+                <p className="analysis-form__quota-indicator-note">{quotaIndicator.ctaNote}</p>
+              ) : null}
+              {quotaIndicator.cta === "upgrade" ? (
+                <Button
+                  className="analysis-form__quota-upgrade"
+                  onClick={() => {
+                    console.log("upgrade_clicked");
+                    setIsUpgradeModalOpen(true);
+                  }}
+                  variant="primary"
+                >
+                  {copy.analyzeForm.quota.upgradeCta}
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </section>
@@ -288,6 +310,35 @@ export function AnalyzeUrlForm({
           {isSubmitting ? resolvedSubmittingLabel : resolvedButtonLabel}
         </Button>
       </form>
+      {quotaStatus?.plan !== "PRO" ? (
+        <section className="analysis-form__pro-panel" aria-label={copy.analyzeForm.proValue.title}>
+          <div className="analysis-form__pro-panel-header">
+            <p className="analysis-form__pro-panel-eyebrow">{copy.analyzeForm.proValue.eyebrow}</p>
+            <p className="analysis-form__pro-panel-title">{copy.analyzeForm.proValue.title}</p>
+          </div>
+          <div className="analysis-form__pro-panel-body">
+            <div className="analysis-form__pro-panel-points">
+              {copy.analyzeForm.proValue.points.map((point) => (
+                <p key={point} className="analysis-form__pro-panel-point">
+                  {point}
+                </p>
+              ))}
+            </div>
+            {currentUser?.plan === "FREE" ? (
+              <Button
+                className="analysis-form__pro-panel-cta"
+                onClick={() => {
+                  console.log("upgrade_clicked");
+                  setIsUpgradeModalOpen(true);
+                }}
+                variant="primary"
+              >
+                {copy.analyzeForm.proValue.upgradeCta}
+              </Button>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
       {showQuotaPanel ? (
         <section className="analysis-form__quota" aria-live="polite">
           <div className="analysis-form__quota-body">
@@ -311,6 +362,21 @@ export function AnalyzeUrlForm({
                 }}
               />
             ) : null}
+            {quotaPanelCopy.valueCue ? (
+              <p className="analysis-form__quota-value-cue">{quotaPanelCopy.valueCue}</p>
+            ) : null}
+            {quotaPlan === "FREE" ? (
+              <Button
+                className="analysis-form__quota-upgrade"
+                onClick={() => {
+                  console.log("upgrade_clicked");
+                  setIsUpgradeModalOpen(true);
+                }}
+                variant="primary"
+              >
+                {copy.analyzeForm.quota.upgradeCta}
+              </Button>
+            ) : null}
             <p className="analysis-form__quota-note">
               {quotaPlan === "ANONYMOUS"
                 ? isQuotaRetrying
@@ -323,6 +389,7 @@ export function AnalyzeUrlForm({
       ) : submitError ? (
         <p className={messageClassName}>{submitError}</p>
       ) : null}
+      <UpgradeModal open={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} />
     </div>
   );
 }
@@ -337,6 +404,8 @@ function resolveQuotaPanelCopy(
       title: copy.analyzeForm.quota.freeTitle,
       description: copy.analyzeForm.quota.freeDescription,
       note: copy.analyzeForm.quota.freeNote,
+      valueCue: copy.analyzeForm.quota.freeValueCue,
+      cta: "upgrade",
     };
   }
 
@@ -346,6 +415,8 @@ function resolveQuotaPanelCopy(
       title: copy.analyzeForm.quota.proTitle,
       description: copy.analyzeForm.quota.proDescription,
       note: copy.analyzeForm.quota.proNote,
+      valueCue: null,
+      cta: null,
     };
   }
 
@@ -354,6 +425,8 @@ function resolveQuotaPanelCopy(
     title: copy.analyzeForm.quota.title,
     description: copy.analyzeForm.quota.description,
     note: copy.analyzeForm.quota.cta,
+    valueCue: copy.analyzeForm.quota.anonymousValueCue,
+    cta: null,
   };
 }
 
@@ -377,6 +450,7 @@ function resolveQuotaIndicatorCopy(
           resetCopy,
           cta: "google" as const,
           ctaNote: null,
+          valueCue: copy.analyzeForm.quotaIndicator.anonymousValueCue,
         }
       : {
           title: copy.analyzeForm.quotaIndicator.anonymousTitle.replace(
@@ -387,6 +461,7 @@ function resolveQuotaIndicatorCopy(
           resetCopy,
           cta: null,
           ctaNote: copy.analyzeForm.quotaIndicator.anonymousNote,
+          valueCue: copy.analyzeForm.quotaIndicator.anonymousValueCue,
         };
   }
 
@@ -398,6 +473,7 @@ function resolveQuotaIndicatorCopy(
           resetCopy,
           cta: null,
           ctaNote: copy.analyzeForm.quotaIndicator.proBlockedNote,
+          valueCue: null,
         }
       : {
           title: copy.analyzeForm.quotaIndicator.proTitle.replace(
@@ -408,6 +484,7 @@ function resolveQuotaIndicatorCopy(
           resetCopy,
           cta: null,
           ctaNote: null,
+          valueCue: null,
         };
   }
 
@@ -416,8 +493,9 @@ function resolveQuotaIndicatorCopy(
         title: copy.analyzeForm.quotaIndicator.freeBlockedTitle,
         planLabel: copy.analyzeForm.quotaIndicator.freePlan,
         resetCopy,
-        cta: null,
+        cta: "upgrade",
         ctaNote: copy.analyzeForm.quotaIndicator.freeBlockedNote,
+        valueCue: copy.analyzeForm.quotaIndicator.freeValueCue,
       }
     : {
         title: copy.analyzeForm.quotaIndicator.freeTitle.replace(
@@ -426,8 +504,9 @@ function resolveQuotaIndicatorCopy(
         ),
         planLabel: copy.analyzeForm.quotaIndicator.freePlan,
         resetCopy,
-        cta: null,
-        ctaNote: null,
+        cta: "upgrade",
+        ctaNote: copy.analyzeForm.quotaIndicator.freeNote,
+        valueCue: copy.analyzeForm.quotaIndicator.freeValueCue,
       };
 }
 
