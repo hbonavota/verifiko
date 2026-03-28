@@ -1,7 +1,15 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { createVerification } from "../../lib/api";
+import {
+  categorizeAnalysisError,
+  detectDegradedCoverage,
+  trackAnalysisCompleted,
+  trackAnalysisFailed,
+  trackAnalysisStarted,
+} from "../../lib/analytics";
+import { adaptApiVerification } from "../../lib/verificationAdapter";
 import { useI18n } from "../../lib/i18n";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
@@ -58,11 +66,13 @@ export function AnalyzeUrlForm({
   placeholder,
   submittingLabel,
 }: AnalyzeUrlFormProps) {
-  const { copy } = useI18n();
+  const { copy, language } = useI18n();
+  const location = useLocation();
   const navigate = useNavigate();
   const [analysisTarget, setAnalysisTarget] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inputType, setInputType] = useState<"manual" | "paste">("manual");
 
   const resolvedButtonLabel = buttonLabel ?? copy.analyzeForm.buttonLabel;
   const resolvedHint = hint ?? copy.analyzeForm.hint;
@@ -84,6 +94,7 @@ export function AnalyzeUrlForm({
       }
 
       setAnalysisTarget(clipboardValue);
+      setInputType("paste");
       setSubmitError(null);
       onStateChange?.("idle");
     } catch {
@@ -104,11 +115,42 @@ export function AnalyzeUrlForm({
     setIsSubmitting(true);
     setSubmitError(null);
     onStateChange?.("submitting");
+    trackAnalysisStarted({
+      sourcePage: location.pathname,
+      language,
+      inputType,
+      hasProtocol: /^https?:\/\//i.test(trimmedTarget),
+    });
 
     try {
       const verification = await createVerification({ url: trimmedTarget });
+      const adaptedVerification = adaptApiVerification(verification, language);
+
+      if (verification.status === "COMPLETED" && verification.risk_assessment) {
+        trackAnalysisCompleted({
+          sourcePage: location.pathname,
+          language,
+          riskLevel: adaptedVerification.riskLevel,
+          verdict: adaptedVerification.verdict,
+          signalCount: verification.signals.length,
+          warningCount: adaptedVerification.inconclusive.length,
+          hasFetchDegradation: detectDegradedCoverage(verification),
+        });
+      } else if (verification.status === "FAILED") {
+        trackAnalysisFailed({
+          sourcePage: location.pathname,
+          language,
+          errorType: "analysis_failed",
+        });
+      }
+
       navigate(`/verifications/${verification.id}`);
     } catch (error) {
+      trackAnalysisFailed({
+        sourcePage: location.pathname,
+        language,
+        errorType: categorizeAnalysisError(error),
+      });
       setSubmitError(error instanceof Error ? error.message : copy.analyzeForm.errors.verificationFailed);
       onStateChange?.("error");
     } finally {
@@ -144,7 +186,10 @@ export function AnalyzeUrlForm({
           placeholder={resolvedPlaceholder}
           title={copy.analyzeForm.analyzeTitle}
           value={analysisTarget}
-          onChange={(event) => setAnalysisTarget(event.target.value)}
+          onChange={(event) => {
+            setAnalysisTarget(event.target.value);
+            setInputType("manual");
+          }}
         />
         <Button
           className={resolvedButtonClassName}

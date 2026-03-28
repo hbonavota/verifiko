@@ -30,7 +30,9 @@ export function applyAnalyticsConsent(choice: AnalyticsConsentChoice): void {
   });
 
   if (choice === "granted" && !window.__verifikoAnalyticsConfigured) {
-    window.gtag?.("config", ANALYTICS_MEASUREMENT_ID);
+    window.gtag?.("config", ANALYTICS_MEASUREMENT_ID, {
+      send_page_view: false,
+    });
     window.__verifikoAnalyticsConfigured = true;
   }
 }

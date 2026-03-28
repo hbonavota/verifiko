@@ -5,6 +5,7 @@ import {
   persistAnalyticsConsentChoice,
   readAnalyticsConsentChoice,
 } from "../../lib/analyticsConsent";
+import { trackPageView } from "../../lib/analytics";
 import { useI18n } from "../../lib/i18n";
 import { Button } from "./Button";
 
@@ -15,7 +16,7 @@ interface CookieBannerProps {
 export function CookieBanner({ reopenKey = 0 }: CookieBannerProps) {
   const [isVisible, setIsVisible] = useState(false);
   const previousReopenKey = useRef(reopenKey);
-  const { copy } = useI18n();
+  const { copy, language } = useI18n();
 
   useEffect(() => {
     const storedChoice = readAnalyticsConsentChoice();
@@ -40,6 +41,15 @@ export function CookieBanner({ reopenKey = 0 }: CookieBannerProps) {
   function handleChoice(choice: "granted" | "denied") {
     persistAnalyticsConsentChoice(choice);
     applyAnalyticsConsent(choice);
+
+    if (choice === "granted") {
+      trackPageView({
+        pagePath: `${window.location.pathname}${window.location.search}`,
+        pageTitle: document.title,
+        language,
+      });
+    }
+
     setIsVisible(false);
   }
 

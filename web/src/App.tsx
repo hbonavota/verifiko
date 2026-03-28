@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
+import { AnalyticsPageTracker } from "./components/analytics/AnalyticsPageTracker";
 import { AppLayout } from "./layouts/AppLayout";
 import { ApiHealthPage } from "./pages/ApiHealthPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -10,6 +11,7 @@ import { VerificationDetailPage } from "./pages/VerificationDetailPage";
 export default function App() {
   return (
     <BrowserRouter>
+      <AnalyticsPageTracker />
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
