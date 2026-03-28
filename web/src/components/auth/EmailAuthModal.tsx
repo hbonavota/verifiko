@@ -13,6 +13,7 @@ interface EmailAuthModalProps {
   open: boolean;
   onClose: () => void;
   initialMode?: AuthMode;
+  onAuthenticated?: () => void | Promise<void>;
 }
 
 const EMAIL_PATTERN = /^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+$/i;
@@ -21,6 +22,7 @@ export function EmailAuthModal({
   open,
   onClose,
   initialMode = "login",
+  onAuthenticated,
 }: EmailAuthModalProps) {
   const { copy } = useI18n();
   const { isAuthenticating, loginWithEmailPassword, registerWithEmailPassword } = useAuth();
@@ -86,6 +88,7 @@ export function EmailAuthModal({
       setDisplayName("");
       setEmail("");
       setPassword("");
+      await onAuthenticated?.();
       onClose();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : copy.topbar.authenticationFailed);
@@ -187,7 +190,8 @@ export function EmailAuthModal({
             <p className="auth-modal__alternate-label">{copy.authModal.orContinueWithGoogle}</p>
             <GoogleSignInButton
               className="auth-modal__google"
-              onSuccess={() => {
+              onSuccess={async () => {
+                await onAuthenticated?.();
                 onClose();
               }}
             />
