@@ -344,6 +344,33 @@ def test_create_url_verification_use_case_adds_html_login_signal() -> None:
     assert any(signal.signal_type == "credential_harvest_form" for signal in dto.signals)
 
 
+def test_create_url_verification_use_case_adds_html_challenge_surface_signal() -> None:
+    use_case = _build_use_case(
+        html_fetcher=FakeHtmlFetcher(
+            FetchedHtmlDocument(
+                content="""
+                <html>
+                  <body>
+                    <h1>Security challenge</h1>
+                    <p>Approve this verification to continue your account session.</p>
+                    <form action="/checkpoint">
+                      <input type="text" name="otp_code" />
+                      <button type="submit">Approve</button>
+                    </form>
+                  </body>
+                </html>
+                """,
+                source_url="https://secure-login.bad-example.test/",
+                content_type="text/html; charset=utf-8",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://secure-login.bad-example.test/"))
+
+    assert any(signal.signal_type == "suspicious_login_interface" for signal in dto.signals)
+
+
 def test_create_url_verification_use_case_skips_generic_legitimate_login_surface_signal() -> None:
     use_case = _build_use_case(
         html_fetcher=FakeHtmlFetcher(
@@ -371,6 +398,39 @@ def test_create_url_verification_use_case_skips_generic_legitimate_login_surface
     dto = use_case.execute(CreateVerificationCommand(url="https://github.com"))
 
     assert all(signal.signal_type != "suspicious_login_interface" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_skips_official_same_site_challenge_surface_signal() -> None:
+    use_case = _build_use_case(
+        html_fetcher=FakeHtmlFetcher(
+            FetchedHtmlDocument(
+                content="""
+                <html>
+                  <body>
+                    <h1>Security challenge</h1>
+                    <p>Approve this verification to continue your account session.</p>
+                    <form action="/challenge">
+                      <input type="text" name="otp_code" />
+                      <button type="submit">Approve</button>
+                    </form>
+                  </body>
+                </html>
+                """,
+                source_url="https://accounts.google.com/challenge",
+                content_type="text/html; charset=utf-8",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://accounts.google.com/challenge"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "SAFE"
+    assert dto.risk_assessment.verdict == "TRUSTED"
+    assert all(
+        signal.signal_type not in {"credential_harvest_form", "suspicious_login_interface"}
+        for signal in dto.signals
+    )
 
 
 def test_create_url_verification_use_case_continues_when_html_fetch_fails() -> None:
@@ -1221,6 +1281,54 @@ def test_create_url_verification_use_case_analyzes_resolved_destination_html() -
 
     assert any(
         signal.signal_type == "credential_harvest_form"
+        and signal.source == "resolved-destination-html-analyzer"
+        for signal in dto.signals
+    )
+
+
+def test_create_url_verification_use_case_analyzes_resolved_destination_challenge_html() -> None:
+    class FinalChallengeHtmlFetcher(HtmlFetcherPort):
+        def fetch(self, url: str) -> FetchedHtmlDocument | None:
+            if url != "https://collector.bad.example/challenge":
+                return None
+            return FetchedHtmlDocument(
+                content="""
+                <html>
+                  <body>
+                    <h1>Security challenge</h1>
+                    <p>Approve this verification to continue your account session.</p>
+                    <form action="/checkpoint">
+                      <input type="text" name="otp_code" />
+                      <button type="submit">Approve</button>
+                    </form>
+                  </body>
+                </html>
+                """,
+                source_url="https://collector.bad.example/challenge",
+                content_type="text/html; charset=utf-8",
+            )
+
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://collector.bad.example/challenge",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link/456",
+                        target_url="https://collector.bad.example/challenge",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        ),
+        html_fetcher=FinalChallengeHtmlFetcher(),
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/456"))
+
+    assert any(
+        signal.signal_type == "suspicious_login_interface"
         and signal.source == "resolved-destination-html-analyzer"
         for signal in dto.signals
     )

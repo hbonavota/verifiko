@@ -286,6 +286,36 @@ def test_manual_corpus_calibration_marks_parked_pages_as_caution_or_worse() -> N
     assert any(signal.signal_type == "low_information_page" for signal in result.signals)
 
 
+def test_manual_corpus_calibration_marks_challenge_approval_html_surfaces_as_suspicious() -> None:
+    use_case = _build_use_case(
+        html_fetcher=StaticHtmlFetcher(
+            """
+            <html>
+              <body>
+                <h1>Security challenge</h1>
+                <p>Approve this verification to continue your account session.</p>
+                <form action="/checkpoint">
+                  <input type="text" name="otp_code" />
+                  <button type="submit">Approve</button>
+                </form>
+              </body>
+            </html>
+            """
+        )
+    )
+
+    result = use_case.execute(CreateVerificationCommand(url="https://secure-login.bad-example.test/"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level in {
+        RiskLevel.LOW.value,
+        RiskLevel.MEDIUM.value,
+        RiskLevel.HIGH.value,
+        RiskLevel.CRITICAL.value,
+    }
+    assert any(signal.signal_type == "suspicious_login_interface" for signal in result.signals)
+
+
 def test_manual_corpus_calibration_marks_empty_root_pages_as_ambiguous_not_pristine() -> None:
     use_case = _build_use_case(
         html_fetcher=StaticHtmlFetcher(

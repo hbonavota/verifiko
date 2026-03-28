@@ -114,6 +114,63 @@ def test_html_credential_signal_analyzer_emits_signal_for_suspicious_login_ui() 
     assert signals[0].signal_type == SignalType.SUSPICIOUS_LOGIN_INTERFACE
 
 
+def test_html_credential_signal_analyzer_emits_signal_for_challenge_approval_surface() -> None:
+    analyzer = HtmlCredentialSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://secure-login.bad-example.test/"),
+        FetchedHtmlDocument(
+            content="""
+            <html>
+              <body>
+                <h1>Security challenge</h1>
+                <p>Approve this verification to continue your account session.</p>
+                <form action="/checkpoint">
+                  <input type="text" name="otp_code" />
+                  <button type="submit">Approve</button>
+                </form>
+              </body>
+            </html>
+            """,
+            source_url="https://secure-login.bad-example.test/",
+            content_type="text/html",
+        ),
+    )
+
+    assert len(signals) == 1
+    signal = signals[0]
+    assert signal.signal_type == SignalType.SUSPICIOUS_LOGIN_INTERFACE
+    assert "Matched authentication input hints: otp." in signal.evidence
+    assert "Matched login wording: account, approve, challenge, security." in signal.evidence
+    assert "Observed form action: https://secure-login.bad-example.test/checkpoint." in signal.evidence
+
+
+def test_html_credential_signal_analyzer_skips_official_same_site_challenge_surface() -> None:
+    analyzer = HtmlCredentialSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://accounts.google.com/challenge"),
+        FetchedHtmlDocument(
+            content="""
+            <html>
+              <body>
+                <h1>Security challenge</h1>
+                <p>Approve this verification to continue your account session.</p>
+                <form action="/challenge">
+                  <input type="text" name="otp_code" />
+                  <button type="submit">Approve</button>
+                </form>
+              </body>
+            </html>
+            """,
+            source_url="https://accounts.google.com/challenge",
+            content_type="text/html",
+        ),
+    )
+
+    assert signals == []
+
+
 def test_html_credential_signal_analyzer_skips_same_site_redirect_interstitial_with_weak_terms() -> None:
     analyzer = HtmlCredentialSignalAnalyzer()
 

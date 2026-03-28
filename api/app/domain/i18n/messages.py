@@ -699,6 +699,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "Matched account input hints: {hints}.",
         "es": "Indicadores coincidentes de campos de cuenta: {hints}.",
     },
+    "evidence.matched_auth_input_hints": {
+        "en": "Matched authentication input hints: {hints}.",
+        "es": "Indicadores coincidentes de campos de autenticación: {hints}.",
+    },
     "evidence.matched_login_wording": {
         "en": "Matched login wording: {terms}.",
         "es": "Texto coincidente de inicio de sesión: {terms}.",

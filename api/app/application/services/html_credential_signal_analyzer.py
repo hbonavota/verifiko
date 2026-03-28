@@ -14,15 +14,22 @@ from app.domain.value_objects.normalized_url import NormalizedUrl
 
 _LOGIN_TERMS = {
     "account",
+    "approve",
+    "challenge",
     "confirm",
     "login",
     "log in",
     "password",
+    "reauth",
+    "security",
+    "session",
     "sign in",
     "signin",
     "verify",
+    "verification",
 }
 _ACCOUNT_FIELD_HINTS = {"email", "identifier", "login", "mail", "user", "username"}
+_AUTH_FIELD_HINTS = {"mfa", "otp", "passcode", "totp"}
 _LOW_INFORMATION_MARKERS = {
     "apache2 ubuntu default page",
     "buy this domain",
@@ -42,6 +49,7 @@ class ParsedForm:
     action: str | None
     password_field_count: int
     account_hints: tuple[str, ...]
+    auth_hints: tuple[str, ...]
     button_labels: tuple[str, ...]
 
 
@@ -66,6 +74,9 @@ class HtmlCredentialSignalAnalyzer:
         account_hints = sorted(
             {hint for form in parsed_page.forms for hint in form.account_hints}
         )
+        auth_hints = sorted(
+            {hint for form in parsed_page.forms for hint in form.auth_hints}
+        )
         matched_login_terms = _match_login_terms(parsed_page.visible_text)
         visible_token_count = _visible_token_count(parsed_page.visible_text)
         low_information_markers = _match_low_information_markers(parsed_page.visible_text)
@@ -85,13 +96,22 @@ class HtmlCredentialSignalAnalyzer:
         ]
 
         signals: list[AnalysisSignal] = []
+        official_same_site_auth_surface = _is_official_same_site_auth_surface(
+            normalized_url,
+            suspicious_actions,
+        )
+        auth_challenge_surface = bool(auth_hints) and len(matched_login_terms) >= 3
         strong_credential_cues = (
-            bool(account_hints) or len(matched_login_terms) >= 2 or bool(suspicious_actions)
+            bool(account_hints)
+            or bool(auth_hints)
+            or len(matched_login_terms) >= 2
+            or bool(suspicious_actions)
         )
         has_credential_harvest_form = (
             form_count > 0
             and password_field_count > 0
             and strong_credential_cues
+            and not official_same_site_auth_surface
         )
 
         if has_credential_harvest_form:
@@ -105,6 +125,7 @@ class HtmlCredentialSignalAnalyzer:
                         form_count=form_count,
                         password_field_count=password_field_count,
                         account_hints=account_hints,
+                        auth_hints=auth_hints,
                         matched_login_terms=matched_login_terms,
                         observed_actions=observed_actions,
                         suspicious_actions=suspicious_actions,
@@ -116,8 +137,9 @@ class HtmlCredentialSignalAnalyzer:
         has_suspicious_login_interface = (
             form_count > 0
             and len(matched_login_terms) >= 2
-            and (password_field_count > 0 or bool(suspicious_actions))
-            and (bool(suspicious_actions) or suspicious_host_context)
+            and (password_field_count > 0 or bool(auth_hints) or bool(suspicious_actions))
+            and (bool(suspicious_actions) or suspicious_host_context or auth_challenge_surface)
+            and not official_same_site_auth_surface
         )
 
         if has_suspicious_login_interface and not has_credential_harvest_form:
@@ -131,6 +153,7 @@ class HtmlCredentialSignalAnalyzer:
                         form_count=form_count,
                         password_field_count=password_field_count,
                         account_hints=account_hints,
+                        auth_hints=auth_hints,
                         matched_login_terms=matched_login_terms,
                         observed_actions=observed_actions,
                         suspicious_actions=suspicious_actions,
@@ -217,6 +240,7 @@ class HtmlCredentialSignalAnalyzer:
         form_count: int,
         password_field_count: int,
         account_hints: list[str],
+        auth_hints: list[str],
         matched_login_terms: list[str],
         observed_actions: list[str],
         suspicious_actions: list[str],
@@ -234,6 +258,13 @@ class HtmlCredentialSignalAnalyzer:
                 evidence_ref(
                     "evidence.matched_account_input_hints",
                     hints=", ".join(account_hints[:4]),
+                )
+            )
+        if auth_hints:
+            evidence.append(
+                evidence_ref(
+                    "evidence.matched_auth_input_hints",
+                    hints=", ".join(auth_hints[:4]),
                 )
             )
         if matched_login_terms:
@@ -287,6 +318,7 @@ class _WorkingForm:
     action: str | None
     password_field_count: int = 0
     account_hints: set[str] = field(default_factory=set)
+    auth_hints: set[str] = field(default_factory=set)
     button_labels: list[str] = field(default_factory=list)
 
 
@@ -344,6 +376,7 @@ class _LoginHtmlParser(HTMLParser):
                     action=self._current_form.action,
                     password_field_count=self._current_form.password_field_count,
                     account_hints=tuple(sorted(self._current_form.account_hints)),
+                    auth_hints=tuple(sorted(self._current_form.auth_hints)),
                     button_labels=tuple(self._current_form.button_labels),
                 )
             )
@@ -370,6 +403,9 @@ class _LoginHtmlParser(HTMLParser):
             matched_hint = _match_account_hint(candidate)
             if matched_hint is not None:
                 self._current_form.account_hints.add(matched_hint)
+            matched_auth_hint = _match_auth_hint(candidate)
+            if matched_auth_hint is not None:
+                self._current_form.auth_hints.add(matched_auth_hint)
 
 
 def _iter_input_hints(attr_map: dict[str, str]) -> Iterable[str]:
@@ -381,6 +417,13 @@ def _iter_input_hints(attr_map: dict[str, str]) -> Iterable[str]:
 
 def _match_account_hint(candidate: str) -> str | None:
     for hint in sorted(_ACCOUNT_FIELD_HINTS):
+        if hint in candidate:
+            return hint
+    return None
+
+
+def _match_auth_hint(candidate: str) -> str | None:
+    for hint in sorted(_AUTH_FIELD_HINTS):
         if hint in candidate:
             return hint
     return None
@@ -410,6 +453,22 @@ def _visible_token_count(text_fragments: Iterable[str]) -> int:
 def _has_suspicious_host_context(normalized_url: NormalizedUrl) -> bool:
     host_tokens = _tokenize_host(normalized_url.host)
     return bool(_LOGIN_TERMS.intersection(host_tokens) or {"mail", "outlook", "paypal"}.intersection(host_tokens))
+
+
+def _is_official_same_site_auth_surface(
+    normalized_url: NormalizedUrl,
+    suspicious_actions: list[str],
+) -> bool:
+    official_auth_domains = {
+        "apple.com",
+        "dropbox.com",
+        "github.com",
+        "google.com",
+        "live.com",
+        "microsoftonline.com",
+        "paypal.com",
+    }
+    return normalized_url.registered_domain in official_auth_domains and not suspicious_actions
 
 
 def _tokenize_host(value: str) -> set[str]:
