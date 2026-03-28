@@ -1,3 +1,4 @@
+import { CookieBanner } from "../components/ui/CookieBanner";
 import { Outlet } from "react-router-dom";
 
 import { ContentShell } from "./ContentShell";
@@ -13,6 +14,7 @@ export function AppLayout() {
         <ContentShell>
           <Outlet />
         </ContentShell>
+        <CookieBanner />
       </div>
     </div>
   );
