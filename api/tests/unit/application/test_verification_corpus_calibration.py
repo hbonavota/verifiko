@@ -13,6 +13,7 @@ from app.application.ports.infrastructure_lookup import (
 from app.application.ports.redirect_resolver import (
     RedirectHop,
     RedirectResolution,
+    RedirectResolutionError,
     RedirectResolverPort,
 )
 from app.application.ports.reputation_lookup import ReputationLookupPort
@@ -464,6 +465,27 @@ def test_manual_corpus_calibration_marks_shortener_redirected_session_lures_as_s
         and signal.source == "resolved-destination-url-analyzer"
         for signal in result.signals
     )
+
+
+def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_source_challenge_lures() -> None:
+    class FailingRedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            raise RedirectResolutionError("redirect lookup failed")
+
+    use_case = _build_use_case(redirect_resolver=FailingRedirectResolver())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/challenge"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level in {
+        RiskLevel.MEDIUM.value,
+        RiskLevel.HIGH.value,
+        RiskLevel.CRITICAL.value,
+    }
+    assert result.risk_assessment.analysis_warnings == (
+        "Redirect resolution could not be completed for this run.",
+    )
+    assert any(signal.signal_type == "phishing_keywords" for signal in result.signals)
 
 
 def test_manual_corpus_calibration_distinguishes_trusted_clean_from_unknown_clean() -> None:

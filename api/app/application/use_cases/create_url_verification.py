@@ -27,6 +27,7 @@ from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.entities.analysis_trace_stage import AnalysisTraceStage
 from app.domain.entities.risk_assessment import RiskAssessment
 from app.domain.entities.verification import Verification
+from app.domain.enums.signal_type import SignalType
 from app.domain.exceptions.domain_exception import DomainException
 from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
@@ -40,6 +41,13 @@ _HTML_COVERAGE_WARNING_KEYS = (
     "warning.html_content_inspection_unavailable",
     "warning.resolved_destination_html_unavailable",
 )
+_REDIRECT_COVERAGE_WARNING_KEYS = ("warning.redirect_resolution_unavailable",)
+_REDIRECT_DEGRADED_SOURCE_SIGNAL_TYPES = {
+    SignalType.PHISHING_KEYWORDS,
+    SignalType.BRAND_IMPERSONATION,
+    SignalType.TACTICAL_EMAIL_STAGING,
+    SignalType.DECEPTIVE_BRAND_SUBDOMAIN,
+}
 
 
 @dataclass(slots=True)
@@ -208,6 +216,7 @@ class CreateURLVerificationUseCase:
         verification.complete(self.scoring_service)
         verification.risk_assessment = self._apply_analysis_warnings(
             verification.risk_assessment,
+            verification.signals,
             analysis_warnings,
             analysis_trace,
         )
@@ -248,6 +257,7 @@ class CreateURLVerificationUseCase:
     def _apply_analysis_warnings(
         self,
         risk_assessment: RiskAssessment | None,
+        signals: tuple[AnalysisSignal, ...],
         warnings: list[str],
         analysis_trace: list[AnalysisTraceStage],
     ) -> RiskAssessment | None:
@@ -269,6 +279,11 @@ class CreateURLVerificationUseCase:
         adjusted_risk_level = risk_assessment.risk_level
         adjusted_verdict = risk_assessment.verdict
         html_coverage_degraded = _has_html_coverage_warning(deduplicated_warnings)
+        redirect_coverage_degraded = _has_redirect_coverage_warning(deduplicated_warnings)
+        source_url_suspicion = _has_meaningful_source_url_suspicion(
+            signals,
+            source=self.signal_analyzer.source,
+        )
         if (
             deduplicated_warnings
             and not risk_assessment.terminal_override
@@ -284,6 +299,15 @@ class CreateURLVerificationUseCase:
             and risk_assessment.score.value < 80
             and adjusted_score.value > 60
             and any(value > 0 for value in risk_assessment.category_breakdown.values())
+        ):
+            adjusted_score = ConfidenceScore(60)
+            adjusted_risk_level = risk_level_for_score(adjusted_score.value)
+            adjusted_verdict = verdict_for_level(adjusted_risk_level)
+        if (
+            redirect_coverage_degraded
+            and source_url_suspicion
+            and not risk_assessment.terminal_override
+            and adjusted_score.value > 60
         ):
             adjusted_score = ConfidenceScore(60)
             adjusted_risk_level = risk_level_for_score(adjusted_score.value)
@@ -369,6 +393,21 @@ class CreateURLVerificationUseCase:
 def _has_html_coverage_warning(warnings: tuple[str, ...]) -> bool:
     html_warnings = {resolve_message(key) for key in _HTML_COVERAGE_WARNING_KEYS}
     return any(warning in html_warnings for warning in warnings)
+
+
+def _has_redirect_coverage_warning(warnings: tuple[str, ...]) -> bool:
+    redirect_warnings = {resolve_message(key) for key in _REDIRECT_COVERAGE_WARNING_KEYS}
+    return any(warning in redirect_warnings for warning in warnings)
+
+
+def _has_meaningful_source_url_suspicion(
+    signals: tuple[AnalysisSignal, ...],
+    source: str,
+) -> bool:
+    return any(
+        signal.source == source and signal.signal_type in _REDIRECT_DEGRADED_SOURCE_SIGNAL_TYPES
+        for signal in signals
+    )
 
 
 def _refresh_risk_detected_summary(

@@ -648,6 +648,41 @@ def test_create_url_verification_use_case_caps_warning_degraded_result_when_sign
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
 
 
+def test_create_url_verification_use_case_strengthens_source_suspicion_when_redirect_resolution_fails() -> None:
+    use_case = _build_use_case(redirect_resolver=FakeRedirectResolver(fail=True))
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/challenge"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.score == 60
+    assert dto.risk_assessment.risk_level == "MEDIUM"
+    assert dto.risk_assessment.verdict == "SUSPICIOUS"
+    assert "Analysis coverage degraded:" in dto.risk_assessment.summary
+    assert "with medium risk output." in dto.risk_assessment.summary
+    assert dto.risk_assessment.analysis_warnings == (
+        "Redirect resolution could not be completed for this run.",
+    )
+    assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
+    assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_keeps_failed_clean_shorteners_at_low_caution() -> None:
+    use_case = _build_use_case(redirect_resolver=FakeRedirectResolver(fail=True))
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://g.co/openai"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.score == 80
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert dto.risk_assessment.verdict == "CAUTION"
+    assert "Analysis coverage degraded:" in dto.risk_assessment.summary
+    assert "with low risk output." in dto.risk_assessment.summary
+    assert dto.risk_assessment.analysis_warnings == (
+        "Redirect resolution could not be completed for this run.",
+    )
+    assert {signal.signal_type for signal in dto.signals} == {"shortened_url"}
+
+
 def test_create_url_verification_use_case_strengthens_static_suspicion_when_html_fetch_fails() -> None:
     use_case = _build_use_case(html_fetcher=FakeHtmlFetcher(fail=True))
 
