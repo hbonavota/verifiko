@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -7,14 +7,13 @@ import { Card } from "../components/ui/Card";
 import { ScoreRing } from "../components/analysis/ScoreRing";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
-import { getVerificationById } from "../lib/api";
 import { formatRiskLevel, formatVerdict, formatVerificationStatus } from "../lib/formatVerdict";
 import { useI18n } from "../lib/i18n";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
 import { toneForRiskLevel } from "../lib/risk";
-import type { VerificationSummary } from "../types/verification";
+import type { ApiVerification, VerificationSummary } from "../types/verification";
 
 function formatTimestamp(value: string, locale: string) {
   return new Date(value).toLocaleString(locale);
@@ -65,9 +64,14 @@ type VerificationState =
   | { status: "ready"; verification: VerificationSummary }
   | { status: "error"; message: string };
 
+interface VerificationDetailLocationState {
+  verification?: ApiVerification;
+}
+
 export function VerificationDetailPage() {
   const { copy, language, locale } = useI18n();
   const { id } = useParams();
+  const location = useLocation();
   const [verificationState, setVerificationState] = useState<VerificationState>({ status: "loading" });
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
 
@@ -77,37 +81,22 @@ export function VerificationDetailPage() {
       return;
     }
 
-    const verificationId = id;
-    let isMounted = true;
+    const navigationState = location.state as VerificationDetailLocationState | null;
+    const payload = navigationState?.verification;
 
-    async function loadVerification() {
-      setVerificationState({ status: "loading" });
-
-      try {
-        const payload = await getVerificationById(verificationId);
-        if (!isMounted) {
-          return;
-        }
-
-        setVerificationState({ status: "ready", verification: adaptApiVerification(payload, language) });
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        setVerificationState({
-          status: "error",
-          message: error instanceof Error ? error.message : copy.common.resultUnavailable,
-        });
-      }
+    if (!payload || payload.id !== id) {
+      setVerificationState({
+        status: "error",
+        message: copy.detail.requestedResultUnavailable,
+      });
+      return;
     }
 
-    void loadVerification();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [copy.common.resultUnavailable, copy.detail.verificationIdRequired, id, language]);
+    setVerificationState({
+      status: "ready",
+      verification: adaptApiVerification(payload, language),
+    });
+  }, [copy.detail.requestedResultUnavailable, copy.detail.verificationIdRequired, id, language, location.state]);
 
   useEffect(() => {
     if (!isDisclaimerOpen) {

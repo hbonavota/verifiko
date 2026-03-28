@@ -144,7 +144,11 @@ export function AnalyzeUrlForm({
         });
       }
 
-      navigate(`/verifications/${verification.id}`);
+      navigate(`/verifications/${verification.id}`, {
+        state: {
+          verification,
+        },
+      });
     } catch (error) {
       trackAnalysisFailed({
         sourcePage: location.pathname,
