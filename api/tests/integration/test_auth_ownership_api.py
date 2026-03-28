@@ -109,6 +109,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     container.get_create_verification_rate_limiter.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
+    container.get_quota_status_service.cache_clear()
     container.get_auth_token_service.cache_clear()
     container.get_google_identity_verifier.cache_clear()
     container.get_redirect_signal_analyzer.cache_clear()
@@ -147,6 +148,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     container.get_create_verification_rate_limiter.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
+    container.get_quota_status_service.cache_clear()
     container.get_auth_token_service.cache_clear()
     _clear_cache_if_present(container.get_google_identity_verifier)
     get_verification_repository.cache_clear()
@@ -466,4 +468,65 @@ def test_pro_user_has_higher_limit(client: TestClient) -> None:
 
     policy.free_daily_limit = get_settings().free_authenticated_daily_verification_limit
     policy.pro_daily_limit = get_settings().pro_authenticated_daily_verification_limit
+    limiter.reset()
+
+
+def test_authenticated_quota_status_reports_remaining_usage_truthfully(client: TestClient) -> None:
+    session = _login(client, "valid-alice")
+    limiter = container.get_authenticated_verification_rate_limiter()
+    limiter.reset()
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+    created = client.post(
+        "/api/verifications",
+        json={"url": "https://example.org"},
+        headers=_authorization_header(session["access_token"]),
+    )
+    status_response = client.get(
+        "/api/verifications/quota-status",
+        headers=_authorization_header(session["access_token"]),
+    )
+
+    assert created.status_code == 201
+    assert status_response.status_code == 200
+    body = status_response.json()
+    assert body["subject_type"] == "USER"
+    assert body["is_authenticated"] is True
+    assert body["plan"] == "FREE"
+    assert body["daily_limit"] == 10
+    assert body["used_today"] == 1
+    assert body["remaining_today"] == 9
+    assert body["reset_in_seconds"] == 43200
+    assert body["reset_at_utc"] == "2026-03-29T00:00:00Z"
+    assert body["blocked"] is False
+
+    limiter.reset()
+
+
+def test_pro_quota_status_reports_paid_limit_truthfully(client: TestClient) -> None:
+    session = _login(client, "valid-alice")
+    user_repository = get_user_repository()
+    user = user_repository.get_by_email("alice@example.com")
+    assert user is not None
+    user.assign_plan(UserPlan.PRO)
+    user_repository.save(user)
+
+    limiter = container.get_authenticated_verification_rate_limiter()
+    limiter.reset()
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+    status_response = client.get(
+        "/api/verifications/quota-status",
+        headers=_authorization_header(session["access_token"]),
+    )
+
+    assert status_response.status_code == 200
+    body = status_response.json()
+    assert body["subject_type"] == "USER"
+    assert body["plan"] == "PRO"
+    assert body["daily_limit"] == 200
+    assert body["used_today"] == 0
+    assert body["remaining_today"] == 200
+    assert body["blocked"] is False
+
     limiter.reset()

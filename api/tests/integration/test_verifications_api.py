@@ -79,6 +79,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     container.get_create_verification_rate_limiter.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
+    container.get_quota_status_service.cache_clear()
     container.get_auth_token_service.cache_clear()
     container.get_google_identity_verifier.cache_clear()
     container.get_redirect_signal_analyzer.cache_clear()
@@ -112,6 +113,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     container.get_create_verification_rate_limiter.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
+    container.get_quota_status_service.cache_clear()
     container.get_auth_token_service.cache_clear()
     container.get_google_identity_verifier.cache_clear()
     get_verification_repository.cache_clear()
@@ -240,6 +242,53 @@ def test_verification_api_resets_anonymous_daily_limit_at_utc_midnight(client: T
 
     limiter.reset()
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
+
+
+def test_verification_api_quota_status_reports_anonymous_remaining_usage(client: TestClient) -> None:
+    limiter = get_create_verification_rate_limiter()
+    limiter.reset()
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+    first = client.post("/api/verifications", json={"url": "https://example.org"})
+    status_response = client.get("/api/verifications/quota-status")
+
+    assert first.status_code == 201
+    assert status_response.status_code == 200
+    body = status_response.json()
+    assert body["subject_type"] == "ANONYMOUS"
+    assert body["is_authenticated"] is False
+    assert body["plan"] == "ANONYMOUS"
+    assert body["daily_limit"] == 3
+    assert body["used_today"] == 1
+    assert body["remaining_today"] == 2
+    assert body["reset_in_seconds"] == 43200
+    assert body["reset_at_utc"] == "2026-03-29T00:00:00Z"
+    assert body["blocked"] is False
+
+    limiter.reset()
+
+
+def test_verification_api_quota_status_reports_anonymous_blocked_when_limit_is_exhausted(
+    client: TestClient,
+) -> None:
+    limiter = get_create_verification_rate_limiter()
+    limiter.reset()
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+    for url in ("https://example.org", "https://example.net", "https://example.com"):
+        response = client.post("/api/verifications", json={"url": url})
+        assert response.status_code == 201
+
+    status_response = client.get("/api/verifications/quota-status")
+
+    assert status_response.status_code == 200
+    body = status_response.json()
+    assert body["daily_limit"] == 3
+    assert body["used_today"] == 3
+    assert body["remaining_today"] == 0
+    assert body["blocked"] is True
+
+    limiter.reset()
 
 
 def test_verification_api_rejects_overlong_url_input(client: TestClient) -> None:
