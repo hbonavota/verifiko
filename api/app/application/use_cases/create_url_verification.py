@@ -230,6 +230,7 @@ class CreateURLVerificationUseCase:
             layers_executed=self._layers_executed(command),
         )
 
+        verification.redact_sensitive_input()
         saved = self.repository.save(verification)
         return VerificationMapper.to_dto(saved, trace=trace)
 

@@ -31,3 +31,28 @@ def test_verification_completes_with_assessment() -> None:
     assert verification.status is VerificationStatus.COMPLETED
     assert verification.risk_assessment is assessment
     assert verification.completed_at is not None
+
+
+def test_verification_redacts_sensitive_url_parts_before_persistence() -> None:
+    verification = Verification.create_url(
+        "https://user:secret@example.org/login?token=abc123#session=456"
+    )
+
+    verification.redact_sensitive_input()
+
+    assert verification.original_input == "https://example.org/login"
+    assert verification.normalized_input.normalized == "https://example.org/login"
+    assert verification.normalized_input.query == ""
+    assert verification.normalized_input.fragment == ""
+    assert verification.normalized_input.has_userinfo is False
+
+
+def test_verification_keeps_clean_urls_unchanged_when_no_sensitive_parts_exist() -> None:
+    verification = Verification.create_url("verifiko.es/login")
+    original_updated_at = verification.updated_at
+
+    verification.redact_sensitive_input()
+
+    assert verification.original_input == "verifiko.es/login"
+    assert verification.normalized_input.normalized == "https://verifiko.es/login"
+    assert verification.updated_at == original_updated_at

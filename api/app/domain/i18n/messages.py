@@ -439,6 +439,18 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "Client-supplied signals are not accepted on this endpoint.",
         "es": "Las señales proporcionadas por el cliente no se aceptan en este endpoint.",
     },
+    "error.public_verification_history_disabled": {
+        "en": "Public verification history is disabled on this endpoint.",
+        "es": "El historial público de verificaciones está deshabilitado en este endpoint.",
+    },
+    "error.public_verification_retrieval_disabled": {
+        "en": "Public verification retrieval is disabled on this endpoint.",
+        "es": "La recuperación pública de verificaciones está deshabilitada en este endpoint.",
+    },
+    "error.verification_rate_limit_exceeded": {
+        "en": "Too many verification requests were received. Please try again later.",
+        "es": "Se recibieron demasiadas solicitudes de verificación. Vuelve a intentarlo más tarde.",
+    },
     "error.verification_not_found": {
         "en": "Verification not found: {verification_id}",
         "es": "Verificación no encontrada: {verification_id}",

@@ -32,10 +32,12 @@ from app.infrastructure.external_services.redirects.http_redirect_resolver impor
 )
 from app.infrastructure.external_services.tls.tls_client import SocketTlsValidator
 from app.infrastructure.ids.id_generator import UUIDVerificationIdGenerator
+from app.infrastructure.config.settings import get_settings
 from app.infrastructure.persistence.database import get_session_factory
 from app.infrastructure.persistence.repositories.sqlalchemy_verification_repository import (
     SQLAlchemyVerificationRepository,
 )
+from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 from app.infrastructure.time.system_time_provider import SystemTimeProvider
 
 
@@ -134,6 +136,15 @@ def get_tls_validator() -> SocketTlsValidator:
 @lru_cache(maxsize=1)
 def get_transport_security_signal_analyzer() -> TransportSecuritySignalAnalyzer:
     return TransportSecuritySignalAnalyzer(tls_validator=get_tls_validator())
+
+
+@lru_cache(maxsize=1)
+def get_create_verification_rate_limiter() -> FixedWindowRateLimiter:
+    settings = get_settings()
+    return FixedWindowRateLimiter(
+        max_requests=settings.create_verification_rate_limit,
+        window_seconds=settings.create_verification_rate_window_seconds,
+    )
 
 
 def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:

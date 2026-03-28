@@ -18,7 +18,10 @@ from app.application.services.infrastructure_signal_analyzer import Infrastructu
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 import app.entrypoints.api.dependencies.container as container
-from app.entrypoints.api.dependencies.container import get_verification_repository
+from app.entrypoints.api.dependencies.container import (
+    get_create_verification_rate_limiter,
+    get_verification_repository,
+)
 from app.entrypoints.api.main import app
 from app.infrastructure.config.settings import get_settings
 from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
@@ -68,6 +71,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_engine.cache_clear()
     get_session_factory.cache_clear()
     get_verification_repository.cache_clear()
+    container.get_create_verification_rate_limiter.cache_clear()
     container.get_redirect_signal_analyzer.cache_clear()
     container.get_reputation_signal_analyzer.cache_clear()
     container.get_infrastructure_signal_analyzer.cache_clear()
@@ -96,13 +100,14 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         yield test_client
 
     drop_db()
+    container.get_create_verification_rate_limiter.cache_clear()
     get_verification_repository.cache_clear()
     get_session_factory.cache_clear()
     get_engine.cache_clear()
     get_settings.cache_clear()
 
 
-def test_verification_api_create_list_and_get(client: TestClient) -> None:
+def test_verification_api_create_disables_public_list_and_get(client: TestClient) -> None:
     create_response = client.post(
         "/api/verifications",
         json={
@@ -124,20 +129,73 @@ def test_verification_api_create_list_and_get(client: TestClient) -> None:
     verification_id = created_body["id"]
 
     list_response = client.get("/api/verifications")
-    assert list_response.status_code == 200
-    listed_items = list_response.json()
-    assert len(listed_items) == 1
-    assert listed_items[0]["id"] == verification_id
+    assert list_response.status_code == 403
+    assert list_response.json()["detail"] == (
+        "Public verification history is disabled on this endpoint."
+    )
 
     get_response = client.get(f"/api/verifications/{verification_id}")
-    assert get_response.status_code == 200
-    fetched_body = get_response.json()
-    assert fetched_body["id"] == verification_id
-    assert fetched_body["normalized_input"] == "https://verifiko.es/login"
-    assert fetched_body["trace"]["total_signals"] == len(fetched_body["signals"])
-    assert fetched_body["score_breakdown"]["base_score"] == 100.0
-    assert fetched_body["risk_assessment"]["explanation"]["headline"]
-    assert fetched_body["risk_assessment"]["explanation"]["analysis_trace"]
+    assert get_response.status_code == 403
+    assert get_response.json()["detail"] == (
+        "Public verification retrieval is disabled on this endpoint."
+    )
+
+
+def test_verification_api_redacts_sensitive_url_parts_before_persistence_and_exposure(
+    client: TestClient,
+) -> None:
+    create_response = client.post(
+        "/api/verifications",
+        json={
+            "url": (
+                "https://user:secret@secure-paypal-login.example.xyz/verify"
+                "?token=abc123&redirect=https://example.org#otp=456789"
+            ),
+        },
+    )
+
+    assert create_response.status_code == 201
+    created_body = create_response.json()
+    assert created_body["original_input"] == "https://secure-paypal-login.example.xyz/verify"
+    assert created_body["normalized_input"] == "https://secure-paypal-login.example.xyz/verify"
+
+    repository = get_verification_repository()
+    stored = repository.list(limit=1)[0]
+    assert stored.original_input == "https://secure-paypal-login.example.xyz/verify"
+    assert stored.normalized_input.normalized == "https://secure-paypal-login.example.xyz/verify"
+
+
+def test_verification_api_preserves_clean_urls_without_sensitive_parts(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/verifications",
+        json={"url": "verifiko.es/login"},
+    )
+
+    assert create_response.status_code == 201
+    created_body = create_response.json()
+    assert created_body["original_input"] == "verifiko.es/login"
+    assert created_body["normalized_input"] == "https://verifiko.es/login"
+
+
+def test_verification_api_rate_limits_anonymous_create_requests(client: TestClient) -> None:
+    limiter = get_create_verification_rate_limiter()
+    limiter.reset()
+    limiter.max_requests = 2
+
+    first = client.post("/api/verifications", json={"url": "https://example.org"})
+    second = client.post("/api/verifications", json={"url": "https://example.net"})
+    third = client.post("/api/verifications", json={"url": "https://example.com"})
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert third.status_code == 429
+    assert third.json()["detail"] == (
+        "Too many verification requests were received. Please try again later."
+    )
+    assert third.headers["retry-after"] == "60"
+
+    limiter.reset()
+    limiter.max_requests = get_settings().create_verification_rate_limit
 
 
 def test_verification_api_can_generate_signals_from_url_only(client: TestClient) -> None:
@@ -174,38 +232,22 @@ def test_verification_api_localizes_backend_generated_text_with_accept_language(
     )
     assert created_body["risk_assessment"]["explanation"]["headline"].startswith("El motor produjo")
 
-    verification_id = created_body["id"]
-
-    get_response = client.get(
-        f"/api/verifications/{verification_id}",
-        headers={"Accept-Language": "es-ES,es;q=0.9,en;q=0.8"},
-    )
-    assert get_response.status_code == 200
-    fetched_body = get_response.json()
-    fetched_titles = {signal["title"] for signal in fetched_body["signals"]}
-    assert "Cebo de credenciales en la URL" in fetched_titles
-    assert fetched_body["risk_assessment"]["summary"].startswith(
-        "Principal riesgo:"
-    )
-    assert fetched_body["risk_assessment"]["explanation"]["primary_factors"]
-
     list_response = client.get(
         "/api/verifications",
         headers={"Accept-Language": "es"},
     )
-    assert list_response.status_code == 200
-    listed_items = list_response.json()
-    assert listed_items[0]["risk_assessment"]["summary"].startswith(
-        "Principal riesgo:"
+    assert list_response.status_code == 403
+    assert list_response.json()["detail"] == (
+        "El historial público de verificaciones está deshabilitado en este endpoint."
     )
 
 
 def test_verification_api_returns_404_for_missing_verification(client: TestClient) -> None:
     response = client.get("/api/verifications/550e8400-e29b-41d4-a716-446655440099")
 
-    assert response.status_code == 404
+    assert response.status_code == 403
     assert response.json()["detail"] == (
-        "Verification not found: 550e8400-e29b-41d4-a716-446655440099"
+        "Public verification retrieval is disabled on this endpoint."
     )
 
 
@@ -252,9 +294,9 @@ def test_verification_api_localizes_known_error_details_with_accept_language(
         headers={"Accept-Language": "es"},
     )
 
-    assert not_found_response.status_code == 404
+    assert not_found_response.status_code == 403
     assert not_found_response.json()["detail"] == (
-        "Verificación no encontrada: 550e8400-e29b-41d4-a716-446655440099"
+        "La recuperación pública de verificaciones está deshabilitada en este endpoint."
     )
 
     invalid_id_response = client.get(
@@ -262,8 +304,10 @@ def test_verification_api_localizes_known_error_details_with_accept_language(
         headers={"Accept-Language": "es"},
     )
 
-    assert invalid_id_response.status_code == 422
-    assert invalid_id_response.json()["detail"] == "ID de verificación no válido."
+    assert invalid_id_response.status_code == 403
+    assert invalid_id_response.json()["detail"] == (
+        "La recuperación pública de verificaciones está deshabilitada en este endpoint."
+    )
 
 
 def test_verification_api_rejects_client_supplied_signals(client: TestClient) -> None:

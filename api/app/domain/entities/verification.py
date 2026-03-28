@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from urllib.parse import urlunsplit
 
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.entities.risk_assessment import RiskAssessment
@@ -68,4 +69,29 @@ class Verification:
 
     def fail(self) -> None:
         self.status = VerificationStatus.FAILED
+        self.updated_at = datetime.now(timezone.utc)
+
+    def redact_sensitive_input(self) -> None:
+        if not (
+            self.normalized_input.query
+            or self.normalized_input.fragment
+            or self.normalized_input.has_userinfo
+        ):
+            return
+
+        netloc = self.normalized_input.ascii_host
+        if self.normalized_input.port is not None:
+            netloc = f"{netloc}:{self.normalized_input.port}"
+
+        redacted_url = urlunsplit(
+            (
+                self.normalized_input.scheme,
+                netloc,
+                self.normalized_input.path or "/",
+                "",
+                "",
+            )
+        )
+        self.original_input = redacted_url
+        self.normalized_input = NormalizedUrl.from_raw(redacted_url)
         self.updated_at = datetime.now(timezone.utc)
