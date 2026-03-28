@@ -44,7 +44,7 @@ export function CookieBanner({ reopenKey = 0 }: CookieBannerProps) {
 
     if (choice === "granted") {
       trackPageView({
-        pagePath: `${window.location.pathname}${window.location.search}`,
+        pagePath: window.location.pathname,
         pageTitle: document.title,
         language,
       });

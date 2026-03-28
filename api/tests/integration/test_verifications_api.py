@@ -139,6 +139,12 @@ def test_verification_api_create_disables_public_list_and_get(client: TestClient
     assert get_response.json()["detail"] == (
         "Public verification retrieval is disabled on this endpoint."
     )
+    assert create_response.headers["x-content-type-options"] == "nosniff"
+    assert create_response.headers["x-frame-options"] == "DENY"
+    assert create_response.headers["referrer-policy"] == "no-referrer"
+    assert create_response.headers["content-security-policy"] == (
+        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    )
 
 
 def test_verification_api_redacts_sensitive_url_parts_before_persistence_and_exposure(
@@ -196,6 +202,27 @@ def test_verification_api_rate_limits_anonymous_create_requests(client: TestClie
 
     limiter.reset()
     limiter.max_requests = get_settings().create_verification_rate_limit
+
+
+def test_verification_api_rejects_overlong_url_input(client: TestClient) -> None:
+    response = client.post(
+        "/api/verifications",
+        json={"url": f"https://example.org/{'a' * 5000}"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_health_endpoint_applies_security_headers(client: TestClient) -> None:
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["content-security-policy"] == (
+        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    )
 
 
 def test_verification_api_can_generate_signals_from_url_only(client: TestClient) -> None:

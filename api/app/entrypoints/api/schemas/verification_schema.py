@@ -18,7 +18,7 @@ class SignalInputPayload(BaseModel):
 
 
 class CreateVerificationRequest(BaseModel):
-    url: str
+    url: str = Field(min_length=1, max_length=4096)
     signals: tuple[SignalInputPayload, ...] = ()
 
 

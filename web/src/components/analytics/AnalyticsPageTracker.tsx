@@ -11,7 +11,7 @@ export function AnalyticsPageTracker() {
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       trackPageView({
-        pagePath: `${location.pathname}${location.search}`,
+        pagePath: location.pathname,
         pageTitle: document.title,
         language,
       });
@@ -20,7 +20,7 @@ export function AnalyticsPageTracker() {
     return () => {
       window.cancelAnimationFrame(frameId);
     };
-  }, [location.pathname, location.search]);
+  }, [language, location.pathname]);
 
   return null;
 }

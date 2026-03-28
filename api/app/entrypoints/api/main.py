@@ -21,6 +21,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+_API_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
+_API_CSP_VALUE = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for key, value in _API_SECURITY_HEADERS.items():
+        response.headers.setdefault(key, value)
+
+    content_type = response.headers.get("content-type", "")
+    if "application/json" in content_type.lower():
+        response.headers.setdefault("Content-Security-Policy", _API_CSP_VALUE)
+    return response
+
+
 app.include_router(verifications_router, prefix="/api")
 
 
