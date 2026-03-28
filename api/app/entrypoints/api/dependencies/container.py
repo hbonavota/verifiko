@@ -49,7 +49,7 @@ from app.infrastructure.persistence.repositories.sqlalchemy_user_repository impo
     SQLAlchemyUserRepository,
 )
 from app.infrastructure.security.signed_auth_token_service import SignedAuthTokenService
-from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
+from app.infrastructure.security.utc_day_quota_limiter import UtcDayQuotaLimiter
 from app.infrastructure.time.system_time_provider import SystemTimeProvider
 
 
@@ -156,11 +156,11 @@ def get_transport_security_signal_analyzer() -> TransportSecuritySignalAnalyzer:
 
 
 @lru_cache(maxsize=1)
-def get_create_verification_rate_limiter() -> FixedWindowRateLimiter:
+def get_create_verification_rate_limiter() -> UtcDayQuotaLimiter:
     settings = get_settings()
-    return FixedWindowRateLimiter(
-        max_requests=settings.create_verification_rate_limit,
-        window_seconds=settings.create_verification_rate_window_seconds,
+    return UtcDayQuotaLimiter(
+        daily_limit=settings.anonymous_daily_verification_limit,
+        current_time_provider=get_time_provider().now,
     )
 
 

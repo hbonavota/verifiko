@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
 from fastapi.testclient import TestClient
@@ -195,7 +196,8 @@ def test_verification_api_preserves_clean_urls_without_sensitive_parts(client: T
 def test_verification_api_rate_limits_anonymous_create_requests(client: TestClient) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
-    limiter.max_requests = 2
+    limiter.daily_limit = 2
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
 
     first = client.post("/api/verifications", json={"url": "https://example.org"})
     second = client.post("/api/verifications", json={"url": "https://example.net"})
@@ -205,12 +207,35 @@ def test_verification_api_rate_limits_anonymous_create_requests(client: TestClie
     assert second.status_code == 201
     assert third.status_code == 429
     assert third.json()["detail"] == (
-        "Too many verification requests were received. Please try again later."
+        "The anonymous verification limit for today has been reached. Please try again after midnight UTC or sign in."
     )
-    assert third.headers["retry-after"] == "60"
+    assert third.headers["retry-after"] == "43200"
 
     limiter.reset()
-    limiter.max_requests = get_settings().create_verification_rate_limit
+    limiter.daily_limit = get_settings().anonymous_daily_verification_limit
+
+
+def test_verification_api_resets_anonymous_daily_limit_at_utc_midnight(client: TestClient) -> None:
+    limiter = get_create_verification_rate_limiter()
+    limiter.reset()
+    current_time = datetime(2026, 3, 28, 23, 59, 50, tzinfo=timezone.utc)
+    limiter.daily_limit = 1
+    limiter.current_time_provider = lambda: current_time
+
+    first = client.post("/api/verifications", json={"url": "https://example.org"})
+    blocked = client.post("/api/verifications", json={"url": "https://example.net"})
+
+    assert first.status_code == 201
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"] == "10"
+
+    current_time = datetime(2026, 3, 29, 0, 0, 5, tzinfo=timezone.utc)
+    allowed_after_reset = client.post("/api/verifications", json={"url": "https://example.com"})
+
+    assert allowed_after_reset.status_code == 201
+
+    limiter.reset()
+    limiter.daily_limit = get_settings().anonymous_daily_verification_limit
 
 
 def test_verification_api_rejects_overlong_url_input(client: TestClient) -> None:

@@ -18,7 +18,7 @@ from app.entrypoints.api.schemas.verification_schema import (
     CreateVerificationRequest,
     VerificationResponse,
 )
-from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
+from app.infrastructure.security.utc_day_quota_limiter import UtcDayQuotaLimiter
 
 router = APIRouter(prefix="/verifications", tags=["verifications"])
 
@@ -30,7 +30,7 @@ def create_verification(
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User | None = Depends(get_optional_current_user),
     use_case: CreateURLVerificationUseCase = Depends(get_create_url_verification_use_case),
-    rate_limiter: FixedWindowRateLimiter = Depends(get_create_verification_rate_limiter),
+    rate_limiter: UtcDayQuotaLimiter = Depends(get_create_verification_rate_limiter),
 ) -> VerificationResponse:
     locale = select_response_locale(accept_language)
     if current_user is None:
@@ -39,7 +39,7 @@ def create_verification(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=resolve_message(
-                    "error.verification_rate_limit_exceeded",
+                    "error.anonymous_daily_verification_limit_exceeded",
                     language=locale,
                 ),
                 headers={"Retry-After": str(retry_after)},

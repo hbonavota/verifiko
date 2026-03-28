@@ -297,7 +297,7 @@ def test_authenticated_create_is_not_subject_to_anonymous_rate_limit(client: Tes
     session = _login(client, "valid-alice")
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
-    limiter.max_requests = 1
+    limiter.daily_limit = 1
 
     first = client.post(
         "/api/verifications",
@@ -314,4 +314,4 @@ def test_authenticated_create_is_not_subject_to_anonymous_rate_limit(client: Tes
     assert second.status_code == 201
 
     limiter.reset()
-    limiter.max_requests = get_settings().create_verification_rate_limit
+    limiter.daily_limit = get_settings().anonymous_daily_verification_limit

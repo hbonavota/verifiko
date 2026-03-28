@@ -447,9 +447,9 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "Public verification retrieval is disabled on this endpoint.",
         "es": "La recuperación pública de verificaciones está deshabilitada en este endpoint.",
     },
-    "error.verification_rate_limit_exceeded": {
-        "en": "Too many verification requests were received. Please try again later.",
-        "es": "Se recibieron demasiadas solicitudes de verificación. Vuelve a intentarlo más tarde.",
+    "error.anonymous_daily_verification_limit_exceeded": {
+        "en": "The anonymous verification limit for today has been reached. Please try again after midnight UTC or sign in.",
+        "es": "Se ha alcanzado el límite anónimo de verificaciones para hoy. Vuelve a intentarlo después de la medianoche UTC o inicia sesión.",
     },
     "error.authentication_required": {
         "en": "Authentication is required for this endpoint.",
