@@ -31,6 +31,7 @@ export function HomePage() {
   );
 
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [analysisState, setAnalysisState] = useState<"idle" | "submitting" | "error">("idle");
   const resultCardRef = useRef<HTMLDivElement | null>(null);
 
@@ -44,11 +45,15 @@ export function HomePage() {
       if (!currentUser) {
         if (isMounted) {
           setVerifications([]);
+          setIsHistoryLoading(false);
         }
         return;
       }
 
       try {
+        if (isMounted) {
+          setIsHistoryLoading(true);
+        }
         const payload = await listMyVerifications();
         if (!isMounted) {
           return;
@@ -61,6 +66,10 @@ export function HomePage() {
         }
 
         setVerifications([]);
+      } finally {
+        if (isMounted) {
+          setIsHistoryLoading(false);
+        }
       }
     }
 
@@ -92,6 +101,7 @@ export function HomePage() {
   const latestVerification = verifications[0] ?? null;
   const latestSignals = latestVerification?.signals.slice(0, 2) ?? [];
   const isLoadingAnalysis = analysisState === "submitting";
+  const isLoadingOwnedResult = !isLoadingAnalysis && authReady && !!currentUser && isHistoryLoading;
 
   return (
     <PageShell>
@@ -142,6 +152,14 @@ export function HomePage() {
                     <span className="analysis-result-card__loading-line" />
                     <span className="analysis-result-card__loading-line analysis-result-card__loading-line--short" />
                   </div>
+                </div>
+              </div>
+            ) : isLoadingOwnedResult ? (
+              <div className="analysis-result-card__hero analysis-result-card__hero--empty">
+                <ScoreRing label={copy.common.loadingResult} size="hero" state="loading" valueLabel="..." />
+                <div className="analysis-result-card__summary-block">
+                  <p className="analysis-result-card__headline">{copy.home.latestResult}</p>
+                  <p className="analysis-result-card__copy">{copy.home.loadingOwnedResult}</p>
                 </div>
               </div>
             ) : latestVerification ? (
@@ -200,6 +218,19 @@ export function HomePage() {
                   ))}
                 </div>
               </>
+            ) : currentUser ? (
+              <div className="analysis-result-card__hero analysis-result-card__hero--empty">
+                <ScoreRing label={copy.common.ready} size="hero" state="idle" valueLabel="--" />
+                <div className="analysis-result-card__summary-block">
+                  <p className="analysis-result-card__headline">{copy.home.signedInReadyTitle}</p>
+                  <p className="analysis-result-card__copy">{copy.home.signedInReadyCopy}</p>
+                  <div className="analysis-result-card__actions">
+                    <Button to="/dashboard" variant="secondary">
+                      {copy.home.signedInReadyAction}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="analysis-result-card__hero analysis-result-card__hero--empty">
                 <ScoreRing label={copy.common.ready} size="hero" state="idle" valueLabel="--" />

@@ -8,14 +8,27 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? "";
 interface GoogleSignInButtonProps {
   className?: string;
   onSuccess?: () => void | Promise<void>;
+  variant?: "default" | "quota";
+  busy?: boolean;
+  busyLabel?: string;
 }
 
-export function GoogleSignInButton({ className, onSuccess }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({
+  className,
+  onSuccess,
+  variant = "default",
+  busy = false,
+  busyLabel,
+}: GoogleSignInButtonProps) {
   const { copy, language } = useI18n();
   const { isAuthenticating, loginWithGoogleCredential } = useAuth();
   const buttonRef = useRef<HTMLDivElement | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const rootClassName = className ? `google-sign-in ${className}` : "google-sign-in";
+  const busyState = busy || isAuthenticating;
+  const variantClassName = variant === "quota" ? "google-sign-in--quota" : "";
+  const rootClassName = ["google-sign-in", variantClassName, busyState ? "google-sign-in--busy" : "", className]
+    .filter(Boolean)
+    .join(" ");
 
   useEffect(() => {
     const host = buttonRef.current;
@@ -52,10 +65,10 @@ export function GoogleSignInButton({ className, onSuccess }: GoogleSignInButtonP
         cancel_on_tap_outside: true,
       });
       window.google.accounts.id.renderButton(host, {
-        theme: "outline",
-        size: "medium",
+        theme: variant === "quota" ? "filled_black" : "outline",
+        size: variant === "quota" ? "large" : "medium",
         shape: "pill",
-        text: "signin_with",
+        text: variant === "quota" ? "continue_with" : "signin_with",
         locale: language === "es" ? "es" : "en",
       });
     }
@@ -74,7 +87,7 @@ export function GoogleSignInButton({ className, onSuccess }: GoogleSignInButtonP
     return () => {
       script.removeEventListener("load", renderButton);
     };
-  }, [copy.topbar.authenticationFailed, language, loginWithGoogleCredential, onSuccess]);
+  }, [copy.topbar.authenticationFailed, language, loginWithGoogleCredential, onSuccess, variant]);
 
   if (!GOOGLE_CLIENT_ID) {
     return null;
@@ -87,7 +100,9 @@ export function GoogleSignInButton({ className, onSuccess }: GoogleSignInButtonP
         className="google-sign-in__button"
         ref={buttonRef}
       />
-      {isAuthenticating ? <p className="google-sign-in__hint">{copy.topbar.signingIn}</p> : null}
+      {busyState ? (
+        <p className="google-sign-in__hint">{busyLabel ?? copy.topbar.signingIn}</p>
+      ) : null}
       {errorMessage ? <p className="google-sign-in__error">{errorMessage}</p> : null}
     </div>
   );

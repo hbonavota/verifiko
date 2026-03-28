@@ -25,6 +25,7 @@ export function DashboardPage() {
   const { copy, language, locale } = useI18n();
   const { authReady, currentUser } = useAuth();
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   useDocumentMeta(
     copy.dashboard.metaTitle,
@@ -41,11 +42,15 @@ export function DashboardPage() {
       if (!currentUser) {
         if (isMounted) {
           setVerifications([]);
+          setIsHistoryLoading(false);
         }
         return;
       }
 
       try {
+        if (isMounted) {
+          setIsHistoryLoading(true);
+        }
         const payload = await listMyVerifications();
         if (!isMounted) {
           return;
@@ -58,6 +63,10 @@ export function DashboardPage() {
         }
 
         setVerifications([]);
+      } finally {
+        if (isMounted) {
+          setIsHistoryLoading(false);
+        }
       }
     }
 
@@ -69,6 +78,7 @@ export function DashboardPage() {
   }, [authReady, currentUser, language]);
 
   const activeVerification = verifications[0] ?? null;
+  const showOwnedLoading = authReady && !!currentUser && isHistoryLoading;
 
   const activeReasons =
     activeVerification && activeVerification.signals.length > 0
@@ -103,12 +113,29 @@ export function DashboardPage() {
 
       <Card
         eyebrow={copy.dashboard.latestResult}
-        title={activeVerification ? copy.common.trustScore : copy.dashboard.noAnalysesYet}
+        title={
+          activeVerification
+            ? copy.common.trustScore
+            : currentUser
+              ? copy.dashboard.emptySignedInTitle
+              : copy.dashboard.noAnalysesYet
+        }
         description={undefined}
         tone="warning"
         className="dashboard-assessment-card"
       >
-        {activeVerification ? (
+        {showOwnedLoading ? (
+          <div className="dashboard-card-stack">
+            <div className="dashboard-card-headline">
+              <div>
+                <p className="metric-card__label">{copy.dashboard.latestResult}</p>
+                <p className="dashboard-card__target">{copy.dashboard.loadingHistoryTitle}</p>
+              </div>
+              <Badge label={copy.common.loadingResult.toUpperCase()} tone="primary" />
+            </div>
+            <p className="metric-card__detail">{copy.dashboard.loadingHistoryCopy}</p>
+          </div>
+        ) : activeVerification ? (
           <div className="dashboard-card-stack">
             <div className="dashboard-assessment-card__hero">
               <ScoreRing
@@ -148,6 +175,22 @@ export function DashboardPage() {
                 <StatPill label={copy.dashboard.signalsCount} value={String(activeVerification.signals.length)} tone="warning" />
                 <StatPill label={copy.dashboard.openQuestions} value={String(activeVerification.inconclusive.length)} tone="danger" />
               </div>
+            </div>
+          </div>
+        ) : currentUser ? (
+          <div className="dashboard-card-stack">
+            <div className="dashboard-card-headline">
+              <div>
+                <p className="metric-card__label">{copy.dashboard.latestResult}</p>
+                <p className="dashboard-card__target">{copy.dashboard.emptySignedInTitle}</p>
+              </div>
+              <Badge label={copy.common.ready.toUpperCase()} tone="primary" />
+            </div>
+            <p className="metric-card__detail">{copy.dashboard.emptySignedInCopy}</p>
+            <div className="dashboard-assessment-card__actions">
+              <Button to="/#analyze-url" variant="primary">
+                {copy.dashboard.emptySignedInAction}
+              </Button>
             </div>
           </div>
         ) : (
@@ -314,15 +357,26 @@ export function DashboardPage() {
 
         <aside className="dashboard-rail">
           <Card
-            eyebrow={copy.dashboard.recentAnalyses}
-            title={copy.dashboard.latestResults}
-            description={undefined}
+            eyebrow={currentUser ? copy.dashboard.privateLibraryEyebrow : copy.dashboard.recentAnalyses}
+            title={currentUser ? copy.dashboard.privateLibraryTitle : copy.dashboard.latestResults}
+            description={currentUser ? copy.dashboard.privateLibraryDescription : undefined}
+            action={
+              currentUser && verifications.length > 0 ? (
+                <Badge
+                  label={`${verifications.length} ${copy.dashboard.savedResultsLabel}`}
+                  tone="primary"
+                />
+              ) : undefined
+            }
             className="dashboard-rail-card"
           >
-            {verifications.length > 0 ? (
+            {showOwnedLoading ? (
+              <p className="metric-card__detail">{copy.dashboard.loadingHistoryCopy}</p>
+            ) : verifications.length > 0 ? (
               <div className="activity-feed">
                 {verifications.slice(0, 5).map((verification) => (
-                  <article key={verification.id} className="activity-feed__item">
+                  <article key={verification.id} className="activity-feed__item activity-feed__item--saved">
+                    <p className="activity-feed__eyebrow">{copy.dashboard.savedResultTag}</p>
                     <div className="activity-feed__row">
                       <p className="activity-feed__title" title={verification.subject}>{verification.subject}</p>
                       <span className={`activity-feed__actor activity-feed__actor--${toneForCount(verification.riskLevel)}`}>
@@ -330,11 +384,21 @@ export function DashboardPage() {
                       </span>
                     </div>
                     <p className="activity-feed__detail">{verification.summary}</p>
-                    <p className="activity-feed__timestamp">
-                      {new Date(verification.createdAt).toLocaleString(locale)}
-                    </p>
+                    <div className="activity-feed__footer">
+                      <p className="activity-feed__timestamp">
+                        {new Date(verification.createdAt).toLocaleString(locale)}
+                      </p>
+                      <Button to={`/verifications/${verification.id}`} variant="ghost">
+                        {copy.dashboard.openSavedResult}
+                      </Button>
+                    </div>
                   </article>
                 ))}
+              </div>
+            ) : currentUser ? (
+              <div className="notes-panel">
+                <p className="recommendation-panel__headline">{copy.dashboard.emptySignedInTitle}</p>
+                <p className="notes-panel__text">{copy.dashboard.emptySignedInCopy}</p>
               </div>
             ) : (
               <p className="metric-card__detail">{copy.common.noResultsYet}</p>

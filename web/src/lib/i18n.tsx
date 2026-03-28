@@ -30,7 +30,9 @@ const translations = {
       signInWithGoogle: "Sign in with Google",
       signingIn: "Signing in...",
       signOut: "Sign out",
+      reviewHistory: "My history",
       account: "Signed in",
+      accountHistoryEnabled: "Private history enabled",
       authenticationFailed: "Authentication failed.",
     },
     languageSwitcher: {
@@ -112,11 +114,14 @@ const translations = {
         verificationFailed: "Verification failed.",
       },
       quota: {
-        title: "Daily anonymous limit reached",
-        resetAtMidnight: "Anonymous access resets at midnight UTC.",
-        resetCountdown: "Anonymous access resets in about {timeRemaining}, at midnight UTC.",
-        continueBySigningIn:
-          "Sign in with Google to continue verifying now and keep your results in your account.",
+        eyebrow: "Free access",
+        title: "You've reached today's free verification limit",
+        description:
+          "You can continue verifying right now by signing in. Your results will be saved and accessible anytime.",
+        resetAtMidnight: "Free access resets at midnight UTC.",
+        resetCountdown: "Free access resets in about {timeRemaining}, at midnight UTC.",
+        cta: "Continue with Google",
+        retrying: "Signing you in and retrying this verification...",
       },
     },
     home: {
@@ -136,6 +141,11 @@ const translations = {
       collectingSignals: "Collecting signals.",
       noResultYet: "No result yet",
       emptyCopy: "Enter a link to check if it's safe or potentially malicious.",
+      loadingOwnedResult: "Loading your saved result.",
+      signedInReadyTitle: "Your verification history starts here",
+      signedInReadyCopy:
+        "New verifications created while signed in will be saved to your account so you can revisit them anytime.",
+      signedInReadyAction: "Open review",
     },
     dashboard: {
       metaTitle: "Review Results",
@@ -184,6 +194,19 @@ const translations = {
       link: "Link",
       status: "Status",
       noRecentAnalysis: "No recent analysis is available yet.",
+      loadingHistoryTitle: "Loading your history",
+      loadingHistoryCopy: "Fetching your saved verifications.",
+      emptySignedInTitle: "Your verification history starts here",
+      emptySignedInCopy:
+        "New verifications created while signed in will be saved to your account so you can revisit them anytime.",
+      emptySignedInAction: "Verify a link now",
+      openSavedResult: "Open saved result",
+      privateLibraryEyebrow: "Private library",
+      privateLibraryTitle: "Your saved verifications",
+      privateLibraryDescription:
+        "Results created while signed in stay here so you can reopen verdicts, signals, and evidence later.",
+      savedResultsLabel: "saved",
+      savedResultTag: "Saved result",
     },
     detail: {
       metaTitleFallback: "Verification Detail",
@@ -194,6 +217,20 @@ const translations = {
       summaryCopy: "Verdict first. Evidence below.",
       preparingResult: "Preparing the verification result.",
       requestedResultUnavailable: "The requested result could not be loaded.",
+      signInRequiredTitle: "Sign in to access saved results",
+      signInRequiredDescription:
+        "Saved verification details are available only from your signed-in account.",
+      ownedUnavailableTitle: "Result not found in your account",
+      ownedUnavailableDescription:
+        "This verification is not available in your saved history. It may belong to another account or may no longer be available.",
+      backToHistory: "Back to history",
+      savedToAccount: "Saved to your account",
+      savedToAccountDescription: "This verification stays available from Review in your private history.",
+      savedNow: "Saved just now",
+      savedNowDescription: "This result was added to your account and is now part of your private history.",
+      openedFromHistory: "Opened from your history",
+      openedFromHistoryDescription:
+        "You're viewing a saved verification from your private history.",
       target: "Target",
       result: "Result",
       mainReasons: "Main reasons",
@@ -324,7 +361,9 @@ const translations = {
       signInWithGoogle: "Iniciar sesión con Google",
       signingIn: "Iniciando sesión...",
       signOut: "Cerrar sesión",
+      reviewHistory: "Mi historial",
       account: "Sesión iniciada",
+      accountHistoryEnabled: "Historial privado activado",
       authenticationFailed: "La autenticación falló.",
     },
     languageSwitcher: {
@@ -406,11 +445,14 @@ const translations = {
         verificationFailed: "La verificación falló.",
       },
       quota: {
-        title: "Límite diario anónimo alcanzado",
-        resetAtMidnight: "El acceso anónimo se restablece a la medianoche UTC.",
-        resetCountdown: "El acceso anónimo se restablece en aproximadamente {timeRemaining}, a la medianoche UTC.",
-        continueBySigningIn:
-          "Inicia sesión con Google para seguir verificando ahora y guardar tus resultados en tu cuenta.",
+        eyebrow: "Acceso gratuito",
+        title: "Has alcanzado el límite gratuito de hoy",
+        description:
+          "Puedes seguir verificando ahora iniciando sesión. Tus resultados se guardarán y podrás acceder a ellos cuando quieras.",
+        resetAtMidnight: "El acceso gratuito se restablece a medianoche UTC.",
+        resetCountdown: "El acceso gratuito se restablece en aproximadamente {timeRemaining}, a medianoche UTC.",
+        cta: "Continuar con Google",
+        retrying: "Iniciando sesión y reintentando esta verificación...",
       },
     },
     home: {
@@ -430,6 +472,11 @@ const translations = {
       collectingSignals: "Recopilando señales.",
       noResultYet: "Aún no hay resultado",
       emptyCopy: "Introduce un enlace para comprobar si es seguro o potencialmente malicioso.",
+      loadingOwnedResult: "Cargando tu resultado guardado.",
+      signedInReadyTitle: "Tu historial de verificaciones empieza aquí",
+      signedInReadyCopy:
+        "Las nuevas verificaciones que hagas con sesión iniciada se guardarán en tu cuenta para que puedas consultarlas cuando quieras.",
+      signedInReadyAction: "Abrir revisión",
     },
     dashboard: {
       metaTitle: "Revisar resultados",
@@ -478,6 +525,19 @@ const translations = {
       link: "Enlace",
       status: "Estado",
       noRecentAnalysis: "Todavía no hay un análisis reciente disponible.",
+      loadingHistoryTitle: "Cargando tu historial",
+      loadingHistoryCopy: "Recuperando tus verificaciones guardadas.",
+      emptySignedInTitle: "Tu historial de verificaciones empieza aquí",
+      emptySignedInCopy:
+        "Las nuevas verificaciones que hagas con sesión iniciada se guardarán en tu cuenta para que puedas consultarlas cuando quieras.",
+      emptySignedInAction: "Verificar un enlace ahora",
+      openSavedResult: "Abrir resultado guardado",
+      privateLibraryEyebrow: "Biblioteca privada",
+      privateLibraryTitle: "Tus verificaciones guardadas",
+      privateLibraryDescription:
+        "Los resultados creados con la sesión iniciada se conservan aquí para que puedas reabrir veredictos, señales y evidencias más tarde.",
+      savedResultsLabel: "guardadas",
+      savedResultTag: "Resultado guardado",
     },
     detail: {
       metaTitleFallback: "Detalle de verificación",
@@ -488,6 +548,20 @@ const translations = {
       summaryCopy: "Primero el veredicto. Debajo, la evidencia.",
       preparingResult: "Preparando el resultado de la verificación.",
       requestedResultUnavailable: "No se pudo cargar el resultado solicitado.",
+      signInRequiredTitle: "Inicia sesión para acceder a los resultados guardados",
+      signInRequiredDescription:
+        "Los detalles de verificación guardados solo están disponibles desde tu cuenta con sesión iniciada.",
+      ownedUnavailableTitle: "El resultado no está en tu cuenta",
+      ownedUnavailableDescription:
+        "Esta verificación no está disponible en tu historial guardado. Puede pertenecer a otra cuenta o ya no estar disponible.",
+      backToHistory: "Volver al historial",
+      savedToAccount: "Guardado en tu cuenta",
+      savedToAccountDescription: "Esta verificación queda disponible desde Revisar en tu historial privado.",
+      savedNow: "Guardado ahora",
+      savedNowDescription: "Este resultado ya se ha añadido a tu cuenta y forma parte de tu historial privado.",
+      openedFromHistory: "Abierto desde tu historial",
+      openedFromHistoryDescription:
+        "Estás viendo una verificación guardada desde tu historial privado.",
       target: "Objetivo",
       result: "Resultado",
       mainReasons: "Razones principales",

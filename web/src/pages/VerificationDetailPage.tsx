@@ -63,7 +63,7 @@ function scoreInterpretationCopy(
 
 type VerificationState =
   | { status: "loading" }
-  | { status: "ready"; verification: VerificationSummary }
+  | { status: "ready"; verification: VerificationSummary; source: "fresh" | "saved" }
   | { status: "error"; message: string };
 
 interface VerificationDetailLocationState {
@@ -93,6 +93,7 @@ export function VerificationDetailPage() {
       setVerificationState({
         status: "ready",
         verification: adaptApiVerification(payload, language),
+        source: "fresh",
       });
       return () => {
         isMounted = false;
@@ -123,6 +124,7 @@ export function VerificationDetailPage() {
         setVerificationState({
           status: "ready",
           verification: adaptApiVerification(verification, language),
+          source: "saved",
         });
       })
       .catch(() => {
@@ -166,6 +168,7 @@ export function VerificationDetailPage() {
   }, [isDisclaimerOpen]);
 
   const verification = verificationState.status === "ready" ? verificationState.verification : null;
+  const detailSource = verificationState.status === "ready" ? verificationState.source : null;
 
   useDocumentMeta(
     verification ? verification.subject : copy.detail.metaTitleFallback,
@@ -187,20 +190,29 @@ export function VerificationDetailPage() {
   }
 
   if (verificationState.status === "error" || !verification) {
+    const isAuthenticated = !!currentUser;
+    const unavailableTitle = isAuthenticated
+      ? copy.detail.ownedUnavailableTitle
+      : copy.detail.signInRequiredTitle;
+    const unavailableDescription = isAuthenticated
+      ? copy.detail.ownedUnavailableDescription
+      : copy.detail.signInRequiredDescription;
+
     return (
       <PageShell>
         <SectionTitle
           eyebrow={copy.detail.eyebrow}
-          title={copy.common.resultUnavailable}
-          description={
-            verificationState.status === "error"
-              ? verificationState.message
-              : copy.detail.requestedResultUnavailable
-          }
+          title={unavailableTitle}
+          description={unavailableDescription}
         />
-        <Button to="/dashboard" variant="secondary">
-          {copy.common.backToReview}
-        </Button>
+        <div className="verification-unavailable-actions">
+          <Button to={isAuthenticated ? "/dashboard" : "/"} variant="primary">
+            {isAuthenticated ? copy.detail.backToHistory : copy.common.verifyAnotherLink}
+          </Button>
+          <Button to="/dashboard" variant="secondary">
+            {copy.common.backToReview}
+          </Button>
+        </div>
       </PageShell>
     );
   }
@@ -224,6 +236,19 @@ export function VerificationDetailPage() {
           <p className="muted-copy verification-detail__summary-copy">
             {copy.detail.summaryCopy}
           </p>
+          {currentUser ? (
+            <div className="verification-detail__ownership">
+              <Badge
+                label={detailSource === "fresh" ? copy.detail.savedNow : copy.detail.openedFromHistory}
+                tone="primary"
+              />
+              <p className="verification-detail__ownership-copy">
+                {detailSource === "fresh"
+                  ? copy.detail.savedNowDescription
+                  : copy.detail.openedFromHistoryDescription}
+              </p>
+            </div>
+          ) : null}
         </div>
         <div className="verification-detail-target">
           <p className="verification-detail-target__label">{copy.detail.target}</p>

@@ -76,6 +76,7 @@ export function AnalyzeUrlForm({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [quotaExceededRetryAfter, setQuotaExceededRetryAfter] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isQuotaRetrying, setIsQuotaRetrying] = useState(false);
   const [inputType, setInputType] = useState<"manual" | "paste">("manual");
 
   const resolvedButtonLabel = buttonLabel ?? copy.analyzeForm.buttonLabel;
@@ -85,12 +86,12 @@ export function AnalyzeUrlForm({
   const resolvedSubmittingLabel = submittingLabel ?? copy.analyzeForm.submittingLabel;
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && quotaExceededRetryAfter === null && !isQuotaRetrying) {
       setSubmitError(null);
       setQuotaExceededRetryAfter(null);
       onStateChange?.("idle");
     }
-  }, [currentUser, onStateChange]);
+  }, [currentUser, isQuotaRetrying, onStateChange, quotaExceededRetryAfter]);
 
   async function handlePaste() {
     if (!navigator.clipboard?.readText) {
@@ -135,10 +136,13 @@ export function AnalyzeUrlForm({
   async function submitVerification(
     target: string,
     submissionInputType: "manual" | "paste",
+    options?: { preserveQuotaState?: boolean },
   ) {
     setIsSubmitting(true);
-    setSubmitError(null);
-    setQuotaExceededRetryAfter(null);
+    if (!options?.preserveQuotaState) {
+      setSubmitError(null);
+      setQuotaExceededRetryAfter(null);
+    }
     onStateChange?.("submitting");
     trackAnalysisStarted({
       sourcePage: location.pathname,
@@ -192,6 +196,7 @@ export function AnalyzeUrlForm({
       onStateChange?.("error");
     } finally {
       setIsSubmitting(false);
+      setIsQuotaRetrying(false);
     }
   }
 
@@ -248,15 +253,28 @@ export function AnalyzeUrlForm({
       {submitError && quotaExceededRetryAfter !== null ? (
         <section className="analysis-form__quota" aria-live="polite">
           <div className="analysis-form__quota-body">
+            <p className="analysis-form__quota-eyebrow">{copy.analyzeForm.quota.eyebrow}</p>
             <p className="analysis-form__quota-title">{copy.analyzeForm.quota.title}</p>
-            <p className="analysis-form__quota-copy">{submitError}</p>
-            <p className="analysis-form__quota-copy">{quotaResetCopy}</p>
-            <p className="analysis-form__quota-copy">{copy.analyzeForm.quota.continueBySigningIn}</p>
+            <p className="analysis-form__quota-copy">{copy.analyzeForm.quota.description}</p>
+            <p className="analysis-form__quota-meta">{quotaResetCopy}</p>
           </div>
-          <GoogleSignInButton
-            className="analysis-form__quota-signin"
-            onSuccess={() => submitVerification(analysisTarget.trim(), inputType)}
-          />
+          <div className="analysis-form__quota-actions">
+            <GoogleSignInButton
+              className="analysis-form__quota-signin"
+              variant="quota"
+              busy={isQuotaRetrying}
+              busyLabel={copy.analyzeForm.quota.retrying}
+              onSuccess={async () => {
+                setIsQuotaRetrying(true);
+                await submitVerification(analysisTarget.trim(), inputType, {
+                  preserveQuotaState: true,
+                });
+              }}
+            />
+            <p className="analysis-form__quota-note">
+              {isQuotaRetrying ? copy.analyzeForm.quota.retrying : copy.analyzeForm.quota.cta}
+            </p>
+          </div>
         </section>
       ) : submitError ? (
         <p className={messageClassName}>{submitError}</p>
