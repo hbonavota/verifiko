@@ -553,6 +553,31 @@ def test_create_url_verification_use_case_strengthens_long_deceptive_paypal_subd
     assert any(signal.signal_type == "misleading_subdomain" for signal in dto.signals)
 
 
+def test_create_url_verification_use_case_strengthens_suspicious_synthetic_hostname_labels() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://secure-verify-9x1k-login.net"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "LOW"
+    assert dto.risk_assessment.verdict == "CAUTION"
+    assert dto.risk_assessment.score < 81
+    assert any(signal.signal_type == "high_domain_entropy" for signal in dto.signals)
+    assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_strengthens_mailbox_synthetic_hostname_labels() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://mailbox-8f2k-review-login.xyz"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
+    assert any(signal.signal_type == "high_domain_entropy" for signal in dto.signals)
+    assert any(signal.signal_type == "tactical_email_staging" for signal in dto.signals)
+
+
 def test_create_url_verification_use_case_strengthens_mailbox_mfa_review_lures() -> None:
     use_case = _build_use_case()
 

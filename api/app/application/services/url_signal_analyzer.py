@@ -113,6 +113,9 @@ _REDIRECT_KEYS = {"continue", "next", "redirect", "return", "target", "url"}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 _CONTEXTUAL_ACCOUNT_TAKEOVER_KEYWORDS = {"approve", "session"}
 _EXPLANATORY_SUBDOMAIN_LABELS = {"alert", "payments", "security", "system"}
+_SYNTHETIC_LABEL_SUSPICIOUS_TOKENS = (
+    _SUSPICIOUS_KEYWORDS | _EMAIL_LURE_KEYWORDS | _CONTEXTUAL_ACCOUNT_TAKEOVER_KEYWORDS
+)
 _GENERIC_AUTH_KEYWORDS = {
     "account",
     "approve",
@@ -463,15 +466,28 @@ class DeterministicUrlSignalAnalyzer:
 
         entropy_label = self._high_entropy_label(host_labels)
         if entropy_label is not None:
+            suspicious_label_terms = self._suspicious_synthetic_label_terms(entropy_label)
             signals.append(
                 self._signal(
                     signal_type=SignalType.HIGH_DOMAIN_ENTROPY,
-                    severity=SignalSeverity.MEDIUM,
-                    confidence=73,
+                    severity=(
+                        SignalSeverity.HIGH if suspicious_label_terms else SignalSeverity.MEDIUM
+                    ),
+                    confidence=84 if suspicious_label_terms else 73,
                     message_key="signal.high_entropy_hostname_token",
                     message_params={
                         "evidence": [
-                            evidence_ref("evidence.suspicious_label", label=entropy_label)
+                            evidence_ref("evidence.suspicious_label", label=entropy_label),
+                            *(
+                                [
+                                    evidence_ref(
+                                        "evidence.matched_suspicious_hostname_terms",
+                                        terms=", ".join(suspicious_label_terms[:4]),
+                                    )
+                                ]
+                                if suspicious_label_terms
+                                else []
+                            ),
                         ]
                     },
                     tags=("entropy", "hostname"),
@@ -603,6 +619,10 @@ class DeterministicUrlSignalAnalyzer:
             | _EXPLANATORY_SUBDOMAIN_LABELS
         )
         return sorted(suspicious_labels.intersection(subdomain_tokens))
+
+    def _suspicious_synthetic_label_terms(self, label: str) -> list[str]:
+        label_tokens = _tokenize(label.replace("-", " "))
+        return sorted(_SYNTHETIC_LABEL_SUSPICIOUS_TOKENS.intersection(label_tokens))
 
     def _high_entropy_label(self, labels: list[str]) -> str | None:
         for label in labels:

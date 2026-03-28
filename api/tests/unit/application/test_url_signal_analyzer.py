@@ -285,6 +285,48 @@ def test_url_signal_analyzer_flags_branded_shorteners() -> None:
     assert SignalType.PHISHING_KEYWORDS in signal_types
 
 
+def test_url_signal_analyzer_strengthens_suspicious_synthetic_hostname_labels() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(NormalizedUrl.from_raw("https://secure-verify-9x1k-login.net"))
+
+    entropy_signal = next(
+        signal for signal in signals if signal.signal_type == SignalType.HIGH_DOMAIN_ENTROPY
+    )
+
+    assert entropy_signal.severity.value == "HIGH"
+    assert "Suspicious label: secure-verify-9x1k-login." in entropy_signal.evidence
+    assert "Matched suspicious hostname terms: login, secure, verify." in entropy_signal.evidence
+    assert any(signal.signal_type == SignalType.PHISHING_KEYWORDS for signal in signals)
+
+
+def test_url_signal_analyzer_strengthens_mailbox_synthetic_hostname_labels() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(NormalizedUrl.from_raw("https://mailbox-8f2k-review-login.xyz"))
+
+    entropy_signal = next(
+        signal for signal in signals if signal.signal_type == SignalType.HIGH_DOMAIN_ENTROPY
+    )
+
+    assert entropy_signal.severity.value == "HIGH"
+    assert "Suspicious label: mailbox-8f2k-review-login." in entropy_signal.evidence
+    assert "Matched suspicious hostname terms: login, mailbox." in entropy_signal.evidence
+    assert any(signal.signal_type == SignalType.TACTICAL_EMAIL_STAGING for signal in signals)
+
+
+def test_url_signal_analyzer_does_not_flag_technical_compound_hostname_labels_as_entropy() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    cdn_signals = analyzer.analyze(NormalizedUrl.from_raw("https://cdn-cgi.example.com"))
+    api_signals = analyzer.analyze(NormalizedUrl.from_raw("https://api-v2.docs.example.com"))
+    asset_signals = analyzer.analyze(NormalizedUrl.from_raw("https://assets-01.examplecdn.net"))
+
+    assert all(signal.signal_type != SignalType.HIGH_DOMAIN_ENTROPY for signal in cdn_signals)
+    assert all(signal.signal_type != SignalType.HIGH_DOMAIN_ENTROPY for signal in api_signals)
+    assert all(signal.signal_type != SignalType.HIGH_DOMAIN_ENTROPY for signal in asset_signals)
+
+
 def test_url_signal_analyzer_flags_mailbox_mfa_review_lures() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 

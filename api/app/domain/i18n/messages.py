@@ -575,6 +575,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "Suspicious label: {label}.",
         "es": "Etiqueta sospechosa: {label}.",
     },
+    "evidence.matched_suspicious_hostname_terms": {
+        "en": "Matched suspicious hostname terms: {terms}.",
+        "es": "Términos sospechosos de hostname coincidentes: {terms}.",
+    },
     "evidence.observed_tld": {
         "en": "Observed TLD: .{tld}.",
         "es": "TLD observado: .{tld}.",
