@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     )
     cors_allowed_origin_regex: str | None = None
     anonymous_daily_verification_limit: int = 10
+    free_authenticated_daily_verification_limit: int = 20
+    pro_authenticated_daily_verification_limit: int = 200
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"
     auth_token_ttl_seconds: int = 60 * 60 * 24 * 7

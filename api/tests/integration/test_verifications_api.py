@@ -77,6 +77,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_verification_repository.cache_clear()
     get_user_repository.cache_clear()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_user_quota_policy.cache_clear()
+    container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_auth_token_service.cache_clear()
     container.get_google_identity_verifier.cache_clear()
     container.get_redirect_signal_analyzer.cache_clear()
@@ -108,6 +110,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     drop_db()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_user_quota_policy.cache_clear()
+    container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_auth_token_service.cache_clear()
     container.get_google_identity_verifier.cache_clear()
     get_verification_repository.cache_clear()

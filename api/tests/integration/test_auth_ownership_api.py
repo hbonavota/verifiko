@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from app.application.ports.google_identity_verifier import (
     GoogleIdentity,
     GoogleIdentityVerificationError,
 )
+from app.domain.enums.user_plan import UserPlan
 from app.application.ports.infrastructure_lookup import (
     InfrastructureLookupPort,
     InfrastructureProfile,
@@ -105,6 +107,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_verification_repository.cache_clear()
     get_user_repository.cache_clear()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_user_quota_policy.cache_clear()
+    container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_auth_token_service.cache_clear()
     container.get_google_identity_verifier.cache_clear()
     container.get_redirect_signal_analyzer.cache_clear()
@@ -141,6 +145,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     drop_db()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_user_quota_policy.cache_clear()
+    container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_auth_token_service.cache_clear()
     _clear_cache_if_present(container.get_google_identity_verifier)
     get_verification_repository.cache_clear()
@@ -169,6 +175,7 @@ def test_google_login_success_returns_backend_session_and_user(client: TestClien
     assert body["access_token"]
     assert body["user"]["email"] == "alice@example.com"
     assert body["user"]["display_name"] == "Alice Example"
+    assert body["user"]["plan"] == "FREE"
 
 
 def test_google_login_rejects_invalid_identity_token(client: TestClient) -> None:
@@ -184,6 +191,7 @@ def test_current_user_resolution_requires_valid_bearer_token(client: TestClient)
     success = client.get("/api/me", headers=_authorization_header(session["access_token"]))
     assert success.status_code == 200
     assert success.json()["email"] == "alice@example.com"
+    assert success.json()["plan"] == "FREE"
 
     invalid = client.get("/api/me", headers=_authorization_header("not-a-valid-token"))
     assert invalid.status_code == 401
@@ -315,3 +323,147 @@ def test_authenticated_create_is_not_subject_to_anonymous_rate_limit(client: Tes
 
     limiter.reset()
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
+
+
+def test_authenticated_user_hits_daily_limit(client: TestClient) -> None:
+    session = _login(client, "valid-alice")
+    policy = container.get_user_quota_policy()
+    limiter = container.get_authenticated_verification_rate_limiter()
+    policy.free_daily_limit = 2
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.reset()
+
+    first = client.post(
+        "/api/verifications",
+        json={"url": "https://example.org"},
+        headers=_authorization_header(session["access_token"]),
+    )
+    second = client.post(
+        "/api/verifications",
+        json={"url": "https://example.net"},
+        headers=_authorization_header(session["access_token"]),
+    )
+    third = client.post(
+        "/api/verifications",
+        json={"url": "https://example.com"},
+        headers=_authorization_header(session["access_token"]),
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert third.status_code == 429
+    assert third.json()["detail"] == "You’ve reached your daily verification limit. Upgrade to continue."
+    assert third.headers["retry-after"] == "43200"
+
+    policy.free_daily_limit = get_settings().free_authenticated_daily_verification_limit
+    limiter.reset()
+
+
+def test_limit_resets_next_day(client: TestClient) -> None:
+    session = _login(client, "valid-alice")
+    policy = container.get_user_quota_policy()
+    limiter = container.get_authenticated_verification_rate_limiter()
+    current_time = datetime(2026, 3, 28, 23, 59, 50, tzinfo=timezone.utc)
+    policy.free_daily_limit = 1
+    limiter.current_time_provider = lambda: current_time
+    limiter.reset()
+
+    first = client.post(
+        "/api/verifications",
+        json={"url": "https://example.org"},
+        headers=_authorization_header(session["access_token"]),
+    )
+    blocked = client.post(
+        "/api/verifications",
+        json={"url": "https://example.net"},
+        headers=_authorization_header(session["access_token"]),
+    )
+
+    assert first.status_code == 201
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"] == "10"
+
+    current_time = datetime(2026, 3, 29, 0, 0, 5, tzinfo=timezone.utc)
+    allowed_after_reset = client.post(
+        "/api/verifications",
+        json={"url": "https://example.com"},
+        headers=_authorization_header(session["access_token"]),
+    )
+
+    assert allowed_after_reset.status_code == 201
+
+    policy.free_daily_limit = get_settings().free_authenticated_daily_verification_limit
+    limiter.reset()
+
+
+def test_different_users_have_isolated_quotas(client: TestClient) -> None:
+    alice = _login(client, "valid-alice")
+    bob = _login(client, "valid-bob")
+    policy = container.get_user_quota_policy()
+    limiter = container.get_authenticated_verification_rate_limiter()
+    policy.free_daily_limit = 1
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.reset()
+
+    alice_first = client.post(
+        "/api/verifications",
+        json={"url": "https://example.org"},
+        headers=_authorization_header(alice["access_token"]),
+    )
+    alice_blocked = client.post(
+        "/api/verifications",
+        json={"url": "https://example.net"},
+        headers=_authorization_header(alice["access_token"]),
+    )
+    bob_first = client.post(
+        "/api/verifications",
+        json={"url": "https://example.com"},
+        headers=_authorization_header(bob["access_token"]),
+    )
+
+    assert alice_first.status_code == 201
+    assert alice_blocked.status_code == 429
+    assert bob_first.status_code == 201
+
+    policy.free_daily_limit = get_settings().free_authenticated_daily_verification_limit
+    limiter.reset()
+
+
+def test_pro_user_has_higher_limit(client: TestClient) -> None:
+    session = _login(client, "valid-alice")
+    user_repository = get_user_repository()
+    user = user_repository.get_by_email("alice@example.com")
+    assert user is not None
+    user.assign_plan(UserPlan.PRO)
+    user_repository.save(user)
+
+    policy = container.get_user_quota_policy()
+    limiter = container.get_authenticated_verification_rate_limiter()
+    policy.free_daily_limit = 1
+    policy.pro_daily_limit = 2
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.reset()
+
+    first = client.post(
+        "/api/verifications",
+        json={"url": "https://example.org"},
+        headers=_authorization_header(session["access_token"]),
+    )
+    second = client.post(
+        "/api/verifications",
+        json={"url": "https://example.net"},
+        headers=_authorization_header(session["access_token"]),
+    )
+    third = client.post(
+        "/api/verifications",
+        json={"url": "https://example.com"},
+        headers=_authorization_header(session["access_token"]),
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert third.status_code == 429
+
+    policy.free_daily_limit = get_settings().free_authenticated_daily_verification_limit
+    policy.pro_daily_limit = get_settings().pro_authenticated_daily_verification_limit
+    limiter.reset()

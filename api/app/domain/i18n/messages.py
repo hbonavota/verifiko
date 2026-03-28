@@ -451,6 +451,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "The anonymous verification limit for today has been reached. Please try again after midnight UTC or sign in.",
         "es": "Se ha alcanzado el límite anónimo de verificaciones para hoy. Vuelve a intentarlo después de la medianoche UTC o inicia sesión.",
     },
+    "error.authenticated_daily_limit_exceeded": {
+        "en": "You’ve reached your daily verification limit. Upgrade to continue.",
+        "es": "Has alcanzado tu límite diario de verificaciones. Mejora tu plan para continuar.",
+    },
     "error.authentication_required": {
         "en": "Authentication is required for this endpoint.",
         "es": "Se requiere autenticación para este endpoint.",

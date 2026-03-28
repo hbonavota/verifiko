@@ -10,5 +10,6 @@ class UserMapper:
             email=user.email,
             display_name=user.display_name,
             avatar_url=user.avatar_url,
+            plan=user.plan.value,
             created_at=user.created_at.isoformat(),
         )
