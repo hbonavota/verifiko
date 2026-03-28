@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 
 import brandMark from "../assets/verifiko-mark.svg";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
@@ -25,12 +25,12 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="brand-lockup">
+      <Link className="brand-lockup" to="/">
         <img alt="" className="brand-lockup__mark" height="52" src={brandMark} width="52" />
         <div>
-          <h1 className="brand-lockup__name">Verifiko</h1>
+          <span className="brand-lockup__name">Verifiko</span>
         </div>
-      </div>
+      </Link>
 
       <nav aria-label={copy.navigation.primaryLabel} className="sidebar-nav">
         {primaryNavigation.map((item) => (

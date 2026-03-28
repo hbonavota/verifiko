@@ -277,8 +277,9 @@
 
 .analysis-form__input-control,
 .dashboard-intake__input-control {
-  min-height: 76px;
+  min-height: 60px;
   font-size: 1.04rem;
+  border-radius: inherit;
 }
 
 .analysis-form__button {
