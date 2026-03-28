@@ -1,5 +1,6 @@
 import type {
   ApiAuthSession,
+  ApiQuotaStatus,
   ApiUser,
   ApiVerification,
   CreateVerificationInput,
@@ -132,4 +133,10 @@ export function getOwnedVerificationById(verificationId: string): Promise<ApiVer
 
 export function listMyVerifications(limit = 20, offset = 0): Promise<ApiVerification[]> {
   return readJson<ApiVerification[]>(`/api/me/verifications?limit=${limit}&offset=${offset}`);
+}
+
+export function fetchQuotaStatus(): Promise<ApiQuotaStatus> {
+  return readJson<ApiQuotaStatus>("/api/verifications/quota-status", {
+    method: "GET",
+  });
 }

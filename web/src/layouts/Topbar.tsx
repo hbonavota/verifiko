@@ -6,7 +6,7 @@ import { useI18n } from "../lib/i18n";
 
 export function Topbar() {
   const { copy } = useI18n();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, quotaReady, quotaStatus } = useAuth();
   const displayName = currentUser?.display_name?.trim() || currentUser?.email || "";
   const initials = displayName
     .split(/\s+/)
@@ -14,6 +14,7 @@ export function Topbar() {
     .slice(0, 2)
     .map((segment) => segment.charAt(0).toUpperCase())
     .join("");
+  const quotaSummary = quotaReady && quotaStatus ? buildQuotaSummary(copy, quotaStatus) : null;
 
   return (
     <header className="topbar">
@@ -40,6 +41,12 @@ export function Topbar() {
               <p className="topbar-account__label">{copy.topbar.accountHistoryEnabled}</p>
               <p className="topbar-account__value">{displayName}</p>
               <p className="topbar-account__meta">{currentUser.email}</p>
+              {quotaSummary ? (
+                <>
+                  <p className="topbar-account__quota">{quotaSummary.title}</p>
+                  <p className="topbar-account__quota-note">{quotaSummary.detail}</p>
+                </>
+              ) : null}
             </div>
             <div className="topbar-account__actions">
               <Button to="/dashboard" variant="ghost">
@@ -51,10 +58,69 @@ export function Topbar() {
             </div>
           </div>
         ) : (
-          <GoogleSignInButton className="topbar-auth" />
+          <div className="topbar-auth">
+            <GoogleSignInButton />
+            {quotaSummary ? (
+              <div className="topbar-auth__quota">
+                <p className="topbar-auth__quota-title">{quotaSummary.title}</p>
+                <p className="topbar-auth__quota-copy">{quotaSummary.detail}</p>
+              </div>
+            ) : null}
+          </div>
         )}
         <LanguageSwitcher className="topbar__language" />
       </div>
     </header>
   );
+}
+
+function buildQuotaSummary(
+  copy: ReturnType<typeof useI18n>["copy"],
+  quotaStatus: NonNullable<ReturnType<typeof useAuth>["quotaStatus"]>,
+): { title: string; detail: string } {
+  if (quotaStatus.plan === "ANONYMOUS") {
+    if (quotaStatus.blocked) {
+      return {
+        title: copy.topbar.quota.anonymousBlockedTitle,
+        detail: copy.topbar.quota.anonymousBlockedDetail,
+      };
+    }
+
+    return {
+      title: copy.topbar.quota.anonymousTitle
+        .replace("{remaining}", String(quotaStatus.remaining_today))
+        .replace("{dailyLimit}", String(quotaStatus.daily_limit)),
+      detail: copy.topbar.quota.anonymousDetail,
+    };
+  }
+
+  if (quotaStatus.plan === "PRO") {
+    if (quotaStatus.blocked) {
+      return {
+        title: copy.topbar.quota.proBlockedTitle,
+        detail: copy.topbar.quota.resetDetail,
+      };
+    }
+
+    return {
+      title: copy.topbar.quota.proTitle
+        .replace("{remaining}", String(quotaStatus.remaining_today))
+        .replace("{dailyLimit}", String(quotaStatus.daily_limit)),
+      detail: copy.topbar.quota.proDetail,
+    };
+  }
+
+  if (quotaStatus.blocked) {
+    return {
+      title: copy.topbar.quota.freeBlockedTitle,
+      detail: copy.topbar.quota.freeBlockedDetail,
+    };
+  }
+
+  return {
+    title: copy.topbar.quota.freeTitle
+      .replace("{remaining}", String(quotaStatus.remaining_today))
+      .replace("{dailyLimit}", String(quotaStatus.daily_limit)),
+    detail: copy.topbar.quota.freeDetail,
+  };
 }
