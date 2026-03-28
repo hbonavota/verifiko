@@ -141,7 +141,10 @@ class DeterministicUrlSignalAnalyzer:
         brand_matches = sorted(_BRAND_KEYWORDS.intersection(text_tokens))
         institution_context_matches = sorted(_INSTITUTION_CONTEXT_KEYWORDS.intersection(text_tokens))
         institution_demand_matches = sorted(_INSTITUTION_DEMAND_KEYWORDS.intersection(text_tokens))
-        deceptive_brand_pattern = self._deceptive_brand_subdomain_pattern(subdomain_labels)
+        deceptive_brand_pattern = self._deceptive_brand_subdomain_pattern(
+            normalized_url,
+            subdomain_labels,
+        )
         tld = host_labels[-1] if len(host_labels) >= 2 else ""
 
         if normalized_url.is_ip_address:
@@ -377,6 +380,13 @@ class DeterministicUrlSignalAnalyzer:
                                 "evidence.registered_domain_observed",
                                 registered_domain=normalized_url.registered_domain,
                             ),
+                            evidence_ref(
+                                "evidence.subdomain_observed",
+                                subdomain=(
+                                    normalized_url.subdomain
+                                    or message_ref("phrase.placeholder_none_value")
+                                ),
+                            ),
                         ]
                     },
                     tags=("brand-subdomain", "domain-structure"),
@@ -553,6 +563,7 @@ class DeterministicUrlSignalAnalyzer:
             "appleid.apple.com",
             "bankofamerica.com",
             "dhl.com",
+            "dgt.gob.es",
             "dropbox.com",
             "facebook.com",
             "google.com",
@@ -602,9 +613,27 @@ class DeterministicUrlSignalAnalyzer:
             return False
         return True
 
-    def _deceptive_brand_subdomain_pattern(self, subdomain_labels: list[str]) -> str | None:
+    def _deceptive_brand_subdomain_pattern(
+        self,
+        normalized_url: NormalizedUrl,
+        subdomain_labels: list[str],
+    ) -> str | None:
         if len(subdomain_labels) < 2:
             return None
+
+        if self._is_official_institution_target(normalized_url):
+            return None
+
+        for trusted_domain in sorted(
+            self._official_brand_domains(),
+            key=lambda value: len(value.split(".")),
+            reverse=True,
+        ):
+            trusted_labels = trusted_domain.split(".")
+            if len(trusted_labels) < 2:
+                continue
+            if _contains_label_sequence(subdomain_labels, trusted_labels):
+                return trusted_domain
 
         for left_label, right_label in zip(subdomain_labels, subdomain_labels[1:]):
             left_tokens = _tokenize(left_label.replace("-", " "))
@@ -633,3 +662,15 @@ def _looks_like_readable_compound(label: str) -> bool:
 
     segments = [segment for segment in label.split("-") if segment]
     return len(segments) >= 2 and all(segment.isalpha() and len(segment) >= 3 for segment in segments)
+
+
+def _contains_label_sequence(labels: list[str], sequence: list[str]) -> bool:
+    sequence_length = len(sequence)
+    if sequence_length > len(labels):
+        return False
+
+    for index in range(len(labels) - sequence_length + 1):
+        if labels[index : index + sequence_length] == sequence:
+            return True
+
+    return False

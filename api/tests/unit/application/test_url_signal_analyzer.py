@@ -79,6 +79,81 @@ def test_url_signal_analyzer_flags_government_brand_lure_domains() -> None:
     assert SignalType.PHISHING_KEYWORDS in signal_types
 
 
+def test_url_signal_analyzer_flags_known_deceptive_brand_domain_fragments_in_subdomain() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+    cases = (
+        (
+            "http://paypal.com.security-check-login.com/",
+            "paypal.com",
+            "security-check-login.com",
+            "paypal.com",
+        ),
+        (
+            "https://appleid.apple.com.verify-session.security-check.net/",
+            "appleid.apple.com",
+            "security-check.net",
+            "appleid.apple.com.verify-session",
+        ),
+        (
+            "http://google.com.account-recovery-alert.user-verification.net/",
+            "google.com",
+            "user-verification.net",
+            "google.com.account-recovery-alert",
+        ),
+    )
+
+    for url, fragment, registered_domain, subdomain in cases:
+        signals = analyzer.analyze(NormalizedUrl.from_raw(url))
+
+        deceptive_signal = next(
+            signal for signal in signals if signal.signal_type == SignalType.DECEPTIVE_BRAND_SUBDOMAIN
+        )
+
+        assert f"Observed deceptive fragment: {fragment}." in deceptive_signal.evidence
+        assert f"Registered domain observed: {registered_domain}." in deceptive_signal.evidence
+        assert f"Subdomain observed: {subdomain}." in deceptive_signal.evidence
+
+
+def test_url_signal_analyzer_does_not_flag_official_brand_domains_as_deceptive_subdomain() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    for url in (
+        "https://paypal.com/",
+        "https://appleid.apple.com/",
+        "https://accounts.google.com/signin",
+    ):
+        signals = analyzer.analyze(NormalizedUrl.from_raw(url))
+
+        assert all(
+            signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN for signal in signals
+        )
+
+
+def test_url_signal_analyzer_flags_deceptive_institution_domain_in_subdomain() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://dgt.gob.es.multa-pendiente.secure-payments.xyz")
+    )
+
+    deceptive_signal = next(
+        signal for signal in signals if signal.signal_type == SignalType.DECEPTIVE_BRAND_SUBDOMAIN
+    )
+
+    assert "Observed deceptive fragment: dgt.gob.es." in deceptive_signal.evidence
+    assert "Registered domain observed: secure-payments.xyz." in deceptive_signal.evidence
+    assert "Subdomain observed: dgt.gob.es.multa-pendiente." in deceptive_signal.evidence
+    assert deceptive_signal.message_params["evidence"][0]["params"]["fragment"] == "dgt.gob.es"
+
+
+def test_url_signal_analyzer_does_not_flag_official_institution_domain_as_deceptive_subdomain() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(NormalizedUrl.from_raw("https://dgt.gob.es/multas"))
+
+    assert all(signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN for signal in signals)
+
+
 def test_url_signal_analyzer_flags_institution_mismatch_lures() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 

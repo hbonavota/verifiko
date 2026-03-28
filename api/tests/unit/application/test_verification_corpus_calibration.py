@@ -146,9 +146,11 @@ def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse(
     use_case = _build_use_case()
     suspicious_urls = (
         "http://paypal-login-security-check.example.xyz/verify?redirect=https://example.org",
+        "http://paypal.com.security-check-login.com/",
         "https://microsoft-verify-account.example.top/login",
         "https://outlook.office365.mailbox-auth.example.click/reset",
         "https://appleid-confirm-billing.example.info/signin",
+        "https://dgt.gob.es.multa-pendiente.secure-payments.xyz",
         "https://g.co/account/security",
         "https://gov-traffic-fine.example.click/pay",
     )

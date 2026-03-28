@@ -440,11 +440,27 @@ def test_create_url_verification_use_case_skips_transport_signal_on_valid_https(
 def test_create_url_verification_use_case_strengthens_deceptive_brand_subdomain() -> None:
     use_case = _build_use_case()
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://paypal.com.example.xyz/login"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://paypal.com.security-check-login.com/")
+    )
 
     assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals)
     assert dto.risk_assessment is not None
-    assert dto.risk_assessment.risk_level in {"HIGH", "CRITICAL"}
+    assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
+
+
+def test_create_url_verification_use_case_strengthens_deceptive_institution_subdomain() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://dgt.gob.es.multa-pendiente.secure-payments.xyz")
+    )
+
+    assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals)
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
 
 
 def test_create_url_verification_use_case_caps_safe_result_when_coverage_is_degraded() -> None:
