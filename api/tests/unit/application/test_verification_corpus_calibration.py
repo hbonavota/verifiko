@@ -551,6 +551,39 @@ def test_manual_corpus_calibration_marks_shortener_redirected_reauth_lures_as_su
     )
 
 
+def test_manual_corpus_calibration_marks_shortener_redirected_approve_lures_as_suspicious() -> None:
+    class ShortenerRedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            return RedirectResolution(
+                final_url="https://google.com.approve-review.user-access.net/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/google-approve",
+                        target_url="https://google.com.approve-review.user-access.net/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+
+    use_case = _build_use_case(redirect_resolver=ShortenerRedirectResolver())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/google-approve"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level in {
+        RiskLevel.HIGH.value,
+        RiskLevel.CRITICAL.value,
+    }
+    assert any(signal.signal_type == "shortened_url" for signal in result.signals)
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+    assert any(
+        signal.signal_type == "phishing_keywords"
+        and signal.source == "resolved-destination-url-analyzer"
+        for signal in result.signals
+    )
+
+
 def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_source_challenge_lures() -> None:
     class FailingRedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:

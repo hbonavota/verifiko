@@ -62,6 +62,23 @@ _CONTEXTUAL_ATO_SUPPORT_TOKENS = {
     "verification",
     "webmail",
 }
+_CONTEXTUAL_APPROVE_LURE_TOKENS = {"approve"}
+_CONTEXTUAL_APPROVE_SUPPORT_TOKENS = {
+    "amazon",
+    "apple",
+    "appleid",
+    "dropbox",
+    "facebook",
+    "google",
+    "mail",
+    "mailbox",
+    "microsoft",
+    "office365",
+    "onedrive",
+    "outlook",
+    "paypal",
+    "webmail",
+}
 _SHORTENER_DOMAINS = {
     "amzn.to",
     "bit.ly",
@@ -273,8 +290,13 @@ class RedirectSignalAnalyzer:
         if _PHISHING_LURE_TOKENS.intersection(tokens):
             return True
 
-        return bool(_CONTEXTUAL_ATO_LURE_TOKENS.intersection(tokens)) and bool(
+        if bool(_CONTEXTUAL_ATO_LURE_TOKENS.intersection(tokens)) and bool(
             _CONTEXTUAL_ATO_SUPPORT_TOKENS.intersection(tokens)
+        ):
+            return True
+
+        return bool(_CONTEXTUAL_APPROVE_LURE_TOKENS.intersection(tokens)) and bool(
+            _CONTEXTUAL_APPROVE_SUPPORT_TOKENS.intersection(tokens)
         )
 
     def _text_tokens(self, normalized_url: NormalizedUrl) -> set[str]:

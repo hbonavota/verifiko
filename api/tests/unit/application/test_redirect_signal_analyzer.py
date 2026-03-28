@@ -222,6 +222,32 @@ def test_redirect_signal_analyzer_flags_shortener_redirect_to_reauth_lure() -> N
     assert result.signals[0].severity.value == "HIGH"
 
 
+def test_redirect_signal_analyzer_flags_shortener_redirect_to_approve_lure() -> None:
+    analyzer = RedirectSignalAnalyzer(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://google.com.approve-review.user-access.net/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/google-approve",
+                        target_url="https://google.com.approve-review.user-access.net/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://bit.ly/google-approve")
+    )
+
+    assert len(result.signals) == 1
+    assert result.signals[0].signal_type.value == "suspicious_redirect_chain"
+    assert result.signals[0].severity.value == "HIGH"
+
+
 def test_redirect_signal_analyzer_flags_shortener_redirect_to_questionable_tld() -> None:
     analyzer = RedirectSignalAnalyzer(
         redirect_resolver=FakeRedirectResolver(

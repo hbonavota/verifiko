@@ -1237,6 +1237,41 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_reaut
     assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in destination_signals)
 
 
+def test_create_url_verification_use_case_strengthens_shortener_redirected_approve_lures() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://google.com.approve-review.user-access.net/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/google-approve",
+                        target_url="https://google.com.approve-review.user-access.net/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/google-approve"))
+    destination_signals = [
+        signal for signal in dto.signals if signal.source == "resolved-destination-url-analyzer"
+    ]
+    redirect_signals = [
+        signal for signal in dto.signals if signal.source == "redirect-chain-analyzer"
+    ]
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"HIGH", "CRITICAL"}
+    assert dto.risk_assessment.verdict == "LIKELY_MALICIOUS"
+    assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in redirect_signals)
+    assert any(signal.signal_type == "phishing_keywords" for signal in destination_signals)
+    assert any(signal.signal_type == "brand_impersonation" for signal in destination_signals)
+    assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in destination_signals)
+
+
 def test_create_url_verification_use_case_keeps_shortener_redirected_official_challenge_flows_safe() -> None:
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
