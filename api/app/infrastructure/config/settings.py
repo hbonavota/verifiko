@@ -17,8 +17,8 @@ class Settings(BaseSettings):
         "http://127.0.0.1:4173"
     )
     cors_allowed_origin_regex: str | None = None
-    anonymous_daily_verification_limit: int = 10
-    free_authenticated_daily_verification_limit: int = 20
+    anonymous_daily_verification_limit: int = 3
+    free_authenticated_daily_verification_limit: int = 10
     pro_authenticated_daily_verification_limit: int = 200
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"

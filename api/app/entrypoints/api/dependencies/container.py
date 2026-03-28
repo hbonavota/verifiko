@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from app.application.ports.auth_token_service import AuthTokenServicePort
 from app.application.ports.google_identity_verifier import GoogleIdentityVerifierPort
+from app.application.services.quota_status_service import QuotaStatusService
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.domain.services.user_quota_policy import UserQuotaPolicy
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
@@ -182,6 +183,14 @@ def get_authenticated_verification_rate_limiter() -> AuthenticatedUtcDayQuotaLim
     return AuthenticatedUtcDayQuotaLimiter(
         quota_policy=get_user_quota_policy(),
         current_time_provider=get_time_provider().now,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_quota_status_service() -> QuotaStatusService:
+    return QuotaStatusService(
+        anonymous_quota_limiter=get_create_verification_rate_limiter(),
+        authenticated_quota_limiter=get_authenticated_verification_rate_limiter(),
     )
 
 
