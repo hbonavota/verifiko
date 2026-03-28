@@ -63,6 +63,14 @@ const translations = {
     },
     footer: {
       developedBy: "Developed by",
+      cookiePreferences: "Cookie preferences",
+    },
+    cookieBanner: {
+      dialogLabel: "Cookie consent",
+      title: "Analytics cookies",
+      description: "We use analytics cookies to understand site usage and improve Verifiko.",
+      accept: "Accept",
+      reject: "Reject",
     },
     verdicts: {
       safe: "Safe",
@@ -337,6 +345,14 @@ const translations = {
     },
     footer: {
       developedBy: "Desarrollado por",
+      cookiePreferences: "Preferencias de cookies",
+    },
+    cookieBanner: {
+      dialogLabel: "Consentimiento de cookies",
+      title: "Cookies de analitica",
+      description: "Usamos cookies de analitica para entender el uso del sitio y mejorar Verifiko.",
+      accept: "Aceptar",
+      reject: "Rechazar",
     },
     verdicts: {
       safe: "Seguro",

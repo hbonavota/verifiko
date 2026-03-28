@@ -2,11 +2,15 @@ import type { PropsWithChildren } from "react";
 
 import { SiteFooter } from "./SiteFooter";
 
-export function ContentShell({ children }: PropsWithChildren) {
+interface ContentShellProps extends PropsWithChildren {
+  onOpenCookiePreferences?: () => void;
+}
+
+export function ContentShell({ children, onOpenCookiePreferences }: ContentShellProps) {
   return (
     <main className="content-shell">
       <div className="content-shell__body">{children}</div>
-      <SiteFooter />
+      <SiteFooter onOpenCookiePreferences={onOpenCookiePreferences} />
     </main>
   );
 }

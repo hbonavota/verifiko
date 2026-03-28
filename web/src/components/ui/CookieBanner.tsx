@@ -1,10 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { applyAnalyticsConsent, persistAnalyticsConsentChoice, readAnalyticsConsentChoice } from "../../lib/analyticsConsent";
+import {
+  applyAnalyticsConsent,
+  persistAnalyticsConsentChoice,
+  readAnalyticsConsentChoice,
+} from "../../lib/analyticsConsent";
+import { useI18n } from "../../lib/i18n";
 import { Button } from "./Button";
 
-export function CookieBanner() {
+interface CookieBannerProps {
+  reopenKey?: number;
+}
+
+export function CookieBanner({ reopenKey = 0 }: CookieBannerProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const previousReopenKey = useRef(reopenKey);
+  const { copy } = useI18n();
 
   useEffect(() => {
     const storedChoice = readAnalyticsConsentChoice();
@@ -17,6 +28,15 @@ export function CookieBanner() {
     setIsVisible(true);
   }, []);
 
+  useEffect(() => {
+    if (reopenKey === previousReopenKey.current) {
+      return;
+    }
+
+    previousReopenKey.current = reopenKey;
+    setIsVisible(true);
+  }, [reopenKey]);
+
   function handleChoice(choice: "granted" | "denied") {
     persistAnalyticsConsentChoice(choice);
     applyAnalyticsConsent(choice);
@@ -28,19 +48,22 @@ export function CookieBanner() {
   }
 
   return (
-    <aside aria-live="polite" className="cookie-banner" role="dialog" aria-label="Cookie consent">
+    <aside
+      aria-live="polite"
+      aria-label={copy.cookieBanner.dialogLabel}
+      className="cookie-banner"
+      role="dialog"
+    >
       <div className="cookie-banner__body">
-        <p className="cookie-banner__title">Analytics cookies</p>
-        <p className="cookie-banner__copy">
-          We use analytics cookies to understand site usage and improve Verifiko.
-        </p>
+        <p className="cookie-banner__title">{copy.cookieBanner.title}</p>
+        <p className="cookie-banner__copy">{copy.cookieBanner.description}</p>
       </div>
       <div className="cookie-banner__actions">
         <Button onClick={() => handleChoice("denied")} variant="ghost">
-          Reject
+          {copy.cookieBanner.reject}
         </Button>
         <Button onClick={() => handleChoice("granted")} variant="primary">
-          Accept
+          {copy.cookieBanner.accept}
         </Button>
       </div>
     </aside>

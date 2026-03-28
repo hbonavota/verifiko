@@ -1,6 +1,10 @@
 import { useI18n } from "../lib/i18n";
 
-export function SiteFooter() {
+interface SiteFooterProps {
+  onOpenCookiePreferences?: () => void;
+}
+
+export function SiteFooter({ onOpenCookiePreferences }: SiteFooterProps) {
   const { copy } = useI18n();
   const year = new Date().getFullYear();
 
@@ -20,6 +24,12 @@ export function SiteFooter() {
         >
           Orbytia
         </a>
+        <span className="site-footer__separator" aria-hidden="true">
+          ·
+        </span>
+        <button className="site-footer__button" onClick={onOpenCookiePreferences} type="button">
+          {copy.footer.cookiePreferences}
+        </button>
       </p>
     </footer>
   );

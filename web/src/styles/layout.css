@@ -201,7 +201,8 @@
 }
 
 .site-footer__year,
-.site-footer__link {
+.site-footer__link,
+.site-footer__button {
   color: var(--color-text);
 }
 
@@ -216,7 +217,18 @@
   transition: color 120ms ease;
 }
 
-.site-footer__link:hover {
+.site-footer__button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.site-footer__link:hover,
+.site-footer__button:hover {
   color: var(--color-primary);
 }
 
