@@ -42,6 +42,10 @@ _HTML_COVERAGE_WARNING_KEYS = (
     "warning.resolved_destination_html_unavailable",
 )
 _REDIRECT_COVERAGE_WARNING_KEYS = ("warning.redirect_resolution_unavailable",)
+_CONTEXTUAL_COVERAGE_WARNING_KEYS = (
+    "warning.domain_registration_unavailable",
+    "warning.infrastructure_unavailable",
+)
 _REDIRECT_DEGRADED_SOURCE_SIGNAL_TYPES = {
     SignalType.PHISHING_KEYWORDS,
     SignalType.BRAND_IMPERSONATION,
@@ -280,6 +284,7 @@ class CreateURLVerificationUseCase:
         adjusted_verdict = risk_assessment.verdict
         html_coverage_degraded = _has_html_coverage_warning(deduplicated_warnings)
         redirect_coverage_degraded = _has_redirect_coverage_warning(deduplicated_warnings)
+        contextual_coverage_degraded = _has_contextual_coverage_warning(deduplicated_warnings)
         source_url_suspicion = _has_meaningful_source_url_suspicion(
             signals,
             source=self.signal_analyzer.source,
@@ -305,6 +310,15 @@ class CreateURLVerificationUseCase:
             adjusted_verdict = verdict_for_level(adjusted_risk_level)
         if (
             redirect_coverage_degraded
+            and source_url_suspicion
+            and not risk_assessment.terminal_override
+            and adjusted_score.value > 60
+        ):
+            adjusted_score = ConfidenceScore(60)
+            adjusted_risk_level = risk_level_for_score(adjusted_score.value)
+            adjusted_verdict = verdict_for_level(adjusted_risk_level)
+        if (
+            contextual_coverage_degraded
             and source_url_suspicion
             and not risk_assessment.terminal_override
             and adjusted_score.value > 60
@@ -398,6 +412,11 @@ def _has_html_coverage_warning(warnings: tuple[str, ...]) -> bool:
 def _has_redirect_coverage_warning(warnings: tuple[str, ...]) -> bool:
     redirect_warnings = {resolve_message(key) for key in _REDIRECT_COVERAGE_WARNING_KEYS}
     return any(warning in redirect_warnings for warning in warnings)
+
+
+def _has_contextual_coverage_warning(warnings: tuple[str, ...]) -> bool:
+    contextual_warnings = {resolve_message(key) for key in _CONTEXTUAL_COVERAGE_WARNING_KEYS}
+    return any(warning in contextual_warnings for warning in warnings)
 
 
 def _has_meaningful_source_url_suspicion(
