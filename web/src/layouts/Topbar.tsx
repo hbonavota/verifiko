@@ -26,7 +26,7 @@ export function Topbar() {
             </Button>
           </div>
         ) : (
-          <GoogleSignInButton />
+          <GoogleSignInButton className="topbar-auth" />
         )}
         <LanguageSwitcher className="topbar__language" />
       </div>

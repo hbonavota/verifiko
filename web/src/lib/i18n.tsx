@@ -111,6 +111,13 @@ const translations = {
         enterUrl: "Enter a URL to verify.",
         verificationFailed: "Verification failed.",
       },
+      quota: {
+        title: "Daily anonymous limit reached",
+        resetAtMidnight: "Anonymous access resets at midnight UTC.",
+        resetCountdown: "Anonymous access resets in about {timeRemaining}, at midnight UTC.",
+        continueBySigningIn:
+          "Sign in with Google to continue verifying now and keep your results in your account.",
+      },
     },
     home: {
       metaTitle: "Verify Link",
@@ -397,6 +404,13 @@ const translations = {
         clipboardBlocked: "El acceso al portapapeles fue bloqueado.",
         enterUrl: "Introduce una URL para verificar.",
         verificationFailed: "La verificación falló.",
+      },
+      quota: {
+        title: "Límite diario anónimo alcanzado",
+        resetAtMidnight: "El acceso anónimo se restablece a la medianoche UTC.",
+        resetCountdown: "El acceso anónimo se restablece en aproximadamente {timeRemaining}, a la medianoche UTC.",
+        continueBySigningIn:
+          "Inicia sesión con Google para seguir verificando ahora y guardar tus resultados en tu cuenta.",
       },
     },
     home: {

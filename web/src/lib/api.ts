@@ -30,6 +30,18 @@ function getRequiredApiBaseUrl(): string {
   return API_BASE_URL;
 }
 
+export class ApiRequestError extends Error {
+  status: number;
+  retryAfterSeconds: number | null;
+
+  constructor(message: string, status: number, retryAfterSeconds: number | null = null) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
   const language = getStoredLanguage();
   const headers = new Headers(init?.headers);
@@ -63,7 +75,13 @@ async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
       // Keep the status-based error when the response is not JSON.
     }
 
-    throw new Error(detail);
+    const retryAfterHeader = response.headers.get("Retry-After");
+    const retryAfterSeconds =
+      retryAfterHeader && /^\d+$/.test(retryAfterHeader)
+        ? Number.parseInt(retryAfterHeader, 10)
+        : null;
+
+    throw new ApiRequestError(detail, response.status, retryAfterSeconds);
   }
 
   return (await response.json()) as T;

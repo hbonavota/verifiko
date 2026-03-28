@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { createVerification } from "../../lib/api";
+import { GoogleSignInButton } from "../auth/GoogleSignInButton";
+import { useAuth } from "../../lib/auth";
+import { ApiRequestError, createVerification } from "../../lib/api";
 import {
   categorizeAnalysisError,
   detectDegradedCoverage,
@@ -67,10 +69,12 @@ export function AnalyzeUrlForm({
   submittingLabel,
 }: AnalyzeUrlFormProps) {
   const { copy, language } = useI18n();
+  const { currentUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [analysisTarget, setAnalysisTarget] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [quotaExceededRetryAfter, setQuotaExceededRetryAfter] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inputType, setInputType] = useState<"manual" | "paste">("manual");
 
@@ -80,9 +84,18 @@ export function AnalyzeUrlForm({
   const resolvedPlaceholder = placeholder ?? copy.analyzeForm.placeholder;
   const resolvedSubmittingLabel = submittingLabel ?? copy.analyzeForm.submittingLabel;
 
+  useEffect(() => {
+    if (currentUser) {
+      setSubmitError(null);
+      setQuotaExceededRetryAfter(null);
+      onStateChange?.("idle");
+    }
+  }, [currentUser, onStateChange]);
+
   async function handlePaste() {
     if (!navigator.clipboard?.readText) {
       setSubmitError(copy.analyzeForm.errors.clipboardUnavailable);
+      setQuotaExceededRetryAfter(null);
       return;
     }
 
@@ -90,15 +103,18 @@ export function AnalyzeUrlForm({
       const clipboardValue = (await navigator.clipboard.readText()).trim();
       if (!clipboardValue) {
         setSubmitError(copy.analyzeForm.errors.clipboardEmpty);
+        setQuotaExceededRetryAfter(null);
         return;
       }
 
       setAnalysisTarget(clipboardValue);
       setInputType("paste");
       setSubmitError(null);
+      setQuotaExceededRetryAfter(null);
       onStateChange?.("idle");
     } catch {
       setSubmitError(copy.analyzeForm.errors.clipboardBlocked);
+      setQuotaExceededRetryAfter(null);
     }
   }
 
@@ -108,22 +124,31 @@ export function AnalyzeUrlForm({
     const trimmedTarget = analysisTarget.trim();
     if (!trimmedTarget) {
       setSubmitError(copy.analyzeForm.errors.enterUrl);
+      setQuotaExceededRetryAfter(null);
       onStateChange?.("error");
       return;
     }
 
+    await submitVerification(trimmedTarget, inputType);
+  }
+
+  async function submitVerification(
+    target: string,
+    submissionInputType: "manual" | "paste",
+  ) {
     setIsSubmitting(true);
     setSubmitError(null);
+    setQuotaExceededRetryAfter(null);
     onStateChange?.("submitting");
     trackAnalysisStarted({
       sourcePage: location.pathname,
       language,
-      inputType,
-      hasProtocol: /^https?:\/\//i.test(trimmedTarget),
+      inputType: submissionInputType,
+      hasProtocol: /^https?:\/\//i.test(target),
     });
 
     try {
-      const verification = await createVerification({ url: trimmedTarget });
+      const verification = await createVerification({ url: target });
       const adaptedVerification = adaptApiVerification(verification, language);
 
       if (verification.status === "COMPLETED" && verification.risk_assessment) {
@@ -155,7 +180,15 @@ export function AnalyzeUrlForm({
         language,
         errorType: categorizeAnalysisError(error),
       });
-      setSubmitError(error instanceof Error ? error.message : copy.analyzeForm.errors.verificationFailed);
+      if (error instanceof ApiRequestError && error.status === 429 && currentUser === null) {
+        setSubmitError(error.message);
+        setQuotaExceededRetryAfter(error.retryAfterSeconds);
+      } else {
+        setSubmitError(
+          error instanceof Error ? error.message : copy.analyzeForm.errors.verificationFailed,
+        );
+        setQuotaExceededRetryAfter(null);
+      }
       onStateChange?.("error");
     } finally {
       setIsSubmitting(false);
@@ -165,6 +198,13 @@ export function AnalyzeUrlForm({
   const formClassName = className ? `analysis-form ${className}` : "analysis-form";
   const messageClassName = errorClassName ?? "analysis-form__error";
   const resolvedButtonClassName = buttonClassName ?? "analysis-form__button";
+  const quotaResetCopy =
+    quotaExceededRetryAfter && quotaExceededRetryAfter > 0
+      ? copy.analyzeForm.quota.resetCountdown.replace(
+          "{timeRemaining}",
+          formatRetryAfter(quotaExceededRetryAfter, language),
+        )
+      : copy.analyzeForm.quota.resetAtMidnight;
 
   return (
     <div className="analysis-form-shell">
@@ -205,7 +245,50 @@ export function AnalyzeUrlForm({
           {isSubmitting ? resolvedSubmittingLabel : resolvedButtonLabel}
         </Button>
       </form>
-      {submitError ? <p className={messageClassName}>{submitError}</p> : null}
+      {submitError && quotaExceededRetryAfter !== null ? (
+        <section className="analysis-form__quota" aria-live="polite">
+          <div className="analysis-form__quota-body">
+            <p className="analysis-form__quota-title">{copy.analyzeForm.quota.title}</p>
+            <p className="analysis-form__quota-copy">{submitError}</p>
+            <p className="analysis-form__quota-copy">{quotaResetCopy}</p>
+            <p className="analysis-form__quota-copy">{copy.analyzeForm.quota.continueBySigningIn}</p>
+          </div>
+          <GoogleSignInButton
+            className="analysis-form__quota-signin"
+            onSuccess={() => submitVerification(analysisTarget.trim(), inputType)}
+          />
+        </section>
+      ) : submitError ? (
+        <p className={messageClassName}>{submitError}</p>
+      ) : null}
     </div>
   );
+}
+
+function formatRetryAfter(seconds: number, language: "en" | "es"): string {
+  if (seconds < 60) {
+    return language === "es" ? "menos de 1 min" : "less than 1m";
+  }
+
+  const totalMinutes = Math.max(1, Math.ceil(seconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (language === "es") {
+    if (hours > 0 && minutes > 0) {
+      return `${hours} h ${minutes} min`;
+    }
+    if (hours > 0) {
+      return `${hours} h`;
+    }
+    return `${minutes} min`;
+  }
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (hours > 0) {
+    return `${hours}h`;
+  }
+  return `${minutes}m`;
 }

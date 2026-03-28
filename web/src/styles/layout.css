@@ -157,8 +157,8 @@
 }
 
 .topbar-account__label,
-.topbar-auth__hint,
-.topbar-auth__error {
+.google-sign-in__hint,
+.google-sign-in__error {
   margin: 0;
   font-size: 0.78rem;
   color: var(--color-text-muted);
@@ -170,11 +170,11 @@
   color: var(--color-text);
 }
 
-.topbar-auth__error {
+.google-sign-in__error {
   color: var(--color-danger);
 }
 
-.topbar-auth__google-button {
+.google-sign-in__button {
   min-height: 40px;
 }
 
