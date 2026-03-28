@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from app.application.ports.auth_token_service import AuthTokenServicePort
 from app.application.ports.google_identity_verifier import GoogleIdentityVerifierPort
+from app.application.ports.password_hasher import PasswordHasherPort
 from app.application.services.quota_status_service import QuotaStatusService
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.domain.services.user_quota_policy import UserQuotaPolicy
@@ -21,12 +22,18 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
+from app.application.use_cases.authenticate_with_email_password import (
+    AuthenticateWithEmailPasswordUseCase,
+)
 from app.application.use_cases.authenticate_with_google import AuthenticateWithGoogleUseCase
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
 from app.application.use_cases.get_verification_result import GetVerificationResultUseCase
 from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
 from app.application.use_cases.list_verifications import ListVerificationsUseCase
 from app.application.use_cases.list_owned_verifications import ListOwnedVerificationsUseCase
+from app.application.use_cases.register_with_email_password import (
+    RegisterWithEmailPasswordUseCase,
+)
 from app.infrastructure.external_services.google.google_tokeninfo_identity_verifier import (
     GoogleTokeninfoIdentityVerifier,
 )
@@ -53,6 +60,7 @@ from app.infrastructure.persistence.repositories.sqlalchemy_verification_reposit
 from app.infrastructure.persistence.repositories.sqlalchemy_user_repository import (
     SQLAlchemyUserRepository,
 )
+from app.infrastructure.security.argon2_password_hasher import Argon2PasswordHasher
 from app.infrastructure.security.signed_auth_token_service import SignedAuthTokenService
 from app.infrastructure.security.utc_day_quota_limiter import UtcDayQuotaLimiter
 from app.infrastructure.time.system_time_provider import SystemTimeProvider
@@ -209,6 +217,11 @@ def get_auth_token_service() -> AuthTokenServicePort:
     )
 
 
+@lru_cache(maxsize=1)
+def get_password_hasher() -> PasswordHasherPort:
+    return Argon2PasswordHasher()
+
+
 def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=get_verification_repository(),
@@ -239,6 +252,22 @@ def get_authenticate_with_google_use_case() -> AuthenticateWithGoogleUseCase:
     return AuthenticateWithGoogleUseCase(
         google_identity_verifier=get_google_identity_verifier(),
         user_repository=get_user_repository(),
+        auth_token_service=get_auth_token_service(),
+    )
+
+
+def get_register_with_email_password_use_case() -> RegisterWithEmailPasswordUseCase:
+    return RegisterWithEmailPasswordUseCase(
+        user_repository=get_user_repository(),
+        password_hasher=get_password_hasher(),
+        auth_token_service=get_auth_token_service(),
+    )
+
+
+def get_authenticate_with_email_password_use_case() -> AuthenticateWithEmailPasswordUseCase:
+    return AuthenticateWithEmailPasswordUseCase(
+        user_repository=get_user_repository(),
+        password_hasher=get_password_hasher(),
         auth_token_service=get_auth_token_service(),
     )
 

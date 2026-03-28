@@ -9,7 +9,13 @@ import {
 } from "react";
 
 import type { ApiQuotaStatus, ApiUser } from "../types/verification";
-import { authenticateWithGoogle, fetchQuotaStatus, getCurrentUser } from "./api";
+import {
+  authenticateWithEmailPassword,
+  authenticateWithGoogle,
+  fetchQuotaStatus,
+  getCurrentUser,
+  registerWithEmailPassword as registerWithEmailPasswordRequest,
+} from "./api";
 import {
   clearStoredAuthSession,
   persistAuthSession,
@@ -23,6 +29,12 @@ interface AuthContextValue {
   quotaReady: boolean;
   quotaStatus: ApiQuotaStatus | null;
   loginWithGoogleCredential: (idToken: string) => Promise<void>;
+  loginWithEmailPassword: (email: string, password: string) => Promise<void>;
+  registerWithEmailPassword: (
+    displayName: string,
+    email: string,
+    password: string,
+  ) => Promise<void>;
   logout: () => void;
   refreshQuotaStatus: () => Promise<void>;
 }
@@ -101,12 +113,44 @@ export function AuthProvider({ children }: PropsWithChildren) {
     void refreshQuotaStatus();
   }, [authReady, currentUser?.id, refreshQuotaStatus]);
 
+  function applyAuthenticatedSession(accessToken: {
+    access_token: string;
+    token_type: string;
+    user: ApiUser;
+  }) {
+    persistAuthSession(accessToken);
+    setCurrentUser(accessToken.user);
+  }
+
   async function loginWithGoogleCredential(idToken: string) {
     setIsAuthenticating(true);
     try {
       const session = await authenticateWithGoogle(idToken);
-      persistAuthSession(session);
-      setCurrentUser(session.user);
+      applyAuthenticatedSession(session);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }
+
+  async function loginWithEmailPassword(email: string, password: string) {
+    setIsAuthenticating(true);
+    try {
+      const session = await authenticateWithEmailPassword({ email, password });
+      applyAuthenticatedSession(session);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }
+
+  async function registerWithEmailPassword(displayName: string, email: string, password: string) {
+    setIsAuthenticating(true);
+    try {
+      const session = await registerWithEmailPasswordRequest({
+        display_name: displayName,
+        email,
+        password,
+      });
+      applyAuthenticatedSession(session);
     } finally {
       setIsAuthenticating(false);
     }
@@ -125,10 +169,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
       quotaReady,
       quotaStatus,
       loginWithGoogleCredential,
+      loginWithEmailPassword,
+      registerWithEmailPassword,
       logout,
       refreshQuotaStatus,
     }),
-    [authReady, currentUser, isAuthenticating, quotaReady, quotaStatus, refreshQuotaStatus],
+    [
+      authReady,
+      currentUser,
+      isAuthenticating,
+      quotaReady,
+      quotaStatus,
+      refreshQuotaStatus,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

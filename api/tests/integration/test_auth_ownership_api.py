@@ -111,6 +111,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_quota_status_service.cache_clear()
     container.get_auth_token_service.cache_clear()
+    container.get_password_hasher.cache_clear()
     container.get_google_identity_verifier.cache_clear()
     container.get_redirect_signal_analyzer.cache_clear()
     container.get_reputation_signal_analyzer.cache_clear()
@@ -150,6 +151,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_quota_status_service.cache_clear()
     container.get_auth_token_service.cache_clear()
+    container.get_password_hasher.cache_clear()
     _clear_cache_if_present(container.get_google_identity_verifier)
     get_verification_repository.cache_clear()
     get_user_repository.cache_clear()
@@ -168,6 +170,38 @@ def _authorization_header(access_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def _register_local(
+    client: TestClient,
+    *,
+    email: str = "local@example.com",
+    password: str = "Passw0rd123",
+    display_name: str = "Local User",
+):
+    return client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": password,
+            "display_name": display_name,
+        },
+    )
+
+
+def _login_local(
+    client: TestClient,
+    *,
+    email: str = "local@example.com",
+    password: str = "Passw0rd123",
+):
+    return client.post(
+        "/api/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+
+
 def test_google_login_success_returns_backend_session_and_user(client: TestClient) -> None:
     response = client.post("/api/auth/google", json={"id_token": "valid-alice"})
 
@@ -178,6 +212,80 @@ def test_google_login_success_returns_backend_session_and_user(client: TestClien
     assert body["user"]["email"] == "alice@example.com"
     assert body["user"]["display_name"] == "Alice Example"
     assert body["user"]["plan"] == "FREE"
+
+
+def test_local_registration_success_returns_backend_session_and_user(client: TestClient) -> None:
+    response = _register_local(client)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["token_type"] == "Bearer"
+    assert body["access_token"]
+    assert body["user"]["email"] == "local@example.com"
+    assert body["user"]["display_name"] == "Local User"
+    assert body["user"]["plan"] == "FREE"
+
+
+def test_local_registration_rejects_duplicate_email(client: TestClient) -> None:
+    first = _register_local(client)
+    duplicate = _register_local(client)
+
+    assert first.status_code == 201
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"] == "An account already exists for this email."
+
+
+def test_local_registration_validates_password_policy(client: TestClient) -> None:
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "email": "local@example.com",
+            "password": "short",
+            "display_name": "Local User",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_local_login_success_returns_backend_session_and_current_user(client: TestClient) -> None:
+    _register_local(client)
+
+    response = _login_local(client)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_type"] == "Bearer"
+    assert body["user"]["email"] == "local@example.com"
+
+    current_user = client.get("/api/me", headers=_authorization_header(body["access_token"]))
+    assert current_user.status_code == 200
+    assert current_user.json()["email"] == "local@example.com"
+
+
+def test_local_login_rejects_invalid_credentials_without_user_enumeration(client: TestClient) -> None:
+    _register_local(client)
+
+    wrong_password = _login_local(client, password="WrongPass123")
+    missing_user = _login_local(client, email="missing@example.com")
+
+    assert wrong_password.status_code == 401
+    assert wrong_password.json()["detail"] == "Email or password is incorrect."
+    assert missing_user.status_code == 401
+    assert missing_user.json()["detail"] == "Email or password is incorrect."
+
+
+def test_google_login_reuses_existing_local_user_by_email(client: TestClient) -> None:
+    local_session = _register_local(
+        client,
+        email="alice@example.com",
+        display_name="Alice Local",
+    )
+    google_session = _login(client, "valid-alice")
+
+    assert local_session.status_code == 201
+    assert google_session["user"]["email"] == "alice@example.com"
+    assert google_session["user"]["id"] == local_session.json()["user"]["id"]
 
 
 def test_google_login_rejects_invalid_identity_token(client: TestClient) -> None:

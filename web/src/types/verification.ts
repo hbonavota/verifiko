@@ -138,6 +138,15 @@ export interface CreateVerificationInput {
   url: string;
 }
 
+export interface EmailLoginInput {
+  email: string;
+  password: string;
+}
+
+export interface EmailRegistrationInput extends EmailLoginInput {
+  display_name: string;
+}
+
 export interface ApiUser {
   id: string;
   email: string;

@@ -1,4 +1,5 @@
 import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
+import { EmailAuthModal } from "../components/auth/EmailAuthModal";
 import { Button } from "../components/ui/Button";
 import { UpgradeModal } from "../components/ui/UpgradeModal";
 import { useAuth } from "../lib/auth";
@@ -11,6 +12,8 @@ export function Topbar() {
   const { copy } = useI18n();
   const { currentUser, logout, quotaReady, quotaStatus } = useAuth();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
+  const [emailAuthMode, setEmailAuthMode] = useState<"login" | "register">("login");
   const { hasSubmittedUpgradeIntent } = useUpgradeIntent();
   const displayName = currentUser?.display_name?.trim() || currentUser?.email || "";
   const initials = displayName
@@ -81,6 +84,26 @@ export function Topbar() {
             <div className="topbar-auth">
               <p className="topbar-auth__cta">{copy.topbar.signInToUnlockMore}</p>
               <GoogleSignInButton />
+              <div className="topbar-auth__email-actions">
+                <Button
+                  onClick={() => {
+                    setEmailAuthMode("login");
+                    setIsEmailAuthModalOpen(true);
+                  }}
+                  variant="secondary"
+                >
+                  {copy.topbar.signInWithEmail}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEmailAuthMode("register");
+                    setIsEmailAuthModalOpen(true);
+                  }}
+                  variant="ghost"
+                >
+                  {copy.topbar.createAccount}
+                </Button>
+              </div>
               {quotaSummary ? (
                 <div className="topbar-auth__quota">
                   <p className="topbar-auth__quota-title">{quotaSummary.title}</p>
@@ -96,6 +119,11 @@ export function Topbar() {
         open={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
         source="topbar"
+      />
+      <EmailAuthModal
+        initialMode={emailAuthMode}
+        open={isEmailAuthModalOpen}
+        onClose={() => setIsEmailAuthModalOpen(false)}
       />
     </>
   );
