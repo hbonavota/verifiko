@@ -939,6 +939,65 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_lures
     )
 
 
+def test_create_url_verification_use_case_strengthens_shortener_redirected_session_lures() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://outlook.office365.session-review.mail-access.net/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/session",
+                        target_url="https://outlook.office365.session-review.mail-access.net/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/session"))
+    destination_signals = [
+        signal for signal in dto.signals if signal.source == "resolved-destination-url-analyzer"
+    ]
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
+    assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
+    assert any(signal.signal_type == "phishing_keywords" for signal in destination_signals)
+    assert any(signal.signal_type == "brand_impersonation" for signal in destination_signals)
+    assert any(signal.signal_type == "tactical_email_staging" for signal in destination_signals)
+
+
+def test_create_url_verification_use_case_keeps_shortener_redirected_official_challenge_flows_safe() -> None:
+    use_case = _build_use_case(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://accounts.google.com/challenge",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/official-google",
+                        target_url="https://accounts.google.com/challenge",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/official-google"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level == "SAFE"
+    assert dto.risk_assessment.verdict == "TRUSTED"
+    assert {signal.signal_type for signal in dto.signals} == {
+        "recognized_reputable_domain",
+        "shortened_url",
+    }
+
+
 def test_create_url_verification_use_case_analyzes_resolved_destination_url() -> None:
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(

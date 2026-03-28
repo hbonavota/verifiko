@@ -433,6 +433,39 @@ def test_manual_corpus_calibration_strengthens_redirects_to_thin_questionable_de
     assert any(signal.signal_type == "low_information_page" for signal in result.signals)
 
 
+def test_manual_corpus_calibration_marks_shortener_redirected_session_lures_as_suspicious() -> None:
+    class ShortenerRedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            return RedirectResolution(
+                final_url="https://outlook.office365.session-review.mail-access.net/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/session",
+                        target_url="https://outlook.office365.session-review.mail-access.net/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+
+    use_case = _build_use_case(redirect_resolver=ShortenerRedirectResolver())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/session"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level in {
+        RiskLevel.MEDIUM.value,
+        RiskLevel.HIGH.value,
+        RiskLevel.CRITICAL.value,
+    }
+    assert any(signal.signal_type == "shortened_url" for signal in result.signals)
+    assert any(
+        signal.signal_type == "phishing_keywords"
+        and signal.source == "resolved-destination-url-analyzer"
+        for signal in result.signals
+    )
+
+
 def test_manual_corpus_calibration_distinguishes_trusted_clean_from_unknown_clean() -> None:
     trusted_result = _build_use_case().execute(
         CreateVerificationCommand(url="https://openai.com/research")

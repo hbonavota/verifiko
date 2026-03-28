@@ -147,6 +147,31 @@ def test_redirect_signal_analyzer_skips_clean_single_hop_shortener_redirect() ->
     assert result.redirect_resolution is not None
 
 
+def test_redirect_signal_analyzer_skips_clean_shortener_redirect_to_official_challenge_flow() -> None:
+    analyzer = RedirectSignalAnalyzer(
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://accounts.google.com/challenge",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/official-google",
+                        target_url="https://accounts.google.com/challenge",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        )
+    )
+
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://bit.ly/official-google")
+    )
+
+    assert result.signals == ()
+    assert result.redirect_resolution is not None
+
+
 def test_redirect_signal_analyzer_flags_shortener_redirect_to_questionable_tld() -> None:
     analyzer = RedirectSignalAnalyzer(
         redirect_resolver=FakeRedirectResolver(
