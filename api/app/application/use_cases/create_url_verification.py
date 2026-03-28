@@ -36,6 +36,11 @@ from app.domain.services.scoring_service import ScoringService
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
 
+_HTML_COVERAGE_WARNING_KEYS = (
+    "warning.html_content_inspection_unavailable",
+    "warning.resolved_destination_html_unavailable",
+)
+
 
 @dataclass(slots=True)
 class CreateURLVerificationUseCase:
@@ -263,6 +268,7 @@ class CreateURLVerificationUseCase:
         adjusted_score = risk_assessment.score
         adjusted_risk_level = risk_assessment.risk_level
         adjusted_verdict = risk_assessment.verdict
+        html_coverage_degraded = _has_html_coverage_warning(deduplicated_warnings)
         if (
             deduplicated_warnings
             and not risk_assessment.terminal_override
@@ -272,6 +278,22 @@ class CreateURLVerificationUseCase:
             adjusted_score = ConfidenceScore(80)
             adjusted_risk_level = risk_level_for_score(adjusted_score.value)
             adjusted_verdict = verdict_for_level(adjusted_risk_level)
+        if (
+            html_coverage_degraded
+            and not risk_assessment.terminal_override
+            and risk_assessment.score.value < 80
+            and adjusted_score.value > 60
+            and any(value > 0 for value in risk_assessment.category_breakdown.values())
+        ):
+            adjusted_score = ConfidenceScore(60)
+            adjusted_risk_level = risk_level_for_score(adjusted_score.value)
+            adjusted_verdict = verdict_for_level(adjusted_risk_level)
+        if adjusted_risk_level is not risk_assessment.risk_level:
+            summary = _refresh_risk_detected_summary(
+                summary=summary,
+                original_assessment=risk_assessment,
+                adjusted_risk_level=adjusted_risk_level,
+            )
 
         return RiskAssessment(
             score=adjusted_score,
@@ -342,3 +364,45 @@ class CreateURLVerificationUseCase:
             self.public_target_validator(verification.normalized_input.normalized)
         except UnsafeOutboundTargetError as exc:
             raise DomainException(str(exc)) from exc
+
+
+def _has_html_coverage_warning(warnings: tuple[str, ...]) -> bool:
+    html_warnings = {resolve_message(key) for key in _HTML_COVERAGE_WARNING_KEYS}
+    return any(warning in html_warnings for warning in warnings)
+
+
+def _refresh_risk_detected_summary(
+    summary: str,
+    original_assessment: RiskAssessment,
+    adjusted_risk_level,
+) -> str:
+    score_breakdown = original_assessment.score_breakdown
+    if score_breakdown is None:
+        return summary
+
+    risk_signal_count = sum(
+        1 for contribution in score_breakdown.signal_contributions if contribution.impact > 0
+    )
+    category_total_penalty = sum(original_assessment.category_breakdown.values())
+    compound_penalty = sum(
+        rule.delta for rule in score_breakdown.compound_rules_applied
+    )
+    original_base_summary = resolve_message(
+        "summary.risk_detected",
+        {
+            "risk_signal_count": risk_signal_count,
+            "risk_level": original_assessment.risk_level.value.lower(),
+            "category_total_penalty": category_total_penalty,
+            "compound_penalty": compound_penalty,
+        },
+    )
+    adjusted_base_summary = resolve_message(
+        "summary.risk_detected",
+        {
+            "risk_signal_count": risk_signal_count,
+            "risk_level": adjusted_risk_level.value.lower(),
+            "category_total_penalty": category_total_penalty,
+            "compound_penalty": compound_penalty,
+        },
+    )
+    return summary.replace(original_base_summary, adjusted_base_summary, 1)
