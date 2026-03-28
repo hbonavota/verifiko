@@ -187,6 +187,50 @@ def test_url_signal_analyzer_flags_branded_shorteners() -> None:
     assert SignalType.PHISHING_KEYWORDS in signal_types
 
 
+def test_url_signal_analyzer_flags_mailbox_mfa_review_lures() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://outlook.office365.mfa-review.mail-access.net/")
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    assert SignalType.PHISHING_KEYWORDS in signal_types
+    assert SignalType.TACTICAL_EMAIL_STAGING in signal_types
+    assert SignalType.BRAND_IMPERSONATION in signal_types
+
+
+def test_url_signal_analyzer_flags_mailbox_otp_review_lures() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://outlook.office365.otp-review.mail-access.net/")
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    assert SignalType.PHISHING_KEYWORDS in signal_types
+    assert SignalType.TACTICAL_EMAIL_STAGING in signal_types
+    assert SignalType.BRAND_IMPERSONATION in signal_types
+
+
+def test_url_signal_analyzer_does_not_flag_official_mfa_or_passkey_flows_as_phishing() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    google_signals = analyzer.analyze(NormalizedUrl.from_raw("https://accounts.google.com/passkey"))
+    microsoft_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://login.microsoftonline.com/common/oauth2/authorize?mfa=required")
+    )
+    otp_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://login.microsoftonline.com/common/oauth2/authorize?otp=required")
+    )
+
+    assert {signal.signal_type for signal in google_signals} == {
+        SignalType.RECOGNIZED_REPUTABLE_DOMAIN
+    }
+    assert microsoft_signals == []
+    assert otp_signals == []
+
+
 def test_url_signal_analyzer_flags_recognized_reputable_domains() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 

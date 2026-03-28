@@ -463,6 +463,34 @@ def test_create_url_verification_use_case_strengthens_deceptive_institution_subd
     assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
 
 
+def test_create_url_verification_use_case_strengthens_mailbox_mfa_review_lures() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://outlook.office365.mfa-review.mail-access.net/")
+    )
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
+    assert any(signal.signal_type == "tactical_email_staging" for signal in dto.signals)
+    assert any(signal.signal_type == "brand_impersonation" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_strengthens_mailbox_otp_review_lures() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://outlook.office365.otp-review.mail-access.net/")
+    )
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
+    assert any(signal.signal_type == "tactical_email_staging" for signal in dto.signals)
+    assert any(signal.signal_type == "brand_impersonation" for signal in dto.signals)
+
+
 def test_create_url_verification_use_case_caps_safe_result_when_coverage_is_degraded() -> None:
     use_case = _build_use_case(html_fetcher=FakeHtmlFetcher(fail=True))
 
@@ -588,7 +616,67 @@ def test_create_url_verification_use_case_caps_warning_degraded_result_when_sign
     assert dto.risk_assessment.score == 80
     assert dto.risk_assessment.risk_level == "LOW"
     assert dto.risk_assessment.verdict == "CAUTION"
+    assert "with low risk output." in dto.risk_assessment.summary
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_strengthens_static_suspicion_when_html_fetch_fails() -> None:
+    use_case = _build_use_case(html_fetcher=FakeHtmlFetcher(fail=True))
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://g.co/account/security"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.score == 60
+    assert dto.risk_assessment.risk_level == "MEDIUM"
+    assert dto.risk_assessment.verdict == "SUSPICIOUS"
+    assert "Analysis coverage degraded:" in dto.risk_assessment.summary
+    assert "with medium risk output." in dto.risk_assessment.summary
+    assert dto.risk_assessment.analysis_warnings == (
+        "HTML content inspection could not be completed.",
+    )
+    assert dto.risk_assessment.explanation.coverage_warnings == (
+        "HTML content inspection could not be completed.",
+    )
+    assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
+    assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_strengthens_redirected_suspicion_when_destination_fetch_fails() -> None:
+    use_case = _build_use_case(
+        html_fetcher=FakeHtmlFetcher(fail=True),
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://collector.bad.example/login",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/out",
+                        target_url="https://collector.bad.example/login",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        ),
+    )
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/out"))
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.score == 60
+    assert dto.risk_assessment.risk_level == "MEDIUM"
+    assert dto.risk_assessment.verdict == "SUSPICIOUS"
+    assert "Analysis coverage degraded:" in dto.risk_assessment.summary
+    assert "with medium risk output." in dto.risk_assessment.summary
+    assert dto.risk_assessment.analysis_warnings == (
+        "Resolved destination HTML inspection could not be completed.",
+        "HTML content inspection could not be completed.",
+    )
+    assert dto.risk_assessment.explanation.coverage_warnings == (
+        "Resolved destination HTML inspection could not be completed.",
+        "HTML content inspection could not be completed.",
+    )
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
 
 
 def test_create_url_verification_use_case_rejects_unsafe_local_targets() -> None:
