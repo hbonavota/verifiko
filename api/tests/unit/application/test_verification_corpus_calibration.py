@@ -6,6 +6,7 @@ from app.application.commands.create_verification_command import CreateVerificat
 from app.application.ports.domain_age_lookup import DomainAgeLookupPort
 from app.application.ports.html_fetcher import HtmlFetcherPort
 from app.application.ports.infrastructure_lookup import (
+    InfrastructureLookupError,
     InfrastructureLookupPort,
     InfrastructureProfile,
     ResolvedAddress,
@@ -63,6 +64,13 @@ class NullDomainAgeLookup(DomainAgeLookupPort):
         return None
 
 
+class FailingDomainAgeLookup(DomainAgeLookupPort):
+    def lookup(self, domain: str):
+        from app.application.ports.domain_age_lookup import DomainRegistrationLookupError
+
+        raise DomainRegistrationLookupError(f"lookup failed for {domain}")
+
+
 class NullHtmlFetcher(HtmlFetcherPort):
     def fetch(self, url: str):
         return None
@@ -106,10 +114,17 @@ class NoopInfrastructureLookup(InfrastructureLookupPort):
         )
 
 
+class FailingInfrastructureLookup(InfrastructureLookupPort):
+    def lookup(self, hostname: str, port: int | None = None) -> InfrastructureProfile:
+        raise InfrastructureLookupError(f"lookup failed for {hostname}:{port}")
+
+
 def _build_use_case(
     public_target_validator=None,
     html_fetcher: HtmlFetcherPort | None = None,
     redirect_resolver: RedirectResolverPort | None = None,
+    domain_age_lookup: DomainAgeLookupPort | None = None,
+    infrastructure_lookup: InfrastructureLookupPort | None = None,
 ) -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=FakeRepository(),
@@ -117,7 +132,7 @@ def _build_use_case(
         scoring_service=RiskScoringEngine(),
         signal_analyzer=DeterministicUrlSignalAnalyzer(),
         domain_recency_signal_analyzer=DomainRecencySignalAnalyzer(
-            domain_age_lookup=NullDomainAgeLookup(),
+            domain_age_lookup=domain_age_lookup or NullDomainAgeLookup(),
             current_time_provider=lambda: datetime(2026, 3, 17, tzinfo=timezone.utc),
         ),
         redirect_signal_analyzer=RedirectSignalAnalyzer(
@@ -127,7 +142,7 @@ def _build_use_case(
             reputation_lookup=NoopReputationLookup()
         ),
         infrastructure_signal_analyzer=InfrastructureSignalAnalyzer(
-            infrastructure_lookup=NoopInfrastructureLookup()
+            infrastructure_lookup=infrastructure_lookup or NoopInfrastructureLookup()
         ),
         html_fetcher=html_fetcher or NullHtmlFetcher(),
         resolved_destination_signal_analyzer=ResolvedDestinationSignalAnalyzer(
@@ -495,6 +510,40 @@ def test_manual_corpus_calibration_marks_shortener_redirected_session_lures_as_s
         RiskLevel.CRITICAL.value,
     }
     assert any(signal.signal_type == "shortened_url" for signal in result.signals)
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+    assert any(
+        signal.signal_type == "phishing_keywords"
+        and signal.source == "resolved-destination-url-analyzer"
+        for signal in result.signals
+    )
+
+
+def test_manual_corpus_calibration_marks_shortener_redirected_reauth_lures_as_suspicious() -> None:
+    class ShortenerRedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            return RedirectResolution(
+                final_url="https://google.com.reauth-security-check.user-access.net/",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://bit.ly/google-reauth",
+                        target_url="https://google.com.reauth-security-check.user-access.net/",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+
+    use_case = _build_use_case(redirect_resolver=ShortenerRedirectResolver())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/google-reauth"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level in {
+        RiskLevel.HIGH.value,
+        RiskLevel.CRITICAL.value,
+    }
+    assert any(signal.signal_type == "shortened_url" for signal in result.signals)
+    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
     assert any(
         signal.signal_type == "phishing_keywords"
         and signal.source == "resolved-destination-url-analyzer"
@@ -521,6 +570,59 @@ def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_so
         "Redirect resolution could not be completed for this run.",
     )
     assert any(signal.signal_type == "phishing_keywords" for signal in result.signals)
+
+
+def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_source_reauth_lures() -> None:
+    class FailingRedirectResolver(RedirectResolverPort):
+        def resolve(self, url: str) -> RedirectResolution:
+            raise RedirectResolutionError("redirect lookup failed")
+
+    use_case = _build_use_case(redirect_resolver=FailingRedirectResolver())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/reauth"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level in {
+        RiskLevel.MEDIUM.value,
+        RiskLevel.HIGH.value,
+        RiskLevel.CRITICAL.value,
+    }
+    assert result.risk_assessment.analysis_warnings == (
+        "Redirect resolution could not be completed for this run.",
+    )
+    assert any(signal.signal_type == "phishing_keywords" for signal in result.signals)
+
+
+def test_manual_corpus_calibration_strengthens_failed_domain_age_for_suspicious_source_urls() -> None:
+    use_case = _build_use_case(domain_age_lookup=FailingDomainAgeLookup())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://secure-verify-9x1k-login.net"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level in {
+        RiskLevel.MEDIUM.value,
+        RiskLevel.HIGH.value,
+        RiskLevel.CRITICAL.value,
+    }
+    assert result.risk_assessment.analysis_warnings == (
+        "Domain registration intelligence was unavailable for this run.",
+    )
+    assert any(signal.signal_type == "phishing_keywords" for signal in result.signals)
+
+
+def test_manual_corpus_calibration_keeps_failed_infrastructure_lookup_safe_for_benign_urls() -> None:
+    use_case = _build_use_case(infrastructure_lookup=FailingInfrastructureLookup())
+
+    result = use_case.execute(CreateVerificationCommand(url="https://openai.com/research"))
+
+    assert result.risk_assessment is not None
+    assert result.risk_assessment.risk_level == RiskLevel.SAFE.value
+    assert result.risk_assessment.analysis_warnings == (
+        "Infrastructure intelligence could not be completed for this run.",
+    )
+    assert {
+        signal.signal_type for signal in result.signals
+    } == {"recognized_reputable_domain"}
 
 
 def test_manual_corpus_calibration_distinguishes_trusted_clean_from_unknown_clean() -> None:

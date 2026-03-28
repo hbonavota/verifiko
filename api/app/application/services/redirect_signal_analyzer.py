@@ -20,14 +20,18 @@ _PHISHING_LURE_TOKENS = {
     "account",
     "auth",
     "billing",
+    "challenge",
     "confirm",
     "fine",
     "invoice",
     "login",
+    "mfa",
     "notice",
+    "otp",
     "password",
     "payment",
     "penalty",
+    "reauth",
     "reset",
     "recovery",
     "secure",
@@ -42,6 +46,20 @@ _PHISHING_LURE_TOKENS = {
     "verification",
     "violation",
     "wallet",
+    "webmail",
+}
+_CONTEXTUAL_ATO_LURE_TOKENS = {"session"}
+_CONTEXTUAL_ATO_SUPPORT_TOKENS = {
+    "account",
+    "auth",
+    "mail",
+    "office365",
+    "outlook",
+    "password",
+    "secure",
+    "security",
+    "verify",
+    "verification",
     "webmail",
 }
 _SHORTENER_DOMAINS = {
@@ -59,6 +77,15 @@ _SHORTENER_DOMAINS = {
     "tinyurl.com",
 }
 _QUESTIONABLE_DESTINATION_TLDS = {"buzz", "click", "gq", "info", "link", "live", "rest", "shop", "top", "xyz"}
+_OFFICIAL_AUTH_DOMAINS = {
+    "apple.com",
+    "dropbox.com",
+    "github.com",
+    "google.com",
+    "live.com",
+    "microsoftonline.com",
+    "paypal.com",
+}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
@@ -239,7 +266,16 @@ class RedirectSignalAnalyzer:
         return normalized_url.registered_domain in _SHORTENER_DOMAINS
 
     def _has_phishing_like_final_cues(self, resolved_final: NormalizedUrl) -> bool:
-        return bool(_PHISHING_LURE_TOKENS.intersection(self._text_tokens(resolved_final)))
+        if self._is_official_auth_destination(resolved_final):
+            return False
+
+        tokens = self._text_tokens(resolved_final)
+        if _PHISHING_LURE_TOKENS.intersection(tokens):
+            return True
+
+        return bool(_CONTEXTUAL_ATO_LURE_TOKENS.intersection(tokens)) and bool(
+            _CONTEXTUAL_ATO_SUPPORT_TOKENS.intersection(tokens)
+        )
 
     def _text_tokens(self, normalized_url: NormalizedUrl) -> set[str]:
         combined = " ".join(
@@ -258,6 +294,9 @@ class RedirectSignalAnalyzer:
     def _registered_tld(self, normalized_url: NormalizedUrl) -> str:
         labels = [label for label in normalized_url.registered_domain.split(".") if label]
         return labels[-1].lower() if len(labels) >= 2 else ""
+
+    def _is_official_auth_destination(self, normalized_url: NormalizedUrl) -> bool:
+        return normalized_url.registered_domain in _OFFICIAL_AUTH_DOMAINS
 
 
 def _build_redirect_evidence_refs(
