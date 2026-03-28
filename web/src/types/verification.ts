@@ -134,3 +134,17 @@ export interface ApiVerification {
 export interface CreateVerificationInput {
   url: string;
 }
+
+export interface ApiUser {
+  id: string;
+  email: string;
+  display_name: string;
+  avatar_url: string | null;
+  created_at: string;
+}
+
+export interface ApiAuthSession {
+  access_token: string;
+  token_type: string;
+  user: ApiUser;
+}

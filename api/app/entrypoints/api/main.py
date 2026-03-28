@@ -6,6 +6,8 @@ from app.application.exceptions.application_exception import VerificationNotFoun
 from app.application.services.message_resolver import localize_known_error_message
 from app.domain.exceptions.domain_exception import DomainException
 from app.entrypoints.api.locale import select_response_locale
+from app.entrypoints.api.routes.auth import router as auth_router
+from app.entrypoints.api.routes.me import router as me_router
 from app.entrypoints.api.routes.verifications import router as verifications_router
 from app.infrastructure.config.settings import get_settings
 
@@ -43,6 +45,8 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
+app.include_router(auth_router, prefix="/api")
+app.include_router(me_router, prefix="/api")
 app.include_router(verifications_router, prefix="/api")
 
 

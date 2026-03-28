@@ -7,7 +7,9 @@ import { Card } from "../components/ui/Card";
 import { ScoreRing } from "../components/analysis/ScoreRing";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
+import { useAuth } from "../lib/auth";
 import { formatRiskLevel, formatVerdict, formatVerificationStatus } from "../lib/formatVerdict";
+import { getOwnedVerificationById } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
@@ -70,12 +72,15 @@ interface VerificationDetailLocationState {
 
 export function VerificationDetailPage() {
   const { copy, language, locale } = useI18n();
+  const { authReady, currentUser } = useAuth();
   const { id } = useParams();
   const location = useLocation();
   const [verificationState, setVerificationState] = useState<VerificationState>({ status: "loading" });
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (!id) {
       setVerificationState({ status: "error", message: copy.detail.verificationIdRequired });
       return;
@@ -84,19 +89,64 @@ export function VerificationDetailPage() {
     const navigationState = location.state as VerificationDetailLocationState | null;
     const payload = navigationState?.verification;
 
-    if (!payload || payload.id !== id) {
+    if (payload && payload.id === id) {
+      setVerificationState({
+        status: "ready",
+        verification: adaptApiVerification(payload, language),
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    if (!authReady) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    if (!currentUser) {
       setVerificationState({
         status: "error",
         message: copy.detail.requestedResultUnavailable,
       });
-      return;
+      return () => {
+        isMounted = false;
+      };
     }
 
-    setVerificationState({
-      status: "ready",
-      verification: adaptApiVerification(payload, language),
-    });
-  }, [copy.detail.requestedResultUnavailable, copy.detail.verificationIdRequired, id, language, location.state]);
+    void getOwnedVerificationById(id)
+      .then((verification) => {
+        if (!isMounted) {
+          return;
+        }
+        setVerificationState({
+          status: "ready",
+          verification: adaptApiVerification(verification, language),
+        });
+      })
+      .catch(() => {
+        if (!isMounted) {
+          return;
+        }
+        setVerificationState({
+          status: "error",
+          message: copy.detail.requestedResultUnavailable,
+        });
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    authReady,
+    copy.detail.requestedResultUnavailable,
+    copy.detail.verificationIdRequired,
+    currentUser,
+    id,
+    language,
+    location.state,
+  ]);
 
   useEffect(() => {
     if (!isDisclaimerOpen) {

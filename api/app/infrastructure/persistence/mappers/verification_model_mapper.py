@@ -12,6 +12,7 @@ from app.domain.enums.verdict_type import VerdictType
 from app.domain.enums.verification_status import VerificationStatus
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
+from app.domain.value_objects.user_id import UserId
 from app.domain.value_objects.verification_id import VerificationId
 from app.infrastructure.persistence.models.base_model import (
     RiskAssessmentModel,
@@ -29,6 +30,7 @@ class VerificationModelMapper:
 
     @staticmethod
     def update_model(model: VerificationModel, verification: Verification) -> VerificationModel:
+        model.user_id = str(verification.user_id) if verification.user_id is not None else None
         model.target_type = verification.target_type.value
         model.original_input = verification.original_input
         model.normalized_input = verification.normalized_input.normalized
@@ -71,6 +73,7 @@ class VerificationModelMapper:
 
         return Verification(
             id=VerificationId.from_string(model.id),
+            user_id=UserId.from_string(model.user_id) if model.user_id else None,
             target_type=TargetType(model.target_type),
             original_input=model.original_input,
             normalized_input=normalized_input,

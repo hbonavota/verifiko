@@ -27,6 +27,11 @@ const translations = {
     topbar: {
       eyebrow: "Verification",
       title: "Review verified links, signals, and risk decisions.",
+      signInWithGoogle: "Sign in with Google",
+      signingIn: "Signing in...",
+      signOut: "Sign out",
+      account: "Signed in",
+      authenticationFailed: "Authentication failed.",
     },
     languageSwitcher: {
       label: "Language",
@@ -309,6 +314,11 @@ const translations = {
     topbar: {
       eyebrow: "Verificación",
       title: "Revisa enlaces verificados, señales y decisiones de riesgo.",
+      signInWithGoogle: "Iniciar sesión con Google",
+      signingIn: "Iniciando sesión...",
+      signOut: "Cerrar sesión",
+      account: "Sesión iniciada",
+      authenticationFailed: "La autenticación falló.",
     },
     languageSwitcher: {
       label: "Idioma",

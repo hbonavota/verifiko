@@ -19,7 +19,10 @@ from app.application.services.redirect_signal_analyzer import RedirectSignalAnal
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 import app.entrypoints.api.dependencies.container as container
 from app.entrypoints.api.dependencies.container import (
+    get_auth_token_service,
     get_create_verification_rate_limiter,
+    get_google_identity_verifier,
+    get_user_repository,
     get_verification_repository,
 )
 from app.entrypoints.api.main import app
@@ -71,7 +74,10 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_engine.cache_clear()
     get_session_factory.cache_clear()
     get_verification_repository.cache_clear()
+    get_user_repository.cache_clear()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_auth_token_service.cache_clear()
+    container.get_google_identity_verifier.cache_clear()
     container.get_redirect_signal_analyzer.cache_clear()
     container.get_reputation_signal_analyzer.cache_clear()
     container.get_infrastructure_signal_analyzer.cache_clear()
@@ -101,7 +107,10 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     drop_db()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_auth_token_service.cache_clear()
+    container.get_google_identity_verifier.cache_clear()
     get_verification_repository.cache_clear()
+    get_user_repository.cache_clear()
     get_session_factory.cache_clear()
     get_engine.cache_clear()
     get_settings.cache_clear()
@@ -135,9 +144,9 @@ def test_verification_api_create_disables_public_list_and_get(client: TestClient
     )
 
     get_response = client.get(f"/api/verifications/{verification_id}")
-    assert get_response.status_code == 403
+    assert get_response.status_code == 401
     assert get_response.json()["detail"] == (
-        "Public verification retrieval is disabled on this endpoint."
+        "Authentication is required for this endpoint."
     )
     assert create_response.headers["x-content-type-options"] == "nosniff"
     assert create_response.headers["x-frame-options"] == "DENY"
@@ -272,9 +281,9 @@ def test_verification_api_localizes_backend_generated_text_with_accept_language(
 def test_verification_api_returns_404_for_missing_verification(client: TestClient) -> None:
     response = client.get("/api/verifications/550e8400-e29b-41d4-a716-446655440099")
 
-    assert response.status_code == 403
+    assert response.status_code == 401
     assert response.json()["detail"] == (
-        "Public verification retrieval is disabled on this endpoint."
+        "Authentication is required for this endpoint."
     )
 
 
@@ -321,9 +330,9 @@ def test_verification_api_localizes_known_error_details_with_accept_language(
         headers={"Accept-Language": "es"},
     )
 
-    assert not_found_response.status_code == 403
+    assert not_found_response.status_code == 401
     assert not_found_response.json()["detail"] == (
-        "La recuperación pública de verificaciones está deshabilitada en este endpoint."
+        "Se requiere autenticación para este endpoint."
     )
 
     invalid_id_response = client.get(
@@ -331,9 +340,9 @@ def test_verification_api_localizes_known_error_details_with_accept_language(
         headers={"Accept-Language": "es"},
     )
 
-    assert invalid_id_response.status_code == 403
+    assert invalid_id_response.status_code == 401
     assert invalid_id_response.json()["detail"] == (
-        "La recuperación pública de verificaciones está deshabilitada en este endpoint."
+        "Se requiere autenticación para este endpoint."
     )
 
 

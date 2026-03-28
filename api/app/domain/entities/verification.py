@@ -8,12 +8,14 @@ from app.domain.enums.target_type import TargetType
 from app.domain.enums.verification_status import VerificationStatus
 from app.domain.services.scoring_service import ScoringService
 from app.domain.value_objects.normalized_url import NormalizedUrl
+from app.domain.value_objects.user_id import UserId
 from app.domain.value_objects.verification_id import VerificationId
 
 
 @dataclass(slots=True)
 class Verification:
     id: VerificationId
+    user_id: UserId | None
     target_type: TargetType
     original_input: str
     normalized_input: NormalizedUrl
@@ -29,11 +31,13 @@ class Verification:
     def create_url(
         input_url: str,
         verification_id: VerificationId | None = None,
+        user_id: UserId | None = None,
         calculation_version: str = "v1",
     ) -> "Verification":
         now = datetime.now(timezone.utc)
         return Verification(
             id=verification_id or VerificationId.new(),
+            user_id=user_id,
             target_type=TargetType.URL,
             original_input=input_url,
             normalized_input=NormalizedUrl.from_raw(input_url),

@@ -8,6 +8,11 @@ class VerificationModel(Base):
     __tablename__ = "verifications"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     target_type: Mapped[str] = mapped_column(String(32), nullable=False)
     original_input: Mapped[str] = mapped_column(Text, nullable=False)
     normalized_input: Mapped[str] = mapped_column(Text, nullable=False)
@@ -22,11 +27,26 @@ class VerificationModel(Base):
         cascade="all, delete-orphan",
         order_by="SignalModel.created_at",
     )
+    user: Mapped["UserModel | None"] = relationship(back_populates="verifications")
     risk_assessment: Mapped["RiskAssessmentModel | None"] = relationship(
         back_populates="verification",
         cascade="all, delete-orphan",
         uselist=False,
     )
+
+
+class UserModel(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True, index=True)
+    google_subject: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    verifications: Mapped[list[VerificationModel]] = relationship(back_populates="user")
 
 
 class SignalModel(Base):

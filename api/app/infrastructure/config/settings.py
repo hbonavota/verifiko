@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     cors_allowed_origin_regex: str | None = None
     create_verification_rate_limit: int = 10
     create_verification_rate_window_seconds: int = 60
+    google_client_id: str = ""
+    auth_token_secret: str = "verifiko-dev-auth-secret"
+    auth_token_ttl_seconds: int = 60 * 60 * 24 * 7
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

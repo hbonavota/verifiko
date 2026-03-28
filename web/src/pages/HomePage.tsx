@@ -6,7 +6,8 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
-import { listVerifications } from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { listMyVerifications } from "../lib/api";
 import { formatRiskLevel, formatVerdict } from "../lib/formatVerdict";
 import { useI18n } from "../lib/i18n";
 import { adaptApiVerification } from "../lib/verificationAdapter";
@@ -22,6 +23,7 @@ function cardToneForRiskLevel(riskLevel: VerificationSummary["riskLevel"]) {
 
 export function HomePage() {
   const { copy, language } = useI18n();
+  const { authReady, currentUser } = useAuth();
 
   useDocumentMeta(
     copy.home.metaTitle,
@@ -36,8 +38,18 @@ export function HomePage() {
     let isMounted = true;
 
     async function loadVerifications() {
+      if (!authReady) {
+        return;
+      }
+      if (!currentUser) {
+        if (isMounted) {
+          setVerifications([]);
+        }
+        return;
+      }
+
       try {
-        const payload = await listVerifications();
+        const payload = await listMyVerifications();
         if (!isMounted) {
           return;
         }
@@ -57,7 +69,7 @@ export function HomePage() {
     return () => {
       isMounted = false;
     };
-  }, [language]);
+  }, [authReady, currentUser, language]);
 
   useEffect(() => {
     if (analysisState !== "submitting") {

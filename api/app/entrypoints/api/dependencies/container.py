@@ -1,5 +1,7 @@
 from functools import lru_cache
 
+from app.application.ports.auth_token_service import AuthTokenServicePort
+from app.application.ports.google_identity_verifier import GoogleIdentityVerifierPort
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
 from app.application.services.infrastructure_signal_analyzer import (
@@ -14,9 +16,15 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
+from app.application.use_cases.authenticate_with_google import AuthenticateWithGoogleUseCase
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
 from app.application.use_cases.get_verification_result import GetVerificationResultUseCase
+from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
 from app.application.use_cases.list_verifications import ListVerificationsUseCase
+from app.application.use_cases.list_owned_verifications import ListOwnedVerificationsUseCase
+from app.infrastructure.external_services.google.google_tokeninfo_identity_verifier import (
+    GoogleTokeninfoIdentityVerifier,
+)
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
 from app.infrastructure.external_services.blacklist.urlhaus_reputation_client import (
     UrlhausReputationClient,
@@ -37,6 +45,10 @@ from app.infrastructure.persistence.database import get_session_factory
 from app.infrastructure.persistence.repositories.sqlalchemy_verification_repository import (
     SQLAlchemyVerificationRepository,
 )
+from app.infrastructure.persistence.repositories.sqlalchemy_user_repository import (
+    SQLAlchemyUserRepository,
+)
+from app.infrastructure.security.signed_auth_token_service import SignedAuthTokenService
 from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 from app.infrastructure.time.system_time_provider import SystemTimeProvider
 
@@ -44,6 +56,11 @@ from app.infrastructure.time.system_time_provider import SystemTimeProvider
 @lru_cache(maxsize=1)
 def get_verification_repository() -> SQLAlchemyVerificationRepository:
     return SQLAlchemyVerificationRepository(session_factory=get_session_factory())
+
+
+@lru_cache(maxsize=1)
+def get_user_repository() -> SQLAlchemyUserRepository:
+    return SQLAlchemyUserRepository(session_factory=get_session_factory())
 
 
 @lru_cache(maxsize=1)
@@ -147,6 +164,21 @@ def get_create_verification_rate_limiter() -> FixedWindowRateLimiter:
     )
 
 
+@lru_cache(maxsize=1)
+def get_google_identity_verifier() -> GoogleIdentityVerifierPort:
+    settings = get_settings()
+    return GoogleTokeninfoIdentityVerifier(client_id=settings.google_client_id)
+
+
+@lru_cache(maxsize=1)
+def get_auth_token_service() -> AuthTokenServicePort:
+    settings = get_settings()
+    return SignedAuthTokenService(
+        secret=settings.auth_token_secret,
+        ttl_seconds=settings.auth_token_ttl_seconds,
+    )
+
+
 def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=get_verification_repository(),
@@ -171,3 +203,19 @@ def get_get_verification_result_use_case() -> GetVerificationResultUseCase:
 
 def get_list_verifications_use_case() -> ListVerificationsUseCase:
     return ListVerificationsUseCase(repository=get_verification_repository())
+
+
+def get_authenticate_with_google_use_case() -> AuthenticateWithGoogleUseCase:
+    return AuthenticateWithGoogleUseCase(
+        google_identity_verifier=get_google_identity_verifier(),
+        user_repository=get_user_repository(),
+        auth_token_service=get_auth_token_service(),
+    )
+
+
+def get_get_owned_verification_result_use_case() -> GetOwnedVerificationResultUseCase:
+    return GetOwnedVerificationResultUseCase(repository=get_verification_repository())
+
+
+def get_list_owned_verifications_use_case() -> ListOwnedVerificationsUseCase:
+    return ListOwnedVerificationsUseCase(repository=get_verification_repository())

@@ -74,6 +74,7 @@ class CreateURLVerificationUseCase:
         verification = Verification.create_url(
             input_url=command.url,
             verification_id=self.id_generator.next_verification_id(),
+            user_id=command.user_id,
             calculation_version=command.calculation_version,
         )
         self._assert_public_target(verification)

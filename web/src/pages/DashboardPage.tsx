@@ -7,7 +7,8 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
-import { listVerifications } from "../lib/api";
+import { useAuth } from "../lib/auth";
+import { listMyVerifications } from "../lib/api";
 import { formatRiskLevel, formatVerdict } from "../lib/formatVerdict";
 import { useI18n } from "../lib/i18n";
 import { adaptApiVerification } from "../lib/verificationAdapter";
@@ -22,6 +23,7 @@ function toneForCount(riskLevel: RiskLevel) {
 
 export function DashboardPage() {
   const { copy, language, locale } = useI18n();
+  const { authReady, currentUser } = useAuth();
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
 
   useDocumentMeta(
@@ -33,8 +35,18 @@ export function DashboardPage() {
     let isMounted = true;
 
     async function loadVerifications() {
+      if (!authReady) {
+        return;
+      }
+      if (!currentUser) {
+        if (isMounted) {
+          setVerifications([]);
+        }
+        return;
+      }
+
       try {
-        const payload = await listVerifications();
+        const payload = await listMyVerifications();
         if (!isMounted) {
           return;
         }
@@ -54,7 +66,7 @@ export function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [language]);
+  }, [authReady, currentUser, language]);
 
   const activeVerification = verifications[0] ?? null;
 

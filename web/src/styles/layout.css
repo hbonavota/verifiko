@@ -125,8 +125,57 @@
   padding: 0.85rem var(--space-6) 0;
 }
 
+.topbar__actions {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .topbar__language {
   flex: none;
+}
+
+.topbar-account,
+.topbar-auth {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: end;
+}
+
+.topbar-account {
+  align-items: center;
+  grid-auto-flow: column;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.topbar-account__copy {
+  display: grid;
+  gap: 0.1rem;
+  text-align: right;
+}
+
+.topbar-account__label,
+.topbar-auth__hint,
+.topbar-auth__error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.topbar-account__value {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.topbar-auth__error {
+  color: var(--color-danger);
+}
+
+.topbar-auth__google-button {
+  min-height: 40px;
 }
 
 .language-switcher {

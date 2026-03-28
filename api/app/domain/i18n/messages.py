@@ -451,6 +451,22 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "Too many verification requests were received. Please try again later.",
         "es": "Se recibieron demasiadas solicitudes de verificación. Vuelve a intentarlo más tarde.",
     },
+    "error.authentication_required": {
+        "en": "Authentication is required for this endpoint.",
+        "es": "Se requiere autenticación para este endpoint.",
+    },
+    "error.invalid_authentication_token": {
+        "en": "Authentication token is invalid or expired.",
+        "es": "El token de autenticación no es válido o ha caducado.",
+    },
+    "error.google_identity_token_invalid": {
+        "en": "Google identity token could not be verified.",
+        "es": "No se pudo verificar el token de identidad de Google.",
+    },
+    "error.google_authentication_not_configured": {
+        "en": "Google authentication is not configured for this environment.",
+        "es": "La autenticación de Google no está configurada para este entorno.",
+    },
     "error.verification_not_found": {
         "en": "Verification not found: {verification_id}",
         "es": "Verificación no encontrada: {verification_id}",

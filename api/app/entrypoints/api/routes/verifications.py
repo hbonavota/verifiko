@@ -1,11 +1,16 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.application.commands.create_verification_command import CreateVerificationCommand
+from app.application.queries.get_owned_verification_query import GetOwnedVerificationQuery
 from app.application.services.message_resolver import resolve_message
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
+from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
+from app.domain.entities.user import User
+from app.entrypoints.api.dependencies.auth import get_current_user, get_optional_current_user
 from app.entrypoints.api.dependencies.container import (
     get_create_verification_rate_limiter,
     get_create_url_verification_use_case,
+    get_get_owned_verification_result_use_case,
 )
 from app.entrypoints.api.locale import select_response_locale
 from app.entrypoints.api.presenters.verification_presenter import VerificationPresenter
@@ -23,20 +28,22 @@ def create_verification(
     request: Request,
     payload: CreateVerificationRequest,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    current_user: User | None = Depends(get_optional_current_user),
     use_case: CreateURLVerificationUseCase = Depends(get_create_url_verification_use_case),
     rate_limiter: FixedWindowRateLimiter = Depends(get_create_verification_rate_limiter),
 ) -> VerificationResponse:
     locale = select_response_locale(accept_language)
-    retry_after = rate_limiter.check(_client_rate_limit_key(request))
-    if retry_after is not None:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=resolve_message(
-                "error.verification_rate_limit_exceeded",
-                language=locale,
-            ),
-            headers={"Retry-After": str(retry_after)},
-        )
+    if current_user is None:
+        retry_after = rate_limiter.check(_client_rate_limit_key(request))
+        if retry_after is not None:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=resolve_message(
+                    "error.verification_rate_limit_exceeded",
+                    language=locale,
+                ),
+                headers={"Retry-After": str(retry_after)},
+            )
     if payload.signals:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -49,6 +56,7 @@ def create_verification(
     dto = use_case.execute(
         CreateVerificationCommand(
             url=payload.url,
+            user_id=current_user.id if current_user is not None else None,
         )
     )
     return VerificationPresenter.to_response(
@@ -74,15 +82,17 @@ def list_verifications(
 def get_verification(
     verification_id: str,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    current_user: User = Depends(get_current_user),
+    use_case: GetOwnedVerificationResultUseCase = Depends(get_get_owned_verification_result_use_case),
 ) -> VerificationResponse:
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=resolve_message(
-            "error.public_verification_retrieval_disabled",
-            {"verification_id": verification_id},
-            language=select_response_locale(accept_language),
-        ),
+    locale = select_response_locale(accept_language)
+    result = use_case.execute(
+        GetOwnedVerificationQuery(
+            verification_id=verification_id,
+            owner_user_id=str(current_user.id),
+        )
     )
+    return VerificationPresenter.to_response(result, locale=locale)
 
 
 def _client_rate_limit_key(request: Request) -> str:

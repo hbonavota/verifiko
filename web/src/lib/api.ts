@@ -1,8 +1,11 @@
 import type {
+  ApiAuthSession,
+  ApiUser,
   ApiVerification,
   CreateVerificationInput,
   HealthCheckResult,
 } from "../types/verification";
+import { readStoredAuthSession } from "./authSessionStorage";
 import { getStoredLanguage, type Language } from "./i18n";
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -29,11 +32,16 @@ function getRequiredApiBaseUrl(): string {
 
 async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
   const language = getStoredLanguage();
-  const headers = {
-    "Content-Type": "application/json",
-    ...init?.headers,
-    "Accept-Language": language,
-  };
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept-Language", language);
+  const storedSession = readStoredAuthSession();
+  if (storedSession?.access_token && !headers.has("Authorization")) {
+    headers.set(
+      "Authorization",
+      `${storedSession.token_type} ${storedSession.access_token}`,
+    );
+  }
 
   const response = await fetch(`${getRequiredApiBaseUrl()}${path}`, {
     ...init,
@@ -89,10 +97,21 @@ export function createVerification(input: CreateVerificationInput): Promise<ApiV
   });
 }
 
-export function getVerificationById(verificationId: string): Promise<ApiVerification> {
+export function authenticateWithGoogle(idToken: string): Promise<ApiAuthSession> {
+  return readJson<ApiAuthSession>("/api/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ id_token: idToken }),
+  });
+}
+
+export function getCurrentUser(): Promise<ApiUser> {
+  return readJson<ApiUser>("/api/me");
+}
+
+export function getOwnedVerificationById(verificationId: string): Promise<ApiVerification> {
   return readJson<ApiVerification>(`/api/verifications/${verificationId}`);
 }
 
-export function listVerifications(): Promise<ApiVerification[]> {
-  return readJson<ApiVerification[]>("/api/verifications");
+export function listMyVerifications(limit = 20, offset = 0): Promise<ApiVerification[]> {
+  return readJson<ApiVerification[]>(`/api/me/verifications?limit=${limit}&offset=${offset}`);
 }
