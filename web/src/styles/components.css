@@ -430,6 +430,12 @@
   min-width: 12rem;
 }
 
+.analysis-form__quota-upgrade.button--secondary,
+.analysis-form__pro-panel-cta.button--secondary {
+  border-color: rgba(0, 191, 255, 0.22);
+  background: rgba(0, 191, 255, 0.08);
+}
+
 .analysis-form__quota-indicator-promo,
 .analysis-form__quota-value-cue {
   display: inline-flex;
@@ -1623,8 +1629,14 @@
 }
 
 .upgrade-modal__intro,
-.upgrade-modal__point-copy {
+.upgrade-modal__point-copy,
+.upgrade-modal__supporting-copy {
   margin: 0;
+}
+
+.upgrade-modal__supporting-copy {
+  color: rgba(229, 239, 255, 0.78);
+  line-height: 1.6;
 }
 
 .upgrade-modal__point {
