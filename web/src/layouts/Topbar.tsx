@@ -1,12 +1,15 @@
 import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
 import { Button } from "../components/ui/Button";
+import { UpgradeModal } from "../components/ui/UpgradeModal";
 import { useAuth } from "../lib/auth";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { useI18n } from "../lib/i18n";
+import { useState } from "react";
 
 export function Topbar() {
   const { copy } = useI18n();
   const { currentUser, logout, quotaReady, quotaStatus } = useAuth();
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const displayName = currentUser?.display_name?.trim() || currentUser?.email || "";
   const initials = displayName
     .split(/\s+/)
@@ -17,60 +20,75 @@ export function Topbar() {
   const quotaSummary = quotaReady && quotaStatus ? buildQuotaSummary(copy, quotaStatus) : null;
 
   return (
-    <header className="topbar">
-      <div>
-        <p className="topbar__eyebrow">{copy.topbar.eyebrow}</p>
-        <p className="topbar__title">{copy.topbar.title}</p>
-      </div>
-      <div className="topbar__actions">
-        {currentUser ? (
-          <div className="topbar-account">
-            <div className="topbar-account__avatar" aria-hidden="true">
-              {currentUser.avatar_url ? (
-                <img
-                  alt=""
-                  className="topbar-account__avatar-image"
-                  referrerPolicy="no-referrer"
-                  src={currentUser.avatar_url}
-                />
-              ) : (
-                <span>{initials || "V"}</span>
-              )}
+    <>
+      <header className="topbar">
+        <div>
+          <p className="topbar__eyebrow">{copy.topbar.eyebrow}</p>
+          <p className="topbar__title">{copy.topbar.title}</p>
+        </div>
+        <div className="topbar__actions">
+          {currentUser ? (
+            <div className="topbar-account">
+              <div className="topbar-account__avatar" aria-hidden="true">
+                {currentUser.avatar_url ? (
+                  <img
+                    alt=""
+                    className="topbar-account__avatar-image"
+                    referrerPolicy="no-referrer"
+                    src={currentUser.avatar_url}
+                  />
+                ) : (
+                  <span>{initials || "V"}</span>
+                )}
+              </div>
+              <div className="topbar-account__copy">
+                <p className="topbar-account__label">{copy.topbar.accountHistoryEnabled}</p>
+                <p className="topbar-account__value">{displayName}</p>
+                <p className="topbar-account__meta">{currentUser.email}</p>
+                {quotaSummary ? (
+                  <>
+                    <p className="topbar-account__quota">{quotaSummary.title}</p>
+                    <p className="topbar-account__quota-note">{quotaSummary.detail}</p>
+                  </>
+                ) : null}
+              </div>
+              <div className="topbar-account__actions">
+                <Button to="/dashboard" variant="ghost">
+                  {copy.topbar.reviewHistory}
+                </Button>
+                {currentUser.plan === "FREE" ? (
+                  <Button
+                    onClick={() => {
+                      console.log("upgrade_clicked");
+                      setIsUpgradeModalOpen(true);
+                    }}
+                    variant="primary"
+                  >
+                    {copy.topbar.upgradeToPro}
+                  </Button>
+                ) : null}
+                <Button onClick={logout} variant="secondary">
+                  {copy.topbar.signOut}
+                </Button>
+              </div>
             </div>
-            <div className="topbar-account__copy">
-              <p className="topbar-account__label">{copy.topbar.accountHistoryEnabled}</p>
-              <p className="topbar-account__value">{displayName}</p>
-              <p className="topbar-account__meta">{currentUser.email}</p>
+          ) : (
+            <div className="topbar-auth">
+              <p className="topbar-auth__cta">{copy.topbar.signInToUnlockMore}</p>
+              <GoogleSignInButton />
               {quotaSummary ? (
-                <>
-                  <p className="topbar-account__quota">{quotaSummary.title}</p>
-                  <p className="topbar-account__quota-note">{quotaSummary.detail}</p>
-                </>
+                <div className="topbar-auth__quota">
+                  <p className="topbar-auth__quota-title">{quotaSummary.title}</p>
+                  <p className="topbar-auth__quota-copy">{quotaSummary.detail}</p>
+                </div>
               ) : null}
             </div>
-            <div className="topbar-account__actions">
-              <Button to="/dashboard" variant="ghost">
-                {copy.topbar.reviewHistory}
-              </Button>
-              <Button onClick={logout} variant="secondary">
-                {copy.topbar.signOut}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="topbar-auth">
-            <GoogleSignInButton />
-            {quotaSummary ? (
-              <div className="topbar-auth__quota">
-                <p className="topbar-auth__quota-title">{quotaSummary.title}</p>
-                <p className="topbar-auth__quota-copy">{quotaSummary.detail}</p>
-              </div>
-            ) : null}
-          </div>
-        )}
-        <LanguageSwitcher className="topbar__language" />
-      </div>
-    </header>
+          )}
+          <LanguageSwitcher className="topbar__language" />
+        </div>
+      </header>
+      <UpgradeModal open={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} />
+    </>
   );
 }
 
