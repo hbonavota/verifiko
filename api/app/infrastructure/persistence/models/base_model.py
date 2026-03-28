@@ -43,6 +43,7 @@ class UserModel(Base):
     google_subject: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    plan: Mapped[str] = mapped_column(String(32), nullable=False, default="FREE")
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
 

@@ -12,6 +12,7 @@ class UserResponse(BaseModel):
     email: str
     display_name: str
     avatar_url: str | None
+    plan: str
     created_at: str
 
 

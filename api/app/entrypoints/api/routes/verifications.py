@@ -8,6 +8,7 @@ from app.application.use_cases.get_owned_verification_result import GetOwnedVeri
 from app.domain.entities.user import User
 from app.entrypoints.api.dependencies.auth import get_current_user, get_optional_current_user
 from app.entrypoints.api.dependencies.container import (
+    get_authenticated_verification_rate_limiter,
     get_create_verification_rate_limiter,
     get_create_url_verification_use_case,
     get_get_owned_verification_result_use_case,
@@ -17,6 +18,9 @@ from app.entrypoints.api.presenters.verification_presenter import VerificationPr
 from app.entrypoints.api.schemas.verification_schema import (
     CreateVerificationRequest,
     VerificationResponse,
+)
+from app.infrastructure.security.authenticated_utc_day_quota_limiter import (
+    AuthenticatedUtcDayQuotaLimiter,
 )
 from app.infrastructure.security.utc_day_quota_limiter import UtcDayQuotaLimiter
 
@@ -31,6 +35,9 @@ def create_verification(
     current_user: User | None = Depends(get_optional_current_user),
     use_case: CreateURLVerificationUseCase = Depends(get_create_url_verification_use_case),
     rate_limiter: UtcDayQuotaLimiter = Depends(get_create_verification_rate_limiter),
+    authenticated_rate_limiter: AuthenticatedUtcDayQuotaLimiter = Depends(
+        get_authenticated_verification_rate_limiter
+    ),
 ) -> VerificationResponse:
     locale = select_response_locale(accept_language)
     if current_user is None:
@@ -40,6 +47,17 @@ def create_verification(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=resolve_message(
                     "error.anonymous_daily_verification_limit_exceeded",
+                    language=locale,
+                ),
+                headers={"Retry-After": str(retry_after)},
+            )
+    else:
+        retry_after = authenticated_rate_limiter.check(current_user)
+        if retry_after is not None:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=resolve_message(
+                    "error.authenticated_daily_limit_exceeded",
                     language=locale,
                 ),
                 headers={"Retry-After": str(retry_after)},

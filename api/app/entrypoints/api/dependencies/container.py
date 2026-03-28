@@ -3,7 +3,11 @@ from functools import lru_cache
 from app.application.ports.auth_token_service import AuthTokenServicePort
 from app.application.ports.google_identity_verifier import GoogleIdentityVerifierPort
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
+from app.domain.services.user_quota_policy import UserQuotaPolicy
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.infrastructure.security.authenticated_utc_day_quota_limiter import (
+    AuthenticatedUtcDayQuotaLimiter,
+)
 from app.application.services.infrastructure_signal_analyzer import (
     InfrastructureSignalAnalyzer,
 )
@@ -160,6 +164,23 @@ def get_create_verification_rate_limiter() -> UtcDayQuotaLimiter:
     settings = get_settings()
     return UtcDayQuotaLimiter(
         daily_limit=settings.anonymous_daily_verification_limit,
+        current_time_provider=get_time_provider().now,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_user_quota_policy() -> UserQuotaPolicy:
+    settings = get_settings()
+    return UserQuotaPolicy(
+        free_daily_limit=settings.free_authenticated_daily_verification_limit,
+        pro_daily_limit=settings.pro_authenticated_daily_verification_limit,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_authenticated_verification_rate_limiter() -> AuthenticatedUtcDayQuotaLimiter:
+    return AuthenticatedUtcDayQuotaLimiter(
+        quota_policy=get_user_quota_policy(),
         current_time_provider=get_time_provider().now,
     )
 

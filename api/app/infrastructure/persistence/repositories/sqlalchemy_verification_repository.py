@@ -51,7 +51,10 @@ class SQLAlchemyVerificationRepository(VerificationRepository):
                     selectinload(VerificationModel.signals),
                     selectinload(VerificationModel.risk_assessment),
                 )
-                .order_by(VerificationModel.created_at.desc())
+                .order_by(
+                    VerificationModel.created_at.desc(),
+                    VerificationModel.id.desc(),
+                )
                 .offset(offset)
                 .limit(limit)
             )
@@ -98,7 +101,10 @@ class SQLAlchemyVerificationRepository(VerificationRepository):
                     selectinload(VerificationModel.risk_assessment),
                 )
                 .where(VerificationModel.user_id == str(owner_user_id))
-                .order_by(VerificationModel.created_at.desc())
+                .order_by(
+                    VerificationModel.created_at.desc(),
+                    VerificationModel.id.desc(),
+                )
                 .offset(offset)
                 .limit(limit)
             )

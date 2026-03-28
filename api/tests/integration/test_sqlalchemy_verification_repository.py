@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 from app.domain.entities.analysis_signal import AnalysisSignal
@@ -72,8 +73,8 @@ def _build_verification(
     )
     verification.status = VerificationStatus.COMPLETED
     if created_at_offset_minutes:
-        verification.created_at = verification.created_at.replace(
-            minute=(verification.created_at.minute + created_at_offset_minutes) % 60
+        verification.created_at = verification.created_at + timedelta(
+            minutes=created_at_offset_minutes
         )
     verification.updated_at = verification.created_at
     verification.completed_at = verification.created_at
