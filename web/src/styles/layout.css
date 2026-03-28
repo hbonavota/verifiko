@@ -238,6 +238,10 @@
   justify-content: flex-end;
 }
 
+.topbar-account__upgrade-button {
+  min-width: 10.5rem;
+}
+
 .google-sign-in__error {
   color: var(--color-danger);
 }

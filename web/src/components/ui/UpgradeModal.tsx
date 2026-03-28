@@ -1,18 +1,44 @@
+import { useEffect, useState } from "react";
+
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { useI18n } from "../../lib/i18n";
+import {
+  type UpgradeIntentSource,
+  useUpgradeIntent,
+} from "../../lib/upgradeIntentStorage";
 
 interface UpgradeModalProps {
   open: boolean;
   onClose: () => void;
+  source?: UpgradeIntentSource;
 }
 
-export function UpgradeModal({ open, onClose }: UpgradeModalProps) {
+type UpgradeModalView = "default" | "submitted" | "saved";
+
+export function UpgradeModal({ open, onClose, source = "topbar" }: UpgradeModalProps) {
   const { copy } = useI18n();
+  const { hasSubmittedUpgradeIntent, saveUpgradeIntent } = useUpgradeIntent();
+  const [view, setView] = useState<UpgradeModalView>("default");
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setView(hasSubmittedUpgradeIntent ? "saved" : "default");
+  }, [hasSubmittedUpgradeIntent, open]);
 
   if (!open) {
     return null;
   }
+
+  const modalCopy =
+    view === "submitted"
+      ? copy.upgradeModal.submitted
+      : view === "saved"
+        ? copy.upgradeModal.saved
+        : copy.upgradeModal.default;
 
   return (
     <div
@@ -28,27 +54,45 @@ export function UpgradeModal({ open, onClose }: UpgradeModalProps) {
         type="button"
       />
       <Card
-        eyebrow={copy.upgradeModal.eyebrow}
-        title={copy.upgradeModal.title}
-        description={copy.upgradeModal.description}
+        eyebrow={modalCopy.eyebrow}
+        title={modalCopy.title}
+        description={modalCopy.description}
         className="upgrade-modal__panel"
         tone="success"
       >
         <div className="upgrade-modal__content">
-          <p className="upgrade-modal__intro">{copy.upgradeModal.intro}</p>
-          <div className="upgrade-modal__points">
-            {copy.upgradeModal.points.map((point) => (
-              <article key={point} className="upgrade-modal__point">
-                <p className="upgrade-modal__point-copy">{point}</p>
-              </article>
-            ))}
-          </div>
+          {"intro" in modalCopy ? <p className="upgrade-modal__intro">{modalCopy.intro}</p> : null}
+          {"points" in modalCopy ? (
+            <div className="upgrade-modal__points">
+              {modalCopy.points.map((point) => (
+                <article key={point} className="upgrade-modal__point">
+                  <p className="upgrade-modal__point-copy">{point}</p>
+                </article>
+              ))}
+            </div>
+          ) : null}
+          {"supportingCopy" in modalCopy ? (
+            <p className="upgrade-modal__supporting-copy">{modalCopy.supportingCopy}</p>
+          ) : null}
           <div className="upgrade-modal__actions">
-            <Button onClick={onClose} variant="primary">
-              {copy.upgradeModal.comingSoon}
-            </Button>
+            {view === "default" ? (
+              <Button
+                onClick={() => {
+                  saveUpgradeIntent(source);
+                  console.log("upgrade_intent_saved", { source });
+                  setView("submitted");
+                }}
+                variant="primary"
+              >
+                {modalCopy.primaryCta}
+              </Button>
+            ) : (
+              <Button onClick={onClose} variant="primary">
+                {modalCopy.primaryCta}
+              </Button>
+            )}
             <Button onClick={onClose} variant="ghost">
-              {copy.common.close}
+              {modalCopy.secondaryCta}
             </Button>
           </div>
         </div>

@@ -14,6 +14,7 @@ import {
 } from "../../lib/analytics";
 import { adaptApiVerification } from "../../lib/verificationAdapter";
 import { useI18n } from "../../lib/i18n";
+import { type UpgradeIntentSource, useUpgradeIntent } from "../../lib/upgradeIntentStorage";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { UpgradeModal } from "../ui/UpgradeModal";
@@ -72,6 +73,7 @@ export function AnalyzeUrlForm({
 }: AnalyzeUrlFormProps) {
   const { copy, language } = useI18n();
   const { currentUser, quotaStatus, refreshQuotaStatus } = useAuth();
+  const { hasSubmittedUpgradeIntent } = useUpgradeIntent();
   const location = useLocation();
   const navigate = useNavigate();
   const [analysisTarget, setAnalysisTarget] = useState("");
@@ -81,6 +83,7 @@ export function AnalyzeUrlForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isQuotaRetrying, setIsQuotaRetrying] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [upgradeModalSource, setUpgradeModalSource] = useState<UpgradeIntentSource>("pro_panel");
   const [inputType, setInputType] = useState<"manual" | "paste">("manual");
 
   const resolvedButtonLabel = buttonLabel ?? copy.analyzeForm.buttonLabel;
@@ -228,10 +231,16 @@ export function AnalyzeUrlForm({
           formatRetryAfter(quotaExceededRetryAfter, language),
         )
       : copy.analyzeForm.quota.resetAtMidnight;
-  const quotaPanelCopy = resolveQuotaPanelCopy(copy, quotaPlan);
+  const quotaPanelCopy = resolveQuotaPanelCopy(copy, quotaPlan, hasSubmittedUpgradeIntent);
   const quotaIndicator = quotaStatus
-    ? resolveQuotaIndicatorCopy(copy, quotaStatus, language)
+    ? resolveQuotaIndicatorCopy(copy, quotaStatus, language, hasSubmittedUpgradeIntent)
     : null;
+
+  function openUpgradeModal(source: UpgradeIntentSource) {
+    console.log("upgrade_clicked", { source });
+    setUpgradeModalSource(source);
+    setIsUpgradeModalOpen(true);
+  }
 
   return (
     <div className="analysis-form-shell">
@@ -261,12 +270,13 @@ export function AnalyzeUrlForm({
                 <Button
                   className="analysis-form__quota-upgrade"
                   onClick={() => {
-                    console.log("upgrade_clicked");
-                    setIsUpgradeModalOpen(true);
+                    openUpgradeModal("quota_indicator");
                   }}
-                  variant="primary"
+                  variant={hasSubmittedUpgradeIntent ? "secondary" : "primary"}
                 >
-                  {copy.analyzeForm.quota.upgradeCta}
+                  {hasSubmittedUpgradeIntent
+                    ? copy.analyzeForm.quota.upgradeSavedCta
+                    : copy.analyzeForm.quota.upgradeCta}
                 </Button>
               ) : null}
             </div>
@@ -328,12 +338,13 @@ export function AnalyzeUrlForm({
               <Button
                 className="analysis-form__pro-panel-cta"
                 onClick={() => {
-                  console.log("upgrade_clicked");
-                  setIsUpgradeModalOpen(true);
+                  openUpgradeModal("pro_panel");
                 }}
-                variant="primary"
+                variant={hasSubmittedUpgradeIntent ? "secondary" : "primary"}
               >
-                {copy.analyzeForm.proValue.upgradeCta}
+                {hasSubmittedUpgradeIntent
+                  ? copy.analyzeForm.proValue.waitlistCta
+                  : copy.analyzeForm.proValue.upgradeCta}
               </Button>
             ) : null}
           </div>
@@ -369,12 +380,13 @@ export function AnalyzeUrlForm({
               <Button
                 className="analysis-form__quota-upgrade"
                 onClick={() => {
-                  console.log("upgrade_clicked");
-                  setIsUpgradeModalOpen(true);
+                  openUpgradeModal("quota_blocked");
                 }}
-                variant="primary"
+                variant={hasSubmittedUpgradeIntent ? "secondary" : "primary"}
               >
-                {copy.analyzeForm.quota.upgradeCta}
+                {hasSubmittedUpgradeIntent
+                  ? copy.analyzeForm.quota.upgradeSavedCta
+                  : copy.analyzeForm.quota.upgradeCta}
               </Button>
             ) : null}
             <p className="analysis-form__quota-note">
@@ -389,7 +401,11 @@ export function AnalyzeUrlForm({
       ) : submitError ? (
         <p className={messageClassName}>{submitError}</p>
       ) : null}
-      <UpgradeModal open={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} />
+      <UpgradeModal
+        open={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        source={upgradeModalSource}
+      />
     </div>
   );
 }
@@ -397,13 +413,16 @@ export function AnalyzeUrlForm({
 function resolveQuotaPanelCopy(
   copy: ReturnType<typeof useI18n>["copy"],
   quotaPlan: ApiQuotaStatus["plan"] | null,
+  hasSubmittedUpgradeIntent: boolean,
 ) {
   if (quotaPlan === "FREE") {
     return {
       eyebrow: copy.analyzeForm.quota.freeEyebrow,
       title: copy.analyzeForm.quota.freeTitle,
       description: copy.analyzeForm.quota.freeDescription,
-      note: copy.analyzeForm.quota.freeNote,
+      note: hasSubmittedUpgradeIntent
+        ? copy.analyzeForm.quota.freeSavedNote
+        : copy.analyzeForm.quota.freeNote,
       valueCue: copy.analyzeForm.quota.freeValueCue,
       cta: "upgrade",
     };
@@ -434,6 +453,7 @@ function resolveQuotaIndicatorCopy(
   copy: ReturnType<typeof useI18n>["copy"],
   quotaStatus: ApiQuotaStatus,
   language: "en" | "es",
+  hasSubmittedUpgradeIntent: boolean,
 ) {
   const resetCopy = quotaStatus.blocked
     ? copy.analyzeForm.quotaIndicator.resetCountdown.replace(
@@ -494,7 +514,9 @@ function resolveQuotaIndicatorCopy(
         planLabel: copy.analyzeForm.quotaIndicator.freePlan,
         resetCopy,
         cta: "upgrade",
-        ctaNote: copy.analyzeForm.quotaIndicator.freeBlockedNote,
+        ctaNote: hasSubmittedUpgradeIntent
+          ? copy.analyzeForm.quotaIndicator.freeSavedNote
+          : copy.analyzeForm.quotaIndicator.freeBlockedNote,
         valueCue: copy.analyzeForm.quotaIndicator.freeValueCue,
       }
     : {
@@ -505,7 +527,9 @@ function resolveQuotaIndicatorCopy(
         planLabel: copy.analyzeForm.quotaIndicator.freePlan,
         resetCopy,
         cta: "upgrade",
-        ctaNote: copy.analyzeForm.quotaIndicator.freeNote,
+        ctaNote: hasSubmittedUpgradeIntent
+          ? copy.analyzeForm.quotaIndicator.freeSavedNote
+          : copy.analyzeForm.quotaIndicator.freeNote,
         valueCue: copy.analyzeForm.quotaIndicator.freeValueCue,
       };
 }

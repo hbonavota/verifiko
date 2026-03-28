@@ -5,11 +5,13 @@ import { useAuth } from "../lib/auth";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { useI18n } from "../lib/i18n";
 import { useState } from "react";
+import { useUpgradeIntent } from "../lib/upgradeIntentStorage";
 
 export function Topbar() {
   const { copy } = useI18n();
   const { currentUser, logout, quotaReady, quotaStatus } = useAuth();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const { hasSubmittedUpgradeIntent } = useUpgradeIntent();
   const displayName = currentUser?.display_name?.trim() || currentUser?.email || "";
   const initials = displayName
     .split(/\s+/)
@@ -58,13 +60,16 @@ export function Topbar() {
                 </Button>
                 {currentUser.plan === "FREE" ? (
                   <Button
+                    className={hasSubmittedUpgradeIntent ? "topbar-account__upgrade-button" : undefined}
                     onClick={() => {
                       console.log("upgrade_clicked");
                       setIsUpgradeModalOpen(true);
                     }}
-                    variant="primary"
+                    variant={hasSubmittedUpgradeIntent ? "secondary" : "primary"}
                   >
-                    {copy.topbar.upgradeToPro}
+                    {hasSubmittedUpgradeIntent
+                      ? copy.topbar.upgradeInterestSaved
+                      : copy.topbar.upgradeToPro}
                   </Button>
                 ) : null}
                 <Button onClick={logout} variant="secondary">
@@ -87,7 +92,11 @@ export function Topbar() {
           <LanguageSwitcher className="topbar__language" />
         </div>
       </header>
-      <UpgradeModal open={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} />
+      <UpgradeModal
+        open={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        source="topbar"
+      />
     </>
   );
 }
