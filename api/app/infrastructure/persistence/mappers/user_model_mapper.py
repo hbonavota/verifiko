@@ -15,6 +15,7 @@ class UserModelMapper:
     def update_model(model: UserModel, user: User) -> UserModel:
         model.email = user.email
         model.google_subject = user.google_subject
+        model.password_hash = user.password_hash
         model.display_name = user.display_name
         model.avatar_url = user.avatar_url
         model.plan = user.plan.value
@@ -28,6 +29,7 @@ class UserModelMapper:
             id=UserId.from_string(model.id),
             email=model.email,
             google_subject=model.google_subject,
+            password_hash=model.password_hash,
             display_name=model.display_name,
             avatar_url=model.avatar_url,
             plan=UserPlan(model.plan),

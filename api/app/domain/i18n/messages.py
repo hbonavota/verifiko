@@ -471,6 +471,14 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "Google authentication is not configured for this environment.",
         "es": "La autenticación de Google no está configurada para este entorno.",
     },
+    "error.local_auth_invalid_credentials": {
+        "en": "Email or password is incorrect.",
+        "es": "El correo o la contraseña son incorrectos.",
+    },
+    "error.email_already_registered": {
+        "en": "An account already exists for this email.",
+        "es": "Ya existe una cuenta para este correo.",
+    },
     "error.verification_not_found": {
         "en": "Verification not found: {verification_id}",
         "es": "Verificación no encontrada: {verification_id}",

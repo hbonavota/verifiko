@@ -4,6 +4,8 @@ import type {
   ApiUser,
   ApiVerification,
   CreateVerificationInput,
+  EmailLoginInput,
+  EmailRegistrationInput,
   HealthCheckResult,
 } from "../types/verification";
 import { readStoredAuthSession } from "./authSessionStorage";
@@ -68,9 +70,18 @@ async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
         : `Request failed with status ${response.status}.`;
 
     try {
-      const payload = (await response.json()) as { detail?: string };
-      if (payload.detail) {
+      const payload = (await response.json()) as {
+        detail?: string | Array<{ msg?: string }>;
+      };
+      if (typeof payload.detail === "string") {
         detail = payload.detail;
+      } else if (Array.isArray(payload.detail)) {
+        const messages = payload.detail
+          .map((item) => item.msg?.trim())
+          .filter((message): message is string => !!message);
+        if (messages.length > 0) {
+          detail = messages.join(" ");
+        }
       }
     } catch {
       // Keep the status-based error when the response is not JSON.
@@ -120,6 +131,24 @@ export function authenticateWithGoogle(idToken: string): Promise<ApiAuthSession>
   return readJson<ApiAuthSession>("/api/auth/google", {
     method: "POST",
     body: JSON.stringify({ id_token: idToken }),
+  });
+}
+
+export function registerWithEmailPassword(
+  input: EmailRegistrationInput,
+): Promise<ApiAuthSession> {
+  return readJson<ApiAuthSession>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function authenticateWithEmailPassword(
+  input: EmailLoginInput,
+): Promise<ApiAuthSession> {
+  return readJson<ApiAuthSession>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
 

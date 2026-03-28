@@ -44,7 +44,7 @@ class SQLAlchemyUserRepository(UserRepository):
 
     def get_by_email(self, email: str) -> User | None:
         with self._session_factory() as session:
-            statement = select(UserModel).where(UserModel.email == email)
+            statement = select(UserModel).where(UserModel.email == email.strip().lower())
             model = session.execute(statement).scalar_one_or_none()
             if model is None:
                 return None
