@@ -134,10 +134,10 @@ const translations = {
         verificationFailed: "Verification failed.",
       },
       quota: {
-        eyebrow: "Free access",
-        title: "You've reached today's free verification limit",
+        eyebrow: "Limit reached",
+        title: "Daily limit reached",
         description:
-          "You can continue verifying right now by signing in. Your results will be saved and accessible anytime.",
+          "Sign in to continue verifying. Your results will be saved and accessible anytime.",
         resetAtMidnight: "Free access resets at midnight UTC.",
         resetCountdown: "Free access resets in about {timeRemaining}, at midnight UTC.",
         cta: "Continue with Google",
@@ -266,6 +266,8 @@ const translations = {
       title: "Verify links before you trust them.",
       description: "Get a clear security verdict.",
       startVerification: "Start verification",
+      authPromptTitle: "Save results and keep going",
+      authPromptCopy: "Sign in or create an account to keep your verification history and unlock more daily analyses.",
       latestResult: "Latest result",
       result: "Result",
       readyToVerify: "Ready to verify",
@@ -600,10 +602,10 @@ const translations = {
         verificationFailed: "La verificación falló.",
       },
       quota: {
-        eyebrow: "Acceso gratuito",
-        title: "Has alcanzado el límite gratuito de hoy",
+        eyebrow: "Límite alcanzado",
+        title: "Límite diario alcanzado",
         description:
-          "Puedes seguir verificando ahora iniciando sesión. Tus resultados se guardarán y podrás acceder a ellos cuando quieras.",
+          "Inicia sesión para continuar verificando. Tus resultados se guardarán y podrás acceder a ellos cuando quieras.",
         resetAtMidnight: "El acceso gratuito se restablece a medianoche UTC.",
         resetCountdown: "El acceso gratuito se restablece en aproximadamente {timeRemaining}, a medianoche UTC.",
         cta: "Continuar con Google",
@@ -735,6 +737,9 @@ const translations = {
       title: "Verifica enlaces antes de confiar en ellos.",
       description: "Obtén un veredicto de seguridad claro.",
       startVerification: "Iniciar verificación",
+      authPromptTitle: "Guarda resultados y sigue avanzando",
+      authPromptCopy:
+        "Inicia sesión o crea una cuenta para conservar tu historial de verificaciones y desbloquear más análisis al día.",
       latestResult: "Último resultado",
       result: "Resultado",
       readyToVerify: "Listo para verificar",
