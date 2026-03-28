@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
 import { useAuth } from "../../lib/auth";
+import type { ApiQuotaStatus } from "../../types/verification";
 import { ApiRequestError, createVerification } from "../../lib/api";
 import {
   categorizeAnalysisError,
@@ -69,12 +70,13 @@ export function AnalyzeUrlForm({
   submittingLabel,
 }: AnalyzeUrlFormProps) {
   const { copy, language } = useI18n();
-  const { currentUser } = useAuth();
+  const { currentUser, quotaStatus, refreshQuotaStatus } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [analysisTarget, setAnalysisTarget] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [quotaExceededRetryAfter, setQuotaExceededRetryAfter] = useState<number | null>(null);
+  const [quotaExceededPlan, setQuotaExceededPlan] = useState<ApiQuotaStatus["plan"] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isQuotaRetrying, setIsQuotaRetrying] = useState(false);
   const [inputType, setInputType] = useState<"manual" | "paste">("manual");
@@ -89,6 +91,7 @@ export function AnalyzeUrlForm({
     if (currentUser && quotaExceededRetryAfter === null && !isQuotaRetrying) {
       setSubmitError(null);
       setQuotaExceededRetryAfter(null);
+      setQuotaExceededPlan(null);
       onStateChange?.("idle");
     }
   }, [currentUser, isQuotaRetrying, onStateChange, quotaExceededRetryAfter]);
@@ -97,6 +100,7 @@ export function AnalyzeUrlForm({
     if (!navigator.clipboard?.readText) {
       setSubmitError(copy.analyzeForm.errors.clipboardUnavailable);
       setQuotaExceededRetryAfter(null);
+      setQuotaExceededPlan(null);
       return;
     }
 
@@ -105,6 +109,7 @@ export function AnalyzeUrlForm({
       if (!clipboardValue) {
         setSubmitError(copy.analyzeForm.errors.clipboardEmpty);
         setQuotaExceededRetryAfter(null);
+        setQuotaExceededPlan(null);
         return;
       }
 
@@ -112,10 +117,12 @@ export function AnalyzeUrlForm({
       setInputType("paste");
       setSubmitError(null);
       setQuotaExceededRetryAfter(null);
+      setQuotaExceededPlan(null);
       onStateChange?.("idle");
     } catch {
       setSubmitError(copy.analyzeForm.errors.clipboardBlocked);
       setQuotaExceededRetryAfter(null);
+      setQuotaExceededPlan(null);
     }
   }
 
@@ -126,6 +133,7 @@ export function AnalyzeUrlForm({
     if (!trimmedTarget) {
       setSubmitError(copy.analyzeForm.errors.enterUrl);
       setQuotaExceededRetryAfter(null);
+      setQuotaExceededPlan(null);
       onStateChange?.("error");
       return;
     }
@@ -142,6 +150,7 @@ export function AnalyzeUrlForm({
     if (!options?.preserveQuotaState) {
       setSubmitError(null);
       setQuotaExceededRetryAfter(null);
+      setQuotaExceededPlan(null);
     }
     onStateChange?.("submitting");
     trackAnalysisStarted({
@@ -173,6 +182,8 @@ export function AnalyzeUrlForm({
         });
       }
 
+      void refreshQuotaStatus();
+
       navigate(`/verifications/${verification.id}`, {
         state: {
           verification,
@@ -184,14 +195,17 @@ export function AnalyzeUrlForm({
         language,
         errorType: categorizeAnalysisError(error),
       });
-      if (error instanceof ApiRequestError && error.status === 429 && currentUser === null) {
+      if (error instanceof ApiRequestError && error.status === 429) {
+        await refreshQuotaStatus();
         setSubmitError(error.message);
         setQuotaExceededRetryAfter(error.retryAfterSeconds);
+        setQuotaExceededPlan(quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS"));
       } else {
         setSubmitError(
           error instanceof Error ? error.message : copy.analyzeForm.errors.verificationFailed,
         );
         setQuotaExceededRetryAfter(null);
+        setQuotaExceededPlan(null);
       }
       onStateChange?.("error");
     } finally {
@@ -203,6 +217,8 @@ export function AnalyzeUrlForm({
   const formClassName = className ? `analysis-form ${className}` : "analysis-form";
   const messageClassName = errorClassName ?? "analysis-form__error";
   const resolvedButtonClassName = buttonClassName ?? "analysis-form__button";
+  const quotaPlan = quotaStatus?.plan ?? quotaExceededPlan;
+  const showQuotaPanel = submitError && quotaExceededRetryAfter !== null;
   const quotaResetCopy =
     quotaExceededRetryAfter && quotaExceededRetryAfter > 0
       ? copy.analyzeForm.quota.resetCountdown.replace(
@@ -210,9 +226,31 @@ export function AnalyzeUrlForm({
           formatRetryAfter(quotaExceededRetryAfter, language),
         )
       : copy.analyzeForm.quota.resetAtMidnight;
+  const quotaPanelCopy = resolveQuotaPanelCopy(copy, quotaPlan);
+  const quotaIndicator = quotaStatus
+    ? resolveQuotaIndicatorCopy(copy, quotaStatus, language)
+    : null;
 
   return (
     <div className="analysis-form-shell">
+      {quotaIndicator ? (
+        <section className="analysis-form__quota-indicator" aria-live="polite">
+          <div className="analysis-form__quota-indicator-copy">
+            <p className="analysis-form__quota-indicator-title">{quotaIndicator.title}</p>
+            <p className="analysis-form__quota-indicator-plan">{quotaIndicator.planLabel}</p>
+            <p className="analysis-form__quota-indicator-meta">{quotaIndicator.resetCopy}</p>
+          </div>
+          {quotaIndicator.cta === "google" ? (
+            <div className="analysis-form__quota-indicator-actions">
+              <GoogleSignInButton className="analysis-form__quota-inline-signin" />
+            </div>
+          ) : quotaIndicator.ctaNote ? (
+            <div className="analysis-form__quota-indicator-actions">
+              <p className="analysis-form__quota-indicator-note">{quotaIndicator.ctaNote}</p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
       <form className={formClassName} onSubmit={(event) => void handleSubmit(event)}>
         <Input
           action={
@@ -250,29 +288,35 @@ export function AnalyzeUrlForm({
           {isSubmitting ? resolvedSubmittingLabel : resolvedButtonLabel}
         </Button>
       </form>
-      {submitError && quotaExceededRetryAfter !== null ? (
+      {showQuotaPanel ? (
         <section className="analysis-form__quota" aria-live="polite">
           <div className="analysis-form__quota-body">
-            <p className="analysis-form__quota-eyebrow">{copy.analyzeForm.quota.eyebrow}</p>
-            <p className="analysis-form__quota-title">{copy.analyzeForm.quota.title}</p>
-            <p className="analysis-form__quota-copy">{copy.analyzeForm.quota.description}</p>
+            <p className="analysis-form__quota-eyebrow">{quotaPanelCopy.eyebrow}</p>
+            <p className="analysis-form__quota-title">{quotaPanelCopy.title}</p>
+            <p className="analysis-form__quota-copy">{quotaPanelCopy.description}</p>
             <p className="analysis-form__quota-meta">{quotaResetCopy}</p>
           </div>
           <div className="analysis-form__quota-actions">
-            <GoogleSignInButton
-              className="analysis-form__quota-signin"
-              variant="quota"
-              busy={isQuotaRetrying}
-              busyLabel={copy.analyzeForm.quota.retrying}
-              onSuccess={async () => {
-                setIsQuotaRetrying(true);
-                await submitVerification(analysisTarget.trim(), inputType, {
-                  preserveQuotaState: true,
-                });
-              }}
-            />
+            {quotaPlan === "ANONYMOUS" ? (
+              <GoogleSignInButton
+                className="analysis-form__quota-signin"
+                variant="quota"
+                busy={isQuotaRetrying}
+                busyLabel={copy.analyzeForm.quota.retrying}
+                onSuccess={async () => {
+                  setIsQuotaRetrying(true);
+                  await submitVerification(analysisTarget.trim(), inputType, {
+                    preserveQuotaState: true,
+                  });
+                }}
+              />
+            ) : null}
             <p className="analysis-form__quota-note">
-              {isQuotaRetrying ? copy.analyzeForm.quota.retrying : copy.analyzeForm.quota.cta}
+              {quotaPlan === "ANONYMOUS"
+                ? isQuotaRetrying
+                  ? copy.analyzeForm.quota.retrying
+                  : copy.analyzeForm.quota.cta
+                : quotaPanelCopy.note}
             </p>
           </div>
         </section>
@@ -281,6 +325,110 @@ export function AnalyzeUrlForm({
       ) : null}
     </div>
   );
+}
+
+function resolveQuotaPanelCopy(
+  copy: ReturnType<typeof useI18n>["copy"],
+  quotaPlan: ApiQuotaStatus["plan"] | null,
+) {
+  if (quotaPlan === "FREE") {
+    return {
+      eyebrow: copy.analyzeForm.quota.freeEyebrow,
+      title: copy.analyzeForm.quota.freeTitle,
+      description: copy.analyzeForm.quota.freeDescription,
+      note: copy.analyzeForm.quota.freeNote,
+    };
+  }
+
+  if (quotaPlan === "PRO") {
+    return {
+      eyebrow: copy.analyzeForm.quota.proEyebrow,
+      title: copy.analyzeForm.quota.proTitle,
+      description: copy.analyzeForm.quota.proDescription,
+      note: copy.analyzeForm.quota.proNote,
+    };
+  }
+
+  return {
+    eyebrow: copy.analyzeForm.quota.eyebrow,
+    title: copy.analyzeForm.quota.title,
+    description: copy.analyzeForm.quota.description,
+    note: copy.analyzeForm.quota.cta,
+  };
+}
+
+function resolveQuotaIndicatorCopy(
+  copy: ReturnType<typeof useI18n>["copy"],
+  quotaStatus: ApiQuotaStatus,
+  language: "en" | "es",
+) {
+  const resetCopy = quotaStatus.blocked
+    ? copy.analyzeForm.quotaIndicator.resetCountdown.replace(
+        "{timeRemaining}",
+        formatRetryAfter(quotaStatus.reset_in_seconds, language),
+      )
+    : copy.analyzeForm.quotaIndicator.resetAtMidnight;
+
+  if (quotaStatus.plan === "ANONYMOUS") {
+    return quotaStatus.blocked
+      ? {
+          title: copy.analyzeForm.quotaIndicator.anonymousBlockedTitle,
+          planLabel: copy.analyzeForm.quotaIndicator.anonymousBlockedPlan,
+          resetCopy,
+          cta: "google" as const,
+          ctaNote: null,
+        }
+      : {
+          title: copy.analyzeForm.quotaIndicator.anonymousTitle.replace(
+            "{remaining}",
+            String(quotaStatus.remaining_today),
+          ),
+          planLabel: copy.analyzeForm.quotaIndicator.anonymousPlan,
+          resetCopy,
+          cta: null,
+          ctaNote: copy.analyzeForm.quotaIndicator.anonymousNote,
+        };
+  }
+
+  if (quotaStatus.plan === "PRO") {
+    return quotaStatus.blocked
+      ? {
+          title: copy.analyzeForm.quotaIndicator.proBlockedTitle,
+          planLabel: copy.analyzeForm.quotaIndicator.proPlan,
+          resetCopy,
+          cta: null,
+          ctaNote: copy.analyzeForm.quotaIndicator.proBlockedNote,
+        }
+      : {
+          title: copy.analyzeForm.quotaIndicator.proTitle.replace(
+            "{remaining}",
+            String(quotaStatus.remaining_today),
+          ),
+          planLabel: copy.analyzeForm.quotaIndicator.proPlan,
+          resetCopy,
+          cta: null,
+          ctaNote: null,
+        };
+  }
+
+  return quotaStatus.blocked
+    ? {
+        title: copy.analyzeForm.quotaIndicator.freeBlockedTitle,
+        planLabel: copy.analyzeForm.quotaIndicator.freePlan,
+        resetCopy,
+        cta: null,
+        ctaNote: copy.analyzeForm.quotaIndicator.freeBlockedNote,
+      }
+    : {
+        title: copy.analyzeForm.quotaIndicator.freeTitle.replace(
+          "{remaining}",
+          String(quotaStatus.remaining_today),
+        ),
+        planLabel: copy.analyzeForm.quotaIndicator.freePlan,
+        resetCopy,
+        cta: null,
+        ctaNote: null,
+      };
 }
 
 function formatRetryAfter(seconds: number, language: "en" | "es"): string {

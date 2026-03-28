@@ -1,4 +1,7 @@
 export type RiskLevel = "SAFE" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type UserPlan = "FREE" | "PRO";
+export type QuotaPlan = UserPlan | "ANONYMOUS";
+export type QuotaSubjectType = "ANONYMOUS" | "USER";
 
 export type VerificationStatus = "PENDING" | "ANALYZING" | "COMPLETED" | "FAILED";
 
@@ -140,6 +143,7 @@ export interface ApiUser {
   email: string;
   display_name: string;
   avatar_url: string | null;
+  plan: UserPlan;
   created_at: string;
 }
 
@@ -147,4 +151,16 @@ export interface ApiAuthSession {
   access_token: string;
   token_type: string;
   user: ApiUser;
+}
+
+export interface ApiQuotaStatus {
+  subject_type: QuotaSubjectType;
+  is_authenticated: boolean;
+  plan: QuotaPlan;
+  daily_limit: number;
+  used_today: number;
+  remaining_today: number;
+  reset_at_utc: string;
+  reset_in_seconds: number;
+  blocked: boolean;
 }

@@ -196,6 +196,33 @@
   color: var(--color-text-muted);
 }
 
+.topbar-account__quota,
+.topbar-account__quota-note,
+.topbar-auth__quota-title,
+.topbar-auth__quota-copy {
+  margin: 0;
+}
+
+.topbar-account__quota,
+.topbar-auth__quota-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.topbar-account__quota-note,
+.topbar-auth__quota-copy {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.topbar-auth__quota {
+  display: grid;
+  gap: 0.12rem;
+  justify-items: end;
+  text-align: right;
+}
+
 .topbar-account__actions {
   display: flex;
   align-items: center;

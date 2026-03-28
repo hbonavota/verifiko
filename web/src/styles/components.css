@@ -373,6 +373,57 @@
   line-height: 1.5;
 }
 
+.analysis-form__quota-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(160, 176, 196, 0.14);
+  border-radius: var(--radius-md);
+  background: rgba(16, 24, 44, 0.78);
+}
+
+.analysis-form__quota-indicator-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.analysis-form__quota-indicator-title,
+.analysis-form__quota-indicator-plan,
+.analysis-form__quota-indicator-meta,
+.analysis-form__quota-indicator-note {
+  margin: 0;
+}
+
+.analysis-form__quota-indicator-title {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.analysis-form__quota-indicator-plan {
+  font-size: 0.88rem;
+  color: var(--color-primary);
+}
+
+.analysis-form__quota-indicator-meta,
+.analysis-form__quota-indicator-note {
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+}
+
+.analysis-form__quota-indicator-actions {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-2);
+  flex: none;
+}
+
+.analysis-form__quota-inline-signin {
+  justify-items: end;
+}
+
 .analysis-form__quota {
   display: grid;
   gap: var(--space-5);
