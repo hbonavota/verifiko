@@ -244,6 +244,43 @@ export function AnalyzeUrlForm({
 
   return (
     <div className="analysis-form-shell">
+      <form className={formClassName} onSubmit={(event) => void handleSubmit(event)}>
+        <Input
+          action={
+            <button
+              aria-label={copy.analyzeForm.pasteAriaLabel}
+              className="analysis-form__paste"
+              disabled={isSubmitting}
+              onClick={() => void handlePaste()}
+              title={copy.analyzeForm.pasteTitle}
+              type="button"
+            >
+              <PasteIcon />
+            </button>
+          }
+          autoComplete="off"
+          className={inputClassName}
+          hint={resolvedHint}
+          inputMode="url"
+          label={resolvedInputLabel}
+          placeholder={resolvedPlaceholder}
+          title={copy.analyzeForm.analyzeTitle}
+          value={analysisTarget}
+          onChange={(event) => {
+            setAnalysisTarget(event.target.value);
+            setInputType("manual");
+          }}
+        />
+        <Button
+          className={resolvedButtonClassName}
+          disabled={isSubmitting}
+          title={copy.analyzeForm.analyzeTitle}
+          type="submit"
+          variant="primary"
+        >
+          {isSubmitting ? resolvedSubmittingLabel : resolvedButtonLabel}
+        </Button>
+      </form>
       {quotaIndicator ? (
         <section className="analysis-form__quota-indicator" aria-live="polite">
           <div className="analysis-form__quota-indicator-copy">
@@ -283,43 +320,6 @@ export function AnalyzeUrlForm({
           ) : null}
         </section>
       ) : null}
-      <form className={formClassName} onSubmit={(event) => void handleSubmit(event)}>
-        <Input
-          action={
-            <button
-              aria-label={copy.analyzeForm.pasteAriaLabel}
-              className="analysis-form__paste"
-              disabled={isSubmitting}
-              onClick={() => void handlePaste()}
-              title={copy.analyzeForm.pasteTitle}
-              type="button"
-            >
-              <PasteIcon />
-            </button>
-          }
-          autoComplete="off"
-          className={inputClassName}
-          hint={resolvedHint}
-          inputMode="url"
-          label={resolvedInputLabel}
-          placeholder={resolvedPlaceholder}
-          title={copy.analyzeForm.analyzeTitle}
-          value={analysisTarget}
-          onChange={(event) => {
-            setAnalysisTarget(event.target.value);
-            setInputType("manual");
-          }}
-        />
-        <Button
-          className={resolvedButtonClassName}
-          disabled={isSubmitting}
-          title={copy.analyzeForm.analyzeTitle}
-          type="submit"
-          variant="primary"
-        >
-          {isSubmitting ? resolvedSubmittingLabel : resolvedButtonLabel}
-        </Button>
-      </form>
       {quotaStatus?.plan !== "PRO" ? (
         <section className="analysis-form__pro-panel" aria-label={copy.analyzeForm.proValue.title}>
           <div className="analysis-form__pro-panel-header">
