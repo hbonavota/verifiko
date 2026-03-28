@@ -148,6 +148,7 @@ def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse(
     suspicious_urls = (
         "http://paypal-login-security-check.example.xyz/verify?redirect=https://example.org",
         "http://paypal.com.security-check-login.com/",
+        "http://paypal.com.security.check.login.system.update.confirm-account.info/",
         "https://microsoft-verify-account.example.top/login",
         "https://outlook.office365.mailbox-auth.example.click/reset",
         "https://outlook.office365.challenge-review.mail-access.net/",
@@ -155,7 +156,9 @@ def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse(
         "https://outlook.office365.otp-review.mail-access.net/",
         "https://outlook.office365.session-review.mail-access.net/",
         "https://appleid-confirm-billing.example.info/signin",
+        "https://api.mail.google.com.security.example.net",
         "https://dgt.gob.es.multa-pendiente.secure-payments.xyz",
+        "https://dgt.gob.es.multa.pendiente.secure.payments.confirmacion.xyz/",
         "https://g.co/account/security",
         "https://gov-traffic-fine.example.click/pay",
     )

@@ -114,6 +114,52 @@ def test_url_signal_analyzer_flags_known_deceptive_brand_domain_fragments_in_sub
         assert f"Subdomain observed: {subdomain}." in deceptive_signal.evidence
 
 
+def test_url_signal_analyzer_explains_long_deceptive_paypal_subdomain_chain() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw(
+            "http://paypal.com.security.check.login.system.update.confirm-account.info/"
+        )
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    misleading_signal = next(
+        signal for signal in signals if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
+    )
+
+    assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
+    assert SignalType.MISLEADING_SUBDOMAIN in signal_types
+    assert (
+        "Matched suspicious subdomain labels: login, security, system, update."
+        in misleading_signal.evidence
+    )
+    assert "Subdomain label count observed: 7." in misleading_signal.evidence
+
+
+def test_url_signal_analyzer_explains_long_deceptive_apple_subdomain_chain() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw(
+            "https://appleid.apple.com.verify.session.security-check-login.net/"
+        )
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    misleading_signal = next(
+        signal for signal in signals if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
+    )
+
+    assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
+    assert SignalType.MISLEADING_SUBDOMAIN in signal_types
+    assert (
+        "Matched suspicious subdomain labels: session, verify."
+        in misleading_signal.evidence
+    )
+    assert "Subdomain label count observed: 5." in misleading_signal.evidence
+
+
 def test_url_signal_analyzer_does_not_flag_official_brand_domains_as_deceptive_subdomain() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
@@ -146,12 +192,64 @@ def test_url_signal_analyzer_flags_deceptive_institution_domain_in_subdomain() -
     assert deceptive_signal.message_params["evidence"][0]["params"]["fragment"] == "dgt.gob.es"
 
 
+def test_url_signal_analyzer_explains_long_deceptive_institution_subdomain_chain() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://dgt.gob.es.multa.pendiente.secure.payments.confirmacion.xyz/")
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    misleading_signal = next(
+        signal for signal in signals if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
+    )
+
+    assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
+    assert SignalType.MISLEADING_SUBDOMAIN in signal_types
+    assert (
+        "Matched suspicious subdomain labels: dgt, payments, secure."
+        in misleading_signal.evidence
+    )
+    assert "Subdomain label count observed: 7." in misleading_signal.evidence
+
+
+def test_url_signal_analyzer_strengthens_deep_deceptive_subdomain_chains() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://api.mail.google.com.security.example.net")
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    misleading_signal = next(
+        signal for signal in signals if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
+    )
+
+    assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
+    assert SignalType.MISLEADING_SUBDOMAIN in signal_types
+    assert "Registered domain observed: example.net." in misleading_signal.evidence
+    assert "Subdomain observed: api.mail.google.com.security." in misleading_signal.evidence
+    assert "Matched suspicious subdomain labels: security." in misleading_signal.evidence
+    assert "Subdomain label count observed: 5." in misleading_signal.evidence
+
+
 def test_url_signal_analyzer_does_not_flag_official_institution_domain_as_deceptive_subdomain() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
     signals = analyzer.analyze(NormalizedUrl.from_raw("https://dgt.gob.es/multas"))
 
     assert all(signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN for signal in signals)
+
+
+def test_url_signal_analyzer_does_not_flag_official_deep_brand_subdomains_as_misleading() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://docs.paypal.com.developer.api.internal.paypal.com")
+    )
+
+    assert all(signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN for signal in signals)
+    assert all(signal.signal_type != SignalType.MISLEADING_SUBDOMAIN for signal in signals)
 
 
 def test_url_signal_analyzer_flags_institution_mismatch_lures() -> None:

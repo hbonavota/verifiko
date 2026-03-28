@@ -112,6 +112,7 @@ _OFFICIAL_INSTITUTION_SUFFIXES = (".gov", ".gov.uk", ".gob.es", ".gov.es", ".gc.
 _REDIRECT_KEYS = {"continue", "next", "redirect", "return", "target", "url"}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 _CONTEXTUAL_ACCOUNT_TAKEOVER_KEYWORDS = {"approve", "session"}
+_EXPLANATORY_SUBDOMAIN_LABELS = {"alert", "payments", "security", "system"}
 _GENERIC_AUTH_KEYWORDS = {
     "account",
     "approve",
@@ -139,6 +140,7 @@ class DeterministicUrlSignalAnalyzer:
         signals: list[AnalysisSignal] = []
         host_labels = [label for label in normalized_url.ascii_host.split(".") if label]
         subdomain_labels = [label for label in normalized_url.subdomain.split(".") if label]
+        subdomain_tokens = self._subdomain_tokens(subdomain_labels)
         text_tokens = _tokenize(
             " ".join(
                 [
@@ -154,6 +156,7 @@ class DeterministicUrlSignalAnalyzer:
         brand_matches = sorted(_BRAND_KEYWORDS.intersection(text_tokens))
         institution_context_matches = sorted(_INSTITUTION_CONTEXT_KEYWORDS.intersection(text_tokens))
         institution_demand_matches = sorted(_INSTITUTION_DEMAND_KEYWORDS.intersection(text_tokens))
+        subdomain_lure_matches = self._suspicious_subdomain_label_matches(subdomain_tokens)
         deceptive_brand_pattern = self._deceptive_brand_subdomain_pattern(
             normalized_url,
             subdomain_labels,
@@ -417,7 +420,10 @@ class DeterministicUrlSignalAnalyzer:
             )
 
         if (
-            deceptive_brand_pattern is None
+            (
+                deceptive_brand_pattern is None
+                or self._deep_deceptive_subdomain_chain(subdomain_labels, deceptive_brand_pattern)
+            )
             and not self._is_official_brand_target(normalized_url)
             and self._misleading_subdomain(subdomain_labels, keyword_matches)
         ):
@@ -439,6 +445,15 @@ class DeterministicUrlSignalAnalyzer:
                             evidence_ref(
                                 "evidence.registered_domain_observed",
                                 registered_domain=normalized_url.registered_domain,
+                            ),
+                            evidence_ref(
+                                "evidence.matched_suspicious_subdomain_labels",
+                                labels=", ".join(subdomain_lure_matches[:5])
+                                or message_ref("phrase.placeholder_none_value"),
+                            ),
+                            evidence_ref(
+                                "evidence.subdomain_label_count_observed",
+                                count=len(subdomain_labels),
                             ),
                         ]
                     },
@@ -562,8 +577,32 @@ class DeterministicUrlSignalAnalyzer:
             return True
         if not subdomain_labels:
             return False
-        subdomain_tokens = {token for label in subdomain_labels for token in _tokenize(label.replace("-", " "))}
+        subdomain_tokens = self._subdomain_tokens(subdomain_labels)
         return bool(_SUSPICIOUS_KEYWORDS.intersection(subdomain_tokens))
+
+    def _deep_deceptive_subdomain_chain(
+        self,
+        subdomain_labels: list[str],
+        deceptive_brand_pattern: str | None,
+    ) -> bool:
+        return deceptive_brand_pattern is not None and len(subdomain_labels) >= 4
+
+    def _subdomain_tokens(self, subdomain_labels: list[str]) -> set[str]:
+        return {
+            token
+            for label in subdomain_labels
+            for token in _tokenize(label.replace("-", " "))
+        }
+
+    def _suspicious_subdomain_label_matches(self, subdomain_tokens: set[str]) -> list[str]:
+        suspicious_labels = (
+            _SUSPICIOUS_KEYWORDS
+            | _CONTEXTUAL_ACCOUNT_TAKEOVER_KEYWORDS
+            | _INSTITUTION_CONTEXT_KEYWORDS
+            | _INSTITUTION_DEMAND_KEYWORDS
+            | _EXPLANATORY_SUBDOMAIN_LABELS
+        )
+        return sorted(suspicious_labels.intersection(subdomain_tokens))
 
     def _high_entropy_label(self, labels: list[str]) -> str | None:
         for label in labels:

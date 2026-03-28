@@ -563,6 +563,14 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "Subdomain observed: {subdomain}.",
         "es": "Subdominio observado: {subdomain}.",
     },
+    "evidence.matched_suspicious_subdomain_labels": {
+        "en": "Matched suspicious subdomain labels: {labels}.",
+        "es": "Etiquetas sospechosas de subdominio coincidentes: {labels}.",
+    },
+    "evidence.subdomain_label_count_observed": {
+        "en": "Subdomain label count observed: {count}.",
+        "es": "Cantidad de etiquetas de subdominio observada: {count}.",
+    },
     "evidence.suspicious_label": {
         "en": "Suspicious label: {label}.",
         "es": "Etiqueta sospechosa: {label}.",
