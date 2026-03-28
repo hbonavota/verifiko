@@ -213,22 +213,94 @@ def test_url_signal_analyzer_flags_mailbox_otp_review_lures() -> None:
     assert SignalType.BRAND_IMPERSONATION in signal_types
 
 
+def test_url_signal_analyzer_flags_mailbox_challenge_review_lures() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://outlook.office365.challenge-review.mail-access.net/")
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    assert SignalType.PHISHING_KEYWORDS in signal_types
+    assert SignalType.TACTICAL_EMAIL_STAGING in signal_types
+    assert SignalType.BRAND_IMPERSONATION in signal_types
+
+
+def test_url_signal_analyzer_flags_deceptive_reauth_brand_lures() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://google.com.reauth-security-check.user-access.net/")
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    assert SignalType.PHISHING_KEYWORDS in signal_types
+    assert SignalType.BRAND_IMPERSONATION in signal_types
+    assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
+
+
+def test_url_signal_analyzer_flags_mailbox_session_review_lures() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://outlook.office365.session-review.mail-access.net/")
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    assert SignalType.PHISHING_KEYWORDS in signal_types
+    assert SignalType.TACTICAL_EMAIL_STAGING in signal_types
+    assert SignalType.BRAND_IMPERSONATION in signal_types
+
+
+def test_url_signal_analyzer_flags_deceptive_approve_brand_lures() -> None:
+    analyzer = DeterministicUrlSignalAnalyzer()
+
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://google.com.approve-review.user-access.net/")
+    )
+
+    signal_types = {signal.signal_type for signal in signals}
+    assert SignalType.PHISHING_KEYWORDS in signal_types
+    assert SignalType.BRAND_IMPERSONATION in signal_types
+    assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
+
+
 def test_url_signal_analyzer_does_not_flag_official_mfa_or_passkey_flows_as_phishing() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
     google_signals = analyzer.analyze(NormalizedUrl.from_raw("https://accounts.google.com/passkey"))
+    google_challenge_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://accounts.google.com/challenge")
+    )
+    google_approve_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://accounts.google.com/approve")
+    )
     microsoft_signals = analyzer.analyze(
         NormalizedUrl.from_raw("https://login.microsoftonline.com/common/oauth2/authorize?mfa=required")
     )
     otp_signals = analyzer.analyze(
         NormalizedUrl.from_raw("https://login.microsoftonline.com/common/oauth2/authorize?otp=required")
     )
+    reauth_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://login.microsoftonline.com/common/oauth2/authorize?reauth=true")
+    )
+    session_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://dropbox.com/session")
+    )
 
     assert {signal.signal_type for signal in google_signals} == {
         SignalType.RECOGNIZED_REPUTABLE_DOMAIN
     }
+    assert {signal.signal_type for signal in google_challenge_signals} == {
+        SignalType.RECOGNIZED_REPUTABLE_DOMAIN
+    }
+    assert {signal.signal_type for signal in google_approve_signals} == {
+        SignalType.RECOGNIZED_REPUTABLE_DOMAIN
+    }
     assert microsoft_signals == []
     assert otp_signals == []
+    assert reauth_signals == []
+    assert session_signals == []
 
 
 def test_url_signal_analyzer_flags_recognized_reputable_domains() -> None:

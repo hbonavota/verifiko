@@ -491,6 +491,34 @@ def test_create_url_verification_use_case_strengthens_mailbox_otp_review_lures()
     assert any(signal.signal_type == "brand_impersonation" for signal in dto.signals)
 
 
+def test_create_url_verification_use_case_strengthens_mailbox_challenge_review_lures() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://outlook.office365.challenge-review.mail-access.net/")
+    )
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
+    assert any(signal.signal_type == "tactical_email_staging" for signal in dto.signals)
+    assert any(signal.signal_type == "brand_impersonation" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_strengthens_mailbox_session_review_lures() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://outlook.office365.session-review.mail-access.net/")
+    )
+
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
+    assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
+    assert any(signal.signal_type == "tactical_email_staging" for signal in dto.signals)
+    assert any(signal.signal_type == "brand_impersonation" for signal in dto.signals)
+
+
 def test_create_url_verification_use_case_caps_safe_result_when_coverage_is_degraded() -> None:
     use_case = _build_use_case(html_fetcher=FakeHtmlFetcher(fail=True))
 

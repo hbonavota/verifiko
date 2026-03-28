@@ -15,6 +15,7 @@ _SUSPICIOUS_KEYWORDS = {
     "account",
     "auth",
     "billing",
+    "challenge",
     "confirm",
     "invoice",
     "login",
@@ -25,6 +26,7 @@ _SUSPICIOUS_KEYWORDS = {
     "payroll",
     "recover",
     "recovery",
+    "reauth",
     "reset",
     "secure",
     "signin",
@@ -109,15 +111,20 @@ _COMMON_DOMAIN_SUFFIXES = {"ac", "app", "biz", "co", "com", "dev", "edu", "gov",
 _OFFICIAL_INSTITUTION_SUFFIXES = (".gov", ".gov.uk", ".gob.es", ".gov.es", ".gc.ca")
 _REDIRECT_KEYS = {"continue", "next", "redirect", "return", "target", "url"}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+_CONTEXTUAL_ACCOUNT_TAKEOVER_KEYWORDS = {"approve", "session"}
 _GENERIC_AUTH_KEYWORDS = {
     "account",
+    "approve",
     "auth",
+    "challenge",
     "login",
     "mfa",
     "otp",
     "passkey",
+    "reauth",
     "recovery",
     "secure",
+    "session",
     "signin",
     "verification",
     "verify",
@@ -151,6 +158,16 @@ class DeterministicUrlSignalAnalyzer:
             normalized_url,
             subdomain_labels,
         )
+        if _CONTEXTUAL_ACCOUNT_TAKEOVER_KEYWORDS.intersection(text_tokens) and (
+            brand_matches
+            or _EMAIL_LURE_KEYWORDS.intersection(text_tokens)
+            or deceptive_brand_pattern is not None
+        ):
+            keyword_matches = sorted(
+                set(keyword_matches).union(
+                    _CONTEXTUAL_ACCOUNT_TAKEOVER_KEYWORDS.intersection(text_tokens)
+                )
+            )
         tld = host_labels[-1] if len(host_labels) >= 2 else ""
 
         if normalized_url.is_ip_address:
