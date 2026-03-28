@@ -10,7 +10,7 @@ from app.application.ports.infrastructure_lookup import (
 )
 from app.infrastructure.external_services.outbound_target_guard import (
     UnsafeOutboundTargetError,
-    assert_safe_outbound_host,
+    resolve_safe_outbound_host,
 )
 
 
@@ -21,25 +21,14 @@ class SocketInfrastructureLookup(InfrastructureLookupPort):
 
     def lookup(self, hostname: str, port: int | None = None) -> InfrastructureProfile:
         try:
-            assert_safe_outbound_host(hostname, port)
+            resolution = resolve_safe_outbound_host(hostname, port)
         except UnsafeOutboundTargetError as exc:
             raise InfrastructureLookupError(str(exc)) from exc
 
-        try:
-            addrinfo = socket.getaddrinfo(
-                hostname,
-                port or 443,
-                type=socket.SOCK_STREAM,
-            )
-        except socket.gaierror as exc:
-            raise InfrastructureLookupError(
-                "DNS resolution could not be completed for the target host."
-            ) from exc
-
         resolved_addresses: list[ResolvedAddress] = []
         seen_ips: set[str] = set()
-        for _, _, _, _, sockaddr in addrinfo:
-            ip_address = str(ipaddress.ip_address(sockaddr[0]))
+        for raw_ip_address in resolution.ip_addresses:
+            ip_address = str(ipaddress.ip_address(raw_ip_address))
             if ip_address in seen_ips:
                 continue
             seen_ips.add(ip_address)
@@ -57,7 +46,7 @@ class SocketInfrastructureLookup(InfrastructureLookupPort):
             raise InfrastructureLookupError("DNS resolution returned no usable addresses.")
 
         return InfrastructureProfile(
-            queried_host=hostname,
+            queried_host=resolution.hostname,
             provider_name=self.provider_name,
             resolved_addresses=tuple(resolved_addresses),
         )

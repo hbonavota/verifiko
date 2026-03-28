@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import ipaddress
 import socket
 from urllib.parse import urlsplit
@@ -12,7 +13,18 @@ class UnsafeOutboundTargetError(Exception):
 _BLOCKED_HOST_SUFFIXES = (".internal", ".local", ".localhost", ".home.arpa")
 
 
+@dataclass(frozen=True, slots=True)
+class SafeOutboundResolution:
+    hostname: str
+    port: int
+    ip_addresses: tuple[str, ...]
+
+
 def assert_safe_outbound_url(url: str) -> None:
+    resolve_safe_outbound_url(url)
+
+
+def resolve_safe_outbound_url(url: str) -> SafeOutboundResolution:
     parsed = urlsplit(url)
     if parsed.scheme not in {"http", "https"}:
         raise UnsafeOutboundTargetError(
@@ -21,10 +33,18 @@ def assert_safe_outbound_url(url: str) -> None:
     if not parsed.hostname:
         raise UnsafeOutboundTargetError(resolve_message("error.outbound_target_host_required"))
 
-    assert_safe_outbound_host(parsed.hostname, parsed.port)
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    return resolve_safe_outbound_host(parsed.hostname, port)
 
 
 def assert_safe_outbound_host(hostname: str, port: int | None = None) -> None:
+    resolve_safe_outbound_host(hostname, port)
+
+
+def resolve_safe_outbound_host(
+    hostname: str,
+    port: int | None = None,
+) -> SafeOutboundResolution:
     normalized_host = hostname.strip().lower().rstrip(".")
     if not normalized_host:
         raise UnsafeOutboundTargetError(resolve_message("error.outbound_target_host_required"))
@@ -33,17 +53,24 @@ def assert_safe_outbound_host(hostname: str, port: int | None = None) -> None:
     if "." not in normalized_host and not _looks_like_ip_address(normalized_host):
         raise UnsafeOutboundTargetError(resolve_message("error.outbound_target_single_label_blocked"))
 
-    for resolved_ip in _resolve_host_addresses(normalized_host, port):
+    resolved_port = port or 443
+    addresses = _resolve_host_addresses(normalized_host, resolved_port)
+    for resolved_ip in addresses:
         if not resolved_ip.is_global:
             raise UnsafeOutboundTargetError(
                 resolve_message("error.outbound_target_private_special_use_address_blocked")
             )
+    return SafeOutboundResolution(
+        hostname=normalized_host,
+        port=resolved_port,
+        ip_addresses=tuple(str(address) for address in addresses),
+    )
 
 
 def _resolve_host_addresses(
     hostname: str,
     port: int | None,
-) -> set[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+) -> tuple[ipaddress.IPv4Address | ipaddress.IPv6Address, ...]:
     try:
         addrinfo = socket.getaddrinfo(
             hostname,
@@ -55,10 +82,15 @@ def _resolve_host_addresses(
             resolve_message("error.outbound_target_host_unresolved_for_safety_validation")
         ) from exc
 
-    addresses: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
+    addresses: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = []
+    seen: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
     for _, _, _, _, sockaddr in addrinfo:
-        addresses.add(ipaddress.ip_address(sockaddr[0]))
-    return addresses
+        ip_address = ipaddress.ip_address(sockaddr[0])
+        if ip_address in seen:
+            continue
+        seen.add(ip_address)
+        addresses.append(ip_address)
+    return tuple(addresses)
 
 
 def _looks_like_ip_address(value: str) -> bool:
