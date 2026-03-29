@@ -3,7 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../lib/auth";
 import { useI18n } from "../../lib/i18n";
 
+const GOOGLE_IDENTITY_SCRIPT_SELECTOR = 'script[data-google-identity="true"]';
+const GOOGLE_IDENTITY_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
+const GOOGLE_IDENTITY_LOAD_TIMEOUT_MS = 10_000;
+// Production must set the same OAuth web client ID in both the web and API projects.
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? "";
+
+let googleIdentityScriptPromise: Promise<void> | null = null;
+let hasLoggedMissingClientId = false;
+let hasLoggedInitializationFailure = false;
 
 interface GoogleSignInButtonProps {
   className?: string;
@@ -25,21 +33,31 @@ export function GoogleSignInButton({
   const { copy, language } = useI18n();
   const { isAuthenticating, loginWithGoogleCredential } = useAuth();
   const buttonRef = useRef<HTMLDivElement | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [runtimeErrorMessage, setRuntimeErrorMessage] = useState<string | null>(null);
   const busyState = busy || isAuthenticating;
   const variantClassName = variant === "quota" ? "google-sign-in--quota" : "";
   const rootClassName = ["google-sign-in", variantClassName, busyState ? "google-sign-in--busy" : "", className]
     .filter(Boolean)
     .join(" ");
+  const configurationErrorMessage = !GOOGLE_CLIENT_ID ? copy.topbar.googleSignInNotConfigured : null;
+  const errorMessage = configurationErrorMessage ?? runtimeErrorMessage;
 
   useEffect(() => {
     const host = buttonRef.current;
-    if (!host || !GOOGLE_CLIENT_ID) {
+    if (!host || configurationErrorMessage) {
+      if (configurationErrorMessage && !hasLoggedMissingClientId) {
+        console.error(
+          "[GoogleSignInButton] VITE_GOOGLE_CLIENT_ID is not configured. Google Sign-In is disabled.",
+        );
+        hasLoggedMissingClientId = true;
+      }
       return;
     }
 
+    let isCancelled = false;
+
     function renderButton() {
-      if (!window.google?.accounts?.id || !host) {
+      if (!window.google?.accounts?.id || !host || isCancelled) {
         return;
       }
 
@@ -53,11 +71,11 @@ export function GoogleSignInButton({
 
           void loginWithGoogleCredential(response.credential)
             .then(async () => {
-              setErrorMessage(null);
+              setRuntimeErrorMessage(null);
               await onSuccess?.();
             })
             .catch((error) => {
-              setErrorMessage(
+              setRuntimeErrorMessage(
                 error instanceof Error ? error.message : copy.topbar.authenticationFailed,
               );
             });
@@ -70,43 +88,121 @@ export function GoogleSignInButton({
         theme: variant === "quota" ? "filled_black" : "outline",
         size: variant === "quota" ? "large" : "medium",
         shape: "pill",
-        text: variant === "quota" ? "continue_with" : "signin_with",
+        text: "continue_with",
         locale: language === "es" ? "es" : "en",
       });
     }
 
-    if (window.google?.accounts?.id) {
-      renderButton();
-      return;
-    }
+    void ensureGoogleIdentityScript()
+      .then(() => {
+        if (isCancelled) {
+          return;
+        }
 
-    const script = document.querySelector<HTMLScriptElement>('script[data-google-identity="true"]');
-    if (!script) {
-      return;
-    }
+        setRuntimeErrorMessage(null);
+        renderButton();
+      })
+      .catch((error) => {
+        if (isCancelled) {
+          return;
+        }
 
-    script.addEventListener("load", renderButton);
+        if (!hasLoggedInitializationFailure) {
+          console.error("[GoogleSignInButton] Failed to initialize Google Sign-In.", error);
+          hasLoggedInitializationFailure = true;
+        }
+        setRuntimeErrorMessage(copy.topbar.googleSignInUnavailable);
+      });
+
     return () => {
-      script.removeEventListener("load", renderButton);
+      isCancelled = true;
     };
-  }, [copy.topbar.authenticationFailed, language, loginWithGoogleCredential, onSuccess, variant]);
-
-  if (!GOOGLE_CLIENT_ID) {
-    return null;
-  }
+  }, [
+    configurationErrorMessage,
+    copy.topbar.authenticationFailed,
+    copy.topbar.googleSignInUnavailable,
+    language,
+    loginWithGoogleCredential,
+    onSuccess,
+    variant,
+  ]);
 
   return (
     <div className={rootClassName}>
-      <div
-        aria-label={copy.topbar.signInWithGoogle}
-        className="google-sign-in__button"
-        onClickCapture={onInteraction}
-        ref={buttonRef}
-      />
+      {errorMessage ? (
+        <button
+          aria-label={copy.topbar.signInWithGoogle}
+          className="google-sign-in__fallback"
+          disabled
+          type="button"
+        >
+          {copy.topbar.signInWithGoogle}
+        </button>
+      ) : (
+        <div
+          aria-label={copy.topbar.signInWithGoogle}
+          className="google-sign-in__button"
+          onClickCapture={onInteraction}
+          ref={buttonRef}
+        />
+      )}
       {busyState ? (
         <p className="google-sign-in__hint">{busyLabel ?? copy.topbar.signingIn}</p>
       ) : null}
       {errorMessage ? <p className="google-sign-in__error">{errorMessage}</p> : null}
     </div>
   );
+}
+
+function ensureGoogleIdentityScript(): Promise<void> {
+  if (window.google?.accounts?.id) {
+    return Promise.resolve();
+  }
+
+  if (!googleIdentityScriptPromise) {
+    googleIdentityScriptPromise = new Promise<void>((resolve, reject) => {
+      const existingScript = document.querySelector<HTMLScriptElement>(GOOGLE_IDENTITY_SCRIPT_SELECTOR);
+      const script = existingScript ?? document.createElement("script");
+
+      if (!existingScript) {
+        script.async = true;
+        script.defer = true;
+        script.dataset.googleIdentity = "true";
+        script.src = GOOGLE_IDENTITY_SCRIPT_SRC;
+        document.head.appendChild(script);
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        cleanup();
+        reject(new Error("Google Identity Services did not initialize before timeout."));
+      }, GOOGLE_IDENTITY_LOAD_TIMEOUT_MS);
+
+      const intervalId = window.setInterval(() => {
+        if (!window.google?.accounts?.id) {
+          return;
+        }
+
+        cleanup();
+        resolve();
+      }, 50);
+
+      function handleError() {
+        cleanup();
+        reject(new Error("Google Identity Services failed to load."));
+      }
+
+      function cleanup() {
+        window.clearInterval(intervalId);
+        window.clearTimeout(timeoutId);
+        script.removeEventListener("error", handleError);
+      }
+
+      script.addEventListener("error", handleError, { once: true });
+    }).catch((error) => {
+      googleIdentityScriptPromise = null;
+      throw error;
+    });
+  }
+
+  return googleIdentityScriptPromise;
 }
