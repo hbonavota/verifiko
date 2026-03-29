@@ -3,19 +3,35 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 
 import brandMark from "../assets/verifiko-mark.svg";
 import { EmailAuthModal } from "../components/auth/EmailAuthModal";
+import { Button } from "../components/ui/Button";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { primaryNavigation } from "../data/navigation";
 import { trackAuthEntryClicked } from "../lib/analytics";
 import { useAuth } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
 
+function displayNameForUser(user: NonNullable<ReturnType<typeof useAuth>["currentUser"]>): string {
+  return user.display_name?.trim() || user.email;
+}
+
+function initialsForUser(user: NonNullable<ReturnType<typeof useAuth>["currentUser"]>): string {
+  return displayNameForUser(user)
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((segment) => segment.charAt(0).toUpperCase())
+    .join("");
+}
+
 export function Sidebar() {
   const location = useLocation();
   const { copy, language } = useI18n();
-  const { currentUser, quotaStatus } = useAuth();
+  const { currentUser, logout, quotaStatus } = useAuth();
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
   const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
   const isAuthenticated = Boolean(currentUser);
+  const displayName = currentUser ? displayNameForUser(currentUser) : "";
+  const initials = currentUser ? initialsForUser(currentUser) : "";
 
   function isActiveItem(href: string): boolean {
     const currentPath = `${location.pathname}${location.hash}`;
@@ -73,6 +89,35 @@ export function Sidebar() {
           </button>
         ) : null}
       </nav>
+
+      {currentUser ? (
+        <section aria-label={copy.topbar.account} className="sidebar-account">
+          <div className="sidebar-account__identity">
+            <div className="sidebar-account__avatar" aria-hidden="true">
+              {currentUser.avatar_url ? (
+                <img
+                  alt=""
+                  className="sidebar-account__avatar-image"
+                  referrerPolicy="no-referrer"
+                  src={currentUser.avatar_url}
+                />
+              ) : (
+                <span>{initials || "V"}</span>
+              )}
+            </div>
+            <div className="sidebar-account__copy">
+              <p className="sidebar-account__label">{copy.topbar.accountHistoryEnabled}</p>
+              <p className="sidebar-account__value">{displayName}</p>
+              <p className="sidebar-account__meta">{currentUser.email}</p>
+            </div>
+          </div>
+          <div className="sidebar-account__actions">
+            <Button className="sidebar-account__logout" onClick={logout} variant="secondary">
+              {copy.topbar.signOut}
+            </Button>
+          </div>
+        </section>
+      ) : null}
       <EmailAuthModal open={isEmailAuthModalOpen} onClose={() => setIsEmailAuthModalOpen(false)} />
     </aside>
   );
