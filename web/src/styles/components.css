@@ -2157,9 +2157,9 @@
 .analysis-hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
-  gap: clamp(1.15rem, 2.2vw, 1.8rem);
-  align-items: start;
+  grid-template-columns: 1fr;
+  gap: clamp(0.95rem, 2vw, 1.5rem);
+  align-items: stretch;
 }
 
 .analysis-hero::before {
@@ -2223,10 +2223,6 @@
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.analysis-form--hero .field__hint {
-  font-size: 0.82rem;
 }
 
 .analysis-form__button--hero {
@@ -2599,10 +2595,6 @@
 }
 
 @media (max-width: 1360px) {
-  .analysis-hero {
-    grid-template-columns: minmax(0, 1.12fr) minmax(260px, 0.88fr);
-  }
-
   .dashboard-grid {
     grid-template-columns: minmax(0, 1.62fr) minmax(272px, 0.78fr);
   }

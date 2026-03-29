@@ -57,6 +57,7 @@ interface AnalyzeUrlFormProps {
   inputLabel?: string;
   onStateChange?: (state: "idle" | "submitting" | "error") => void;
   placeholder?: string;
+  showProPanel?: boolean;
   submittingLabel?: string;
 }
 
@@ -70,6 +71,7 @@ export function AnalyzeUrlForm({
   inputLabel,
   onStateChange,
   placeholder,
+  showProPanel = true,
   submittingLabel,
 }: AnalyzeUrlFormProps) {
   const { copy, language } = useI18n();
@@ -329,61 +331,64 @@ export function AnalyzeUrlForm({
           ) : null}
         </section>
       ) : null}
-      {showQuotaPanel ? (
-        <section className="analysis-form__quota analysis-form__quota--prominent" aria-live="polite">
-          <div className="analysis-form__quota-body">
-            <p className="analysis-form__quota-eyebrow">{quotaPanelCopy.eyebrow}</p>
-            <p className="analysis-form__quota-title">{quotaPanelCopy.title}</p>
-            <p className="analysis-form__quota-copy">{quotaPanelCopy.description}</p>
-            <p className="analysis-form__quota-meta">{quotaResetCopy}</p>
-          </div>
-          <div className="analysis-form__quota-actions">
-            {quotaPlan === "ANONYMOUS" ? (
-              <div className="analysis-form__quota-auth-actions">
-                <Button
-                  className="analysis-form__quota-email"
-                  disabled={isQuotaRetrying}
-                  onClick={() => setIsEmailAuthModalOpen(true)}
-                  variant="secondary"
-                >
-                  {copy.topbar.signInWithEmail}
-                </Button>
-                <GoogleSignInButton
-                  className="analysis-form__quota-signin"
-                  variant="quota"
-                  busy={isQuotaRetrying}
-                  busyLabel={copy.analyzeForm.quota.retrying}
-                  onSuccess={retryAfterAuthentication}
-                />
-              </div>
-            ) : null}
-            {quotaPanelCopy.valueCue ? (
-              <p className="analysis-form__quota-value-cue">{quotaPanelCopy.valueCue}</p>
-            ) : null}
-            {quotaPlan === "FREE" ? (
+  {
+    showQuotaPanel ? (
+      <section className="analysis-form__quota analysis-form__quota--prominent" aria-live="polite">
+        <div className="analysis-form__quota-body">
+          <p className="analysis-form__quota-eyebrow">{quotaPanelCopy.eyebrow}</p>
+          <p className="analysis-form__quota-title">{quotaPanelCopy.title}</p>
+          <p className="analysis-form__quota-copy">{quotaPanelCopy.description}</p>
+          <p className="analysis-form__quota-meta">{quotaResetCopy}</p>
+        </div>
+        <div className="analysis-form__quota-actions">
+          {quotaPlan === "ANONYMOUS" ? (
+            <div className="analysis-form__quota-auth-actions">
               <Button
-                className="analysis-form__quota-upgrade"
-                onClick={() => {
-                  openUpgradeModal("quota_blocked");
-                }}
-                variant={hasSubmittedUpgradeIntent ? "secondary" : "primary"}
+                className="analysis-form__quota-email"
+                disabled={isQuotaRetrying}
+                onClick={() => setIsEmailAuthModalOpen(true)}
+                variant="secondary"
               >
-                {hasSubmittedUpgradeIntent
-                  ? copy.analyzeForm.quota.upgradeSavedCta
-                  : copy.analyzeForm.quota.upgradeCta}
+                {copy.topbar.signInWithEmail}
               </Button>
-            ) : null}
-            {quotaPlan === "ANONYMOUS" ? (
-              isQuotaRetrying ? (
-                <p className="analysis-form__quota-note">{copy.analyzeForm.quota.retrying}</p>
-              ) : null
-            ) : (
-              <p className="analysis-form__quota-note">{quotaPanelCopy.note}</p>
-            )}
-          </div>
-        </section>
-      ) : null}
-      {quotaStatus?.plan !== "PRO" && !showQuotaPanel ? (
+              <GoogleSignInButton
+                className="analysis-form__quota-signin"
+                variant="quota"
+                busy={isQuotaRetrying}
+                busyLabel={copy.analyzeForm.quota.retrying}
+                onSuccess={retryAfterAuthentication}
+              />
+            </div>
+          ) : null}
+          {quotaPanelCopy.valueCue ? (
+            <p className="analysis-form__quota-value-cue">{quotaPanelCopy.valueCue}</p>
+          ) : null}
+          {quotaPlan === "FREE" ? (
+            <Button
+              className="analysis-form__quota-upgrade"
+              onClick={() => {
+                openUpgradeModal("quota_blocked");
+              }}
+              variant={hasSubmittedUpgradeIntent ? "secondary" : "primary"}
+            >
+              {hasSubmittedUpgradeIntent
+                ? copy.analyzeForm.quota.upgradeSavedCta
+                : copy.analyzeForm.quota.upgradeCta}
+            </Button>
+          ) : null}
+          {quotaPlan === "ANONYMOUS" ? (
+            isQuotaRetrying ? (
+              <p className="analysis-form__quota-note">{copy.analyzeForm.quota.retrying}</p>
+            ) : null
+          ) : (
+            <p className="analysis-form__quota-note">{quotaPanelCopy.note}</p>
+          )}
+        </div>
+      </section>
+    ) : null
+  }
+  {
+    showProPanel && quotaStatus?.plan !== "PRO" && !showQuotaPanel ? (
         <section className="analysis-form__pro-panel" aria-label={copy.analyzeForm.proValue.title}>
           <div className="analysis-form__pro-panel-header">
             <p className="analysis-form__pro-panel-eyebrow">{copy.analyzeForm.proValue.eyebrow}</p>

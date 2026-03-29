@@ -33,6 +33,11 @@
   text-decoration: none;
 }
 
+.sidebar__header {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .topbar__eyebrow,
 .section-title__eyebrow,
 .card__eyebrow,
@@ -92,7 +97,8 @@
   align-self: flex-start;
 }
 
-.sidebar-nav__link {
+.sidebar-nav__link,
+.sidebar-nav__button {
   display: inline-flex;
   align-items: center;
   padding: 0.82rem 0.95rem;
@@ -103,11 +109,24 @@
   transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
+.sidebar-nav__button {
+  width: 100%;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .sidebar-nav__link:hover,
-.sidebar-nav__link--active {
+.sidebar-nav__link--active,
+.sidebar-nav__button:hover {
   border-color: var(--color-border);
   background: var(--color-surface-strong);
   color: var(--color-text);
+}
+
+.sidebar-nav__button--mobile-only {
+  display: none;
 }
 
 .app-layout__main {
@@ -320,6 +339,13 @@
   border-top: 1px solid rgba(160, 176, 196, 0.12);
 }
 
+.site-footer__inner {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
 .site-footer__text {
   margin: 0;
   color: var(--color-text-muted);
@@ -457,9 +483,9 @@
   }
 
   .sidebar {
+    position: sticky;
     grid-template-columns: 1fr;
-    justify-items: start;
-    gap: var(--space-2);
+    gap: var(--space-3);
     padding-top: var(--space-3);
     padding-bottom: var(--space-3);
   }
@@ -473,6 +499,17 @@
     display: none;
   }
 
+  .brand-lockup {
+    min-width: 0;
+  }
+
+  .sidebar__header {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
   .brand-lockup__mark {
     width: 34px;
     height: 34px;
@@ -484,13 +521,28 @@
   }
 
   .sidebar-nav {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row;
+    grid-auto-columns: initial;
+    overflow: visible;
+    justify-content: stretch;
     width: 100%;
-    gap: var(--space-2);
+  }
+
+  .sidebar-nav__link,
+  .sidebar-nav__button {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .sidebar-nav__button--mobile-only {
+    display: inline-flex;
   }
 
   .content-shell {
     padding-top: var(--space-3);
-    padding-bottom: calc(var(--space-6) + 4.5rem);
+    padding-bottom: var(--space-7);
   }
 
   .page-shell,
@@ -510,7 +562,12 @@
     padding-top: var(--space-3);
   }
 
+  .site-footer__inner {
+    gap: var(--space-2);
+  }
+
   .site-footer__text {
     font-size: 0.82rem;
+    text-align: center;
   }
 }
