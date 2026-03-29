@@ -279,6 +279,7 @@ export function adaptApiVerification(verification: ApiVerification, language: La
 
   return {
     id: verification.id,
+    isOwned: verification.is_owned,
     subject: verification.original_input,
     normalizedInput: verification.normalized_input,
     score: verification.risk_assessment?.score ?? 100,

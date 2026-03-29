@@ -59,6 +59,7 @@ export interface RecommendedAction {
 
 export interface VerificationSummary {
   id: string;
+  isOwned: boolean;
   subject: string;
   normalizedInput: string;
   score: number;
@@ -122,6 +123,7 @@ export interface ApiRiskAssessment {
 
 export interface ApiVerification {
   id: string;
+  is_owned: boolean;
   target_type: string;
   original_input: string;
   normalized_input: string;

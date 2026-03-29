@@ -102,6 +102,7 @@ class RiskAssessmentDTO:
 @dataclass(frozen=True, slots=True)
 class VerificationDTO:
     id: str
+    is_owned: bool
     target_type: str
     original_input: str
     normalized_input: str

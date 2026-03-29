@@ -236,7 +236,7 @@ export function VerificationDetailPage() {
           <p className="muted-copy verification-detail__summary-copy">
             {copy.detail.summaryCopy}
           </p>
-          {currentUser ? (
+          {verification.isOwned && currentUser ? (
             <div className="verification-detail__ownership">
               <Badge
                 label={detailSource === "fresh" ? copy.detail.savedNow : copy.detail.openedFromHistory}

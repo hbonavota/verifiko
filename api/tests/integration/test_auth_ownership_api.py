@@ -325,6 +325,8 @@ def test_authenticated_create_assigns_owner_while_anonymous_create_remains_allow
 
     assert owned_response.status_code == 201
     assert anonymous_response.status_code == 201
+    assert owned_response.json()["is_owned"] is True
+    assert anonymous_response.json()["is_owned"] is False
 
     user_repository = get_user_repository()
     owner = user_repository.get_by_email("alice@example.com")
@@ -399,6 +401,7 @@ def test_my_verifications_returns_only_owned_records(client: TestClient) -> None
         headers=_authorization_header(alice["access_token"]),
     )
     assert alice_list.status_code == 200
+    assert all(item["is_owned"] is True for item in alice_list.json())
     alice_ids = {item["id"] for item in alice_list.json()}
     assert alice_ids == {alice_first.json()["id"], alice_second.json()["id"]}
 

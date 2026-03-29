@@ -154,6 +154,7 @@ class VerificationMapper:
 
         return VerificationDTO(
             id=str(verification.id),
+            is_owned=verification.user_id is not None,
             target_type=verification.target_type.value,
             original_input=verification.original_input,
             normalized_input=verification.normalized_input.normalized,

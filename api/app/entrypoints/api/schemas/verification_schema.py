@@ -128,6 +128,7 @@ class VerificationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    is_owned: bool
     target_type: str
     original_input: str
     normalized_input: str

@@ -3,6 +3,7 @@ import type { VerificationSummary } from "../types/verification";
 export const mockVerifications: VerificationSummary[] = [
   {
     id: "vfk-2418",
+    isOwned: true,
     subject: "verifiko.es/login",
     normalizedInput: "https://verifiko.es/login",
     score: 36,
@@ -115,6 +116,7 @@ export const mockVerifications: VerificationSummary[] = [
   },
   {
     id: "vfk-2421",
+    isOwned: true,
     subject: "payroll-gateway.net",
     normalizedInput: "https://payroll-gateway.net/",
     score: 58,
@@ -261,6 +263,7 @@ export const mockVerifications: VerificationSummary[] = [
   },
   {
     id: "vfk-2424",
+    isOwned: true,
     subject: "portal-archive.gov.example",
     normalizedInput: "https://portal-archive.gov.example/",
     score: 84,
