@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { AnalyzeUrlForm } from "../components/analysis/AnalyzeUrlForm";
 import { ScoreRing } from "../components/analysis/ScoreRing";
@@ -8,7 +9,7 @@ import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
 import { useAuth } from "../lib/auth";
-import { listMyVerifications } from "../lib/api";
+import { createVerification, type ApiRequestError, listMyVerifications } from "../lib/api";
 import { formatRiskLevel, formatVerdict } from "../lib/formatVerdict";
 import { useI18n } from "../lib/i18n";
 import { adaptApiVerification } from "../lib/verificationAdapter";
@@ -21,11 +22,45 @@ function toneForCount(riskLevel: RiskLevel) {
   return toneForRiskLevel(riskLevel);
 }
 
+function firstName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  return trimmed.split(/\s+/)[0] ?? trimmed;
+}
+
+function formatRelativeTimestamp(value: string, locale: string, language: "en" | "es"): string {
+  const timestamp = new Date(value).getTime();
+  const diffSeconds = Math.round((timestamp - Date.now()) / 1000);
+  const absSeconds = Math.abs(diffSeconds);
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+
+  if (absSeconds < 60) {
+    return language === "es" ? "hace un momento" : "just now";
+  }
+  if (absSeconds < 3600) {
+    return formatter.format(Math.round(diffSeconds / 60), "minute");
+  }
+  if (absSeconds < 86400) {
+    return formatter.format(Math.round(diffSeconds / 3600), "hour");
+  }
+  return formatter.format(Math.round(diffSeconds / 86400), "day");
+}
+
+function verificationDetailUrl(id: string): string {
+  return new URL(`/verifications/${id}`, window.location.origin).toString();
+}
+
 export function DashboardPage() {
   const { copy, language, locale } = useI18n();
-  const { authReady, currentUser } = useAuth();
+  const { authReady, currentUser, refreshQuotaStatus } = useAuth();
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [copiedVerificationId, setCopiedVerificationId] = useState<string | null>(null);
+  const [rerunningVerificationId, setRerunningVerificationId] = useState<string | null>(null);
+  const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
 
   useDocumentMeta(
     copy.dashboard.metaTitle,
@@ -79,11 +114,86 @@ export function DashboardPage() {
 
   const activeVerification = verifications[0] ?? null;
   const showOwnedLoading = authReady && !!currentUser && isHistoryLoading;
+  const workspaceOwner = currentUser ? firstName(currentUser.display_name || currentUser.email) : null;
+  const latestSavedAt = activeVerification
+    ? new Date(activeVerification.createdAt).toLocaleString(locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : copy.dashboard.noSavedYetShort;
+
+  useEffect(() => {
+    if (!copiedVerificationId) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCopiedVerificationId(null);
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [copiedVerificationId]);
 
   const activeReasons =
     activeVerification && activeVerification.signals.length > 0
       ? activeVerification.signals.slice(0, 3).map((signal) => signal.reason)
       : [copy.dashboard.noRecentAnalysis];
+
+  async function handleCopyLink(verificationId: string) {
+    if (!navigator.clipboard?.writeText) {
+      setWorkspaceMessage(copy.dashboard.copyLinkUnavailable);
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(verificationDetailUrl(verificationId));
+      setCopiedVerificationId(verificationId);
+      setWorkspaceMessage(null);
+    } catch {
+      setWorkspaceMessage(copy.dashboard.copyLinkUnavailable);
+    }
+  }
+
+  async function handleRerunVerification(verification: VerificationSummary) {
+    setRerunningVerificationId(verification.id);
+    setWorkspaceMessage(null);
+
+    try {
+      const payload = await createVerification({ url: verification.normalizedInput });
+      const nextVerification = adaptApiVerification(payload, language);
+      setVerifications((current) => [
+        nextVerification,
+        ...current.filter((item) => item.id !== nextVerification.id),
+      ]);
+      void refreshQuotaStatus();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : copy.dashboard.rerunFailed;
+      setWorkspaceMessage(message);
+    } finally {
+      setRerunningVerificationId(null);
+    }
+  }
+
+  async function handleShareVerification(verificationId: string) {
+    if (typeof navigator.share !== "function") {
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: copy.detail.title,
+        url: verificationDetailUrl(verificationId),
+      });
+      setWorkspaceMessage(null);
+    } catch {
+      // Ignore share cancellations.
+    }
+  }
 
   return (
     <PageShell>
@@ -92,6 +202,38 @@ export function DashboardPage() {
         title={copy.dashboard.title}
         description={copy.dashboard.description}
       />
+
+      {currentUser ? (
+        <section className="dashboard-workspace-banner" aria-label={copy.dashboard.workspaceEyebrow}>
+          <div className="dashboard-workspace-banner__copy">
+            <p className="dashboard-workspace-banner__eyebrow">{copy.dashboard.workspaceEyebrow}</p>
+            <p className="dashboard-workspace-banner__owner">{workspaceOwner}</p>
+            <p className="dashboard-workspace-banner__description">{copy.dashboard.workspaceDescription}</p>
+          </div>
+
+          <div className="dashboard-workspace-banner__stats">
+            <StatPill
+              label={copy.dashboard.savedVerifications}
+              value={String(verifications.length)}
+              tone="primary"
+            />
+            <StatPill
+              label={copy.dashboard.latestVerdictLabel}
+              value={
+                activeVerification
+                  ? formatRiskLevel(activeVerification.riskLevel, language)
+                  : copy.dashboard.empty
+              }
+              tone={activeVerification ? toneForRiskLevel(activeVerification.riskLevel) : "neutral"}
+            />
+            <StatPill
+              label={copy.dashboard.lastSavedLabel}
+              value={latestSavedAt}
+              tone="neutral"
+            />
+          </div>
+        </section>
+      ) : null}
 
       <Card
         eyebrow={copy.dashboard.newVerification}
@@ -371,34 +513,108 @@ export function DashboardPage() {
             className="dashboard-rail-card"
           >
             {showOwnedLoading ? (
-              <p className="metric-card__detail">{copy.dashboard.loadingHistoryCopy}</p>
+              <div className="dashboard-history-skeleton" aria-hidden="true">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={`history-skeleton-${index}`} className="dashboard-history-skeleton__item">
+                    <span className="dashboard-history-skeleton__line dashboard-history-skeleton__line--eyebrow" />
+                    <span className="dashboard-history-skeleton__line dashboard-history-skeleton__line--title" />
+                    <span className="dashboard-history-skeleton__line" />
+                    <span className="dashboard-history-skeleton__line dashboard-history-skeleton__line--short" />
+                  </div>
+                ))}
+              </div>
             ) : verifications.length > 0 ? (
               <div className="activity-feed">
-                {verifications.slice(0, 5).map((verification) => (
-                  <article key={verification.id} className="activity-feed__item activity-feed__item--saved">
-                    <p className="activity-feed__eyebrow">{copy.dashboard.savedResultTag}</p>
+                {verifications.slice(0, 5).map((verification, index) => (
+                  <article
+                    key={verification.id}
+                    className={`activity-feed__item activity-feed__item--saved${index === 0 ? " activity-feed__item--latest" : ""}`}
+                  >
+                    <p className="activity-feed__eyebrow">
+                      {index === 0 ? copy.dashboard.latestSavedTag : copy.dashboard.savedResultTag}
+                    </p>
                     <div className="activity-feed__row">
-                      <p className="activity-feed__title" title={verification.subject}>{verification.subject}</p>
-                      <span className={`activity-feed__actor activity-feed__actor--${toneForCount(verification.riskLevel)}`}>
-                        {formatRiskLevel(verification.riskLevel, language)}
-                      </span>
+                      <Link
+                        className="activity-feed__title-link"
+                        title={verification.subject}
+                        to={`/verifications/${verification.id}`}
+                      >
+                        <p className="activity-feed__title" title={verification.subject}>{verification.subject}</p>
+                      </Link>
+                      <div className="activity-feed__status">
+                        <Badge
+                          label={formatRiskLevel(verification.riskLevel, language)}
+                          tone={toneForCount(verification.riskLevel)}
+                        />
+                        <p className="activity-feed__verdict">
+                          {formatVerdict(verification.verdict, language)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="activity-feed__meta">
+                      <p
+                        className="activity-feed__timestamp"
+                        title={new Date(verification.createdAt).toLocaleString(locale)}
+                      >
+                        {formatRelativeTimestamp(verification.createdAt, locale, language)}
+                      </p>
+                      <p className="activity-feed__meta-copy">
+                        {copy.dashboard.signalsCaptured.replace(
+                          "{count}",
+                          String(verification.signals.length),
+                        )}
+                      </p>
                     </div>
                     <p className="activity-feed__detail">{verification.summary}</p>
                     <div className="activity-feed__footer">
-                      <p className="activity-feed__timestamp">
-                        {new Date(verification.createdAt).toLocaleString(locale)}
-                      </p>
-                      <Button to={`/verifications/${verification.id}`} variant="ghost">
-                        {copy.dashboard.openSavedResult}
-                      </Button>
+                      <div className="activity-feed__actions">
+                        <Button to={`/verifications/${verification.id}`} variant="ghost">
+                          {copy.dashboard.openAction}
+                        </Button>
+                        <Button
+                          onClick={() => void handleCopyLink(verification.id)}
+                          variant="ghost"
+                        >
+                          {copiedVerificationId === verification.id
+                            ? copy.dashboard.copiedAction
+                            : copy.dashboard.copyLinkAction}
+                        </Button>
+                        <Button
+                          disabled={rerunningVerificationId === verification.id}
+                          onClick={() => void handleRerunVerification(verification)}
+                          variant="ghost"
+                        >
+                          {rerunningVerificationId === verification.id
+                            ? copy.dashboard.rerunningAction
+                            : copy.dashboard.rerunAction}
+                        </Button>
+                        {typeof navigator.share === "function" ? (
+                          <Button
+                            onClick={() => void handleShareVerification(verification.id)}
+                            variant="ghost"
+                          >
+                            {copy.dashboard.shareAction}
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                   </article>
                 ))}
+                {workspaceMessage ? (
+                  <p className="dashboard-workspace-message" role="status">
+                    {workspaceMessage}
+                  </p>
+                ) : null}
               </div>
             ) : currentUser ? (
-              <div className="notes-panel">
-                <p className="recommendation-panel__headline">{copy.dashboard.emptySignedInTitle}</p>
-                <p className="notes-panel__text">{copy.dashboard.emptySignedInCopy}</p>
+              <div className="dashboard-history-empty">
+                <p className="recommendation-panel__headline">{copy.dashboard.noVerificationsYetTitle}</p>
+                <p className="notes-panel__text">{copy.dashboard.noVerificationsYetCopy}</p>
+                <div className="dashboard-action-stack">
+                  <Button href="#verifications" variant="primary">
+                    {copy.dashboard.emptySignedInAction}
+                  </Button>
+                </div>
               </div>
             ) : (
               <p className="metric-card__detail">{copy.common.noResultsYet}</p>
@@ -416,7 +632,25 @@ export function DashboardPage() {
               <div className="notes-panel">
                 <p className="recommendation-panel__headline">{activeVerification.recommendation.title}</p>
                 <p className="notes-panel__text">{activeVerification.recommendation.detail}</p>
+                <div className="dashboard-action-stack">
+                  <Button to={`/verifications/${activeVerification.id}`} variant="primary">
+                    {copy.dashboard.openSavedResult}
+                  </Button>
+                  <Button href="#verifications" variant="secondary">
+                    {copy.dashboard.verifyAnotherLink}
+                  </Button>
+                </div>
                 <p className="notes-panel__meta">{activeVerification.executiveSummary.operationalImpact}</p>
+              </div>
+            ) : currentUser ? (
+              <div className="notes-panel">
+                <p className="recommendation-panel__headline">{copy.dashboard.emptySignedInTitle}</p>
+                <p className="notes-panel__text">{copy.dashboard.emptySignedInCopy}</p>
+                <div className="dashboard-action-stack">
+                  <Button href="#verifications" variant="primary">
+                    {copy.dashboard.emptySignedInAction}
+                  </Button>
+                </div>
               </div>
             ) : (
               <p className="metric-card__detail">{copy.dashboard.nextStepAppearsLater}</p>
