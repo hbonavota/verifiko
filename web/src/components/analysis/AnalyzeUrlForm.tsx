@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
@@ -7,11 +7,16 @@ import { useAuth } from "../../lib/auth";
 import type { ApiQuotaStatus } from "../../types/verification";
 import { ApiRequestError, createVerification } from "../../lib/api";
 import {
+  trackAuthEntryClicked,
+  trackAnalysisInputStarted,
   categorizeAnalysisError,
   detectDegradedCoverage,
   trackAnalysisCompleted,
   trackAnalysisFailed,
   trackAnalysisStarted,
+  trackQuotaBlocked,
+  trackQuotaPromptShown,
+  trackUpgradeIntentClicked,
 } from "../../lib/analytics";
 import { adaptApiVerification } from "../../lib/verificationAdapter";
 import { useI18n } from "../../lib/i18n";
@@ -91,12 +96,16 @@ export function AnalyzeUrlForm({
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
   const [upgradeModalSource, setUpgradeModalSource] = useState<UpgradeIntentSource>("pro_panel");
   const [inputType, setInputType] = useState<"manual" | "paste">("manual");
+  const hasTrackedInputStartedRef = useRef(false);
+  const wasQuotaPromptVisibleRef = useRef(false);
 
   const resolvedButtonLabel = buttonLabel ?? copy.analyzeForm.buttonLabel;
   const resolvedHint = hint ?? copy.analyzeForm.hint;
   const resolvedInputLabel = inputLabel ?? copy.analyzeForm.inputLabel;
   const resolvedPlaceholder = placeholder ?? copy.analyzeForm.placeholder;
   const resolvedSubmittingLabel = submittingLabel ?? copy.analyzeForm.submittingLabel;
+  const analyticsPlan = quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS");
+  const isAuthenticated = Boolean(currentUser);
 
   useEffect(() => {
     if (currentUser && quotaExceededRetryAfter === null && !isQuotaRetrying) {
@@ -124,6 +133,7 @@ export function AnalyzeUrlForm({
         return;
       }
 
+      trackInputStartedIfNeeded("paste");
       setAnalysisTarget(clipboardValue);
       setInputType("paste");
       setSubmitError(null);
@@ -165,8 +175,10 @@ export function AnalyzeUrlForm({
     }
     onStateChange?.("submitting");
     trackAnalysisStarted({
-      sourcePage: location.pathname,
+      sourcePath: location.pathname,
       language,
+      isAuthenticated,
+      plan: analyticsPlan,
       inputType: submissionInputType,
       hasProtocol: /^https?:\/\//i.test(target),
     });
@@ -177,8 +189,10 @@ export function AnalyzeUrlForm({
 
       if (verification.status === "COMPLETED" && verification.risk_assessment) {
         trackAnalysisCompleted({
-          sourcePage: location.pathname,
+          sourcePath: location.pathname,
           language,
+          isAuthenticated,
+          plan: analyticsPlan,
           riskLevel: adaptedVerification.riskLevel,
           verdict: adaptedVerification.verdict,
           signalCount: verification.signals.length,
@@ -187,8 +201,10 @@ export function AnalyzeUrlForm({
         });
       } else if (verification.status === "FAILED") {
         trackAnalysisFailed({
-          sourcePage: location.pathname,
+          sourcePath: location.pathname,
           language,
+          isAuthenticated,
+          plan: analyticsPlan,
           errorType: "analysis_failed",
         });
       }
@@ -202,12 +218,21 @@ export function AnalyzeUrlForm({
       });
     } catch (error) {
       trackAnalysisFailed({
-        sourcePage: location.pathname,
+        sourcePath: location.pathname,
         language,
+        isAuthenticated,
+        plan: analyticsPlan,
         errorType: categorizeAnalysisError(error),
       });
       if (error instanceof ApiRequestError && error.status === 429) {
         await refreshQuotaStatus();
+        trackQuotaBlocked({
+          sourcePath: location.pathname,
+          language,
+          isAuthenticated,
+          plan: analyticsPlan,
+          retryAfterSeconds: error.retryAfterSeconds,
+        });
         setSubmitError(error.message);
         setQuotaExceededRetryAfter(error.retryAfterSeconds);
         setQuotaExceededPlan(quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS"));
@@ -242,8 +267,43 @@ export function AnalyzeUrlForm({
     ? resolveQuotaIndicatorCopy(copy, quotaStatus, language, hasSubmittedUpgradeIntent)
     : null;
 
+  useEffect(() => {
+    if (showQuotaPanel && !wasQuotaPromptVisibleRef.current) {
+      trackQuotaPromptShown({
+        sourcePath: location.pathname,
+        language,
+        isAuthenticated,
+        plan: analyticsPlan,
+        promptType: resolveQuotaPromptType(quotaPlan),
+      });
+    }
+
+    wasQuotaPromptVisibleRef.current = Boolean(showQuotaPanel);
+  }, [analyticsPlan, isAuthenticated, language, location.pathname, quotaPlan, showQuotaPanel]);
+
+  function trackInputStartedIfNeeded(inputMethod: "manual" | "paste") {
+    if (hasTrackedInputStartedRef.current) {
+      return;
+    }
+
+    trackAnalysisInputStarted({
+      sourcePath: location.pathname,
+      language,
+      isAuthenticated,
+      plan: analyticsPlan,
+      inputMethod,
+    });
+    hasTrackedInputStartedRef.current = true;
+  }
+
   function openUpgradeModal(source: UpgradeIntentSource) {
-    console.log("upgrade_clicked", { source });
+    trackUpgradeIntentClicked({
+      sourcePath: location.pathname,
+      language,
+      isAuthenticated,
+      plan: analyticsPlan,
+      source,
+    });
     setUpgradeModalSource(source);
     setIsUpgradeModalOpen(true);
   }
@@ -280,8 +340,14 @@ export function AnalyzeUrlForm({
           title={copy.analyzeForm.analyzeTitle}
           value={analysisTarget}
           onChange={(event) => {
-            setAnalysisTarget(event.target.value);
+            const nextValue = event.target.value;
+            setAnalysisTarget(nextValue);
             setInputType("manual");
+            if (nextValue.trim()) {
+              trackInputStartedIfNeeded("manual");
+            } else {
+              hasTrackedInputStartedRef.current = false;
+            }
           }}
         />
         <Button
@@ -306,7 +372,18 @@ export function AnalyzeUrlForm({
               {quotaIndicator.valueCue ? (
                 <p className="analysis-form__quota-indicator-promo">{quotaIndicator.valueCue}</p>
               ) : null}
-              <GoogleSignInButton className="analysis-form__quota-inline-signin" />
+              <GoogleSignInButton
+                className="analysis-form__quota-inline-signin"
+                onInteraction={() => {
+                  trackAuthEntryClicked({
+                    sourcePath: location.pathname,
+                    language,
+                    isAuthenticated,
+                    plan: analyticsPlan,
+                    entryPoint: "quota_indicator_google_sign_in",
+                  });
+                }}
+              />
             </div>
           ) : quotaIndicator.ctaNote || quotaIndicator.valueCue ? (
             <div className="analysis-form__quota-indicator-actions">
@@ -348,7 +425,16 @@ export function AnalyzeUrlForm({
               <Button
                 className="analysis-form__quota-email"
                 disabled={isQuotaRetrying}
-                onClick={() => setIsEmailAuthModalOpen(true)}
+                onClick={() => {
+                  trackAuthEntryClicked({
+                    sourcePath: location.pathname,
+                    language,
+                    isAuthenticated,
+                    plan: analyticsPlan,
+                    entryPoint: "quota_panel_sign_in_email",
+                  });
+                  setIsEmailAuthModalOpen(true);
+                }}
                 variant="secondary"
               >
                 {copy.topbar.signInWithEmail}
@@ -358,6 +444,15 @@ export function AnalyzeUrlForm({
                 variant="quota"
                 busy={isQuotaRetrying}
                 busyLabel={copy.analyzeForm.quota.retrying}
+                onInteraction={() => {
+                  trackAuthEntryClicked({
+                    sourcePath: location.pathname,
+                    language,
+                    isAuthenticated,
+                    plan: analyticsPlan,
+                    entryPoint: "quota_panel_google_sign_in",
+                  });
+                }}
                 onSuccess={retryAfterAuthentication}
               />
             </div>
@@ -475,6 +570,20 @@ function resolveQuotaPanelCopy(
     valueCue: copy.analyzeForm.quota.anonymousValueCue,
     cta: null,
   };
+}
+
+function resolveQuotaPromptType(
+  quotaPlan: ApiQuotaStatus["plan"] | null,
+): "blocked_anonymous" | "blocked_free" | "blocked_pro" {
+  if (quotaPlan === "FREE") {
+    return "blocked_free";
+  }
+
+  if (quotaPlan === "PRO") {
+    return "blocked_pro";
+  }
+
+  return "blocked_anonymous";
 }
 
 function resolveQuotaIndicatorCopy(

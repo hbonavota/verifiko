@@ -5,6 +5,17 @@ const DEGRADED_COVERAGE_PATTERN =
   /analysis coverage degraded|cobertura de análisis degradada|cobertura de analisis degradada/i;
 
 type AnalyticsParams = Record<string, string | number | boolean>;
+type AnalyticsPlan = "ANONYMOUS" | "FREE" | "PRO";
+type PageEventName = "verify_page_view" | "review_page_view" | "status_page_view";
+
+const trackedNamedPageViewKeys = new Set<string>();
+
+interface AnalyticsContextParams {
+  language: string;
+  sourcePath: string;
+  isAuthenticated: boolean;
+  plan: AnalyticsPlan;
+}
 
 interface PageViewParams {
   pagePath: string;
@@ -12,16 +23,20 @@ interface PageViewParams {
   language: string;
 }
 
-interface AnalysisStartedParams {
-  sourcePage: string;
-  language: string;
+interface NamedPageViewParams extends AnalyticsContextParams {
+  eventName: PageEventName;
+}
+
+interface AnalysisInputStartedParams extends AnalyticsContextParams {
+  inputMethod: "manual" | "paste";
+}
+
+interface AnalysisStartedParams extends AnalyticsContextParams {
   inputType: "manual" | "paste";
   hasProtocol: boolean;
 }
 
-interface AnalysisCompletedParams {
-  sourcePage: string;
-  language: string;
+interface AnalysisCompletedParams extends AnalyticsContextParams {
   riskLevel: string;
   verdict: string;
   signalCount: number;
@@ -29,10 +44,43 @@ interface AnalysisCompletedParams {
   hasFetchDegradation: boolean;
 }
 
-interface AnalysisFailedParams {
-  sourcePage: string;
-  language: string;
+interface AnalysisFailedParams extends AnalyticsContextParams {
   errorType: string;
+}
+
+interface QuotaPromptShownParams extends AnalyticsContextParams {
+  promptType: "blocked_anonymous" | "blocked_free" | "blocked_pro" | "support_note_anonymous";
+}
+
+interface QuotaBlockedParams extends AnalyticsContextParams {
+  retryAfterSeconds: number | null;
+}
+
+interface AuthEntryClickedParams extends AnalyticsContextParams {
+  entryPoint: string;
+}
+
+interface ResultActionClickedParams extends AnalyticsContextParams {
+  action: "view_result" | "review_signals" | "verify_another_link";
+  resultState: "latest_result" | "signed_in_empty";
+}
+
+interface UpgradeIntentClickedParams extends AnalyticsContextParams {
+  source: string;
+}
+
+function buildAnalyticsContext({
+  language,
+  sourcePath,
+  isAuthenticated,
+  plan,
+}: AnalyticsContextParams): AnalyticsParams {
+  return {
+    language,
+    source_path: sourcePath,
+    is_authenticated: isAuthenticated,
+    plan,
+  };
 }
 
 function ensureAnalyticsReady(): boolean {
@@ -71,32 +119,52 @@ export function trackPageView({ pagePath, pageTitle, language }: PageViewParams)
   }
 }
 
+export function trackNamedPageView({ eventName, ...context }: NamedPageViewParams): void {
+  const trackingKey = `${eventName}|${context.sourcePath}|${context.language}`;
+  
+  if (trackedNamedPageViewKeys.has(trackingKey)) {
+    return;
+  }
+
+  const didTrack = trackEvent(eventName, buildAnalyticsContext(context));
+
+  if (didTrack) {
+    trackedNamedPageViewKeys.add(trackingKey);
+  }
+}
+
+export function trackAnalysisInputStarted({
+  inputMethod,
+  ...context
+}: AnalysisInputStartedParams): void {
+  trackEvent("analysis_input_started", {
+    ...buildAnalyticsContext(context),
+    input_method: inputMethod,
+  });
+}
+
 export function trackAnalysisStarted({
-  sourcePage,
-  language,
   inputType,
   hasProtocol,
+  ...context
 }: AnalysisStartedParams): void {
   trackEvent("analysis_started", {
-    source_page: sourcePage,
-    language,
+    ...buildAnalyticsContext(context),
     input_type: inputType,
     has_protocol: hasProtocol,
   });
 }
 
 export function trackAnalysisCompleted({
-  sourcePage,
-  language,
   riskLevel,
   verdict,
   signalCount,
   warningCount,
   hasFetchDegradation,
+  ...context
 }: AnalysisCompletedParams): void {
   trackEvent("analysis_completed", {
-    source_page: sourcePage,
-    language,
+    ...buildAnalyticsContext(context),
     risk_level: riskLevel,
     verdict,
     signal_count: signalCount,
@@ -106,14 +174,64 @@ export function trackAnalysisCompleted({
 }
 
 export function trackAnalysisFailed({
-  sourcePage,
-  language,
   errorType,
+  ...context
 }: AnalysisFailedParams): void {
   trackEvent("analysis_failed", {
-    source_page: sourcePage,
-    language,
+    ...buildAnalyticsContext(context),
     error_type: errorType,
+  });
+}
+
+export function trackQuotaPromptShown({
+  promptType,
+  ...context
+}: QuotaPromptShownParams): void {
+  trackEvent("quota_prompt_shown", {
+    ...buildAnalyticsContext(context),
+    prompt_type: promptType,
+  });
+}
+
+export function trackQuotaBlocked({
+  retryAfterSeconds,
+  ...context
+}: QuotaBlockedParams): void {
+  trackEvent("quota_blocked", {
+    ...buildAnalyticsContext(context),
+    retry_after_seconds: retryAfterSeconds ?? 0,
+  });
+}
+
+export function trackAuthEntryClicked({
+  entryPoint,
+  ...context
+}: AuthEntryClickedParams): void {
+  trackEvent("auth_entry_clicked", {
+    ...buildAnalyticsContext(context),
+    entry_point: entryPoint,
+  });
+}
+
+export function trackResultActionClicked({
+  action,
+  resultState,
+  ...context
+}: ResultActionClickedParams): void {
+  trackEvent("result_action_clicked", {
+    ...buildAnalyticsContext(context),
+    action,
+    result_state: resultState,
+  });
+}
+
+export function trackUpgradeIntentClicked({
+  source,
+  ...context
+}: UpgradeIntentClickedParams): void {
+  trackEvent("upgrade_intent_clicked", {
+    ...buildAnalyticsContext(context),
+    source,
   });
 }
 

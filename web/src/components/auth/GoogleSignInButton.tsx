@@ -8,6 +8,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? "";
 interface GoogleSignInButtonProps {
   className?: string;
   onSuccess?: () => void | Promise<void>;
+  onInteraction?: () => void;
   variant?: "default" | "quota";
   busy?: boolean;
   busyLabel?: string;
@@ -15,6 +16,7 @@ interface GoogleSignInButtonProps {
 
 export function GoogleSignInButton({
   className,
+  onInteraction,
   onSuccess,
   variant = "default",
   busy = false,
@@ -98,6 +100,7 @@ export function GoogleSignInButton({
       <div
         aria-label={copy.topbar.signInWithGoogle}
         className="google-sign-in__button"
+        onClickCapture={onInteraction}
         ref={buttonRef}
       />
       {busyState ? (

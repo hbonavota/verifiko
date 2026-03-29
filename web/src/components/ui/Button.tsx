@@ -1,4 +1,10 @@
-import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from "react";
+import type {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  MouseEventHandler,
+  PropsWithChildren,
+  ReactNode,
+} from "react";
 import { Link } from "react-router-dom";
 
 type ButtonVariant = "primary" | "secondary" | "ghost";
@@ -21,11 +27,13 @@ interface ButtonAsButtonProps extends SharedButtonProps {
 interface ButtonAsLinkProps extends SharedButtonProps {
   to: string;
   href?: undefined;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
 }
 
 interface ButtonAsAnchorProps extends SharedButtonProps {
   href: string;
   to?: undefined;
+  onClick?: AnchorHTMLAttributes<HTMLAnchorElement>["onClick"];
 }
 
 type ButtonProps = ButtonAsButtonProps | ButtonAsLinkProps | ButtonAsAnchorProps;
@@ -50,7 +58,7 @@ export function Button(props: ButtonProps) {
 
   if ("to" in props && props.to) {
     return (
-      <Link className={buttonClassName} title={props.title} to={props.to}>
+      <Link className={buttonClassName} onClick={props.onClick} title={props.title} to={props.to}>
         <ButtonContent leadingIcon={props.leadingIcon}>{props.children}</ButtonContent>
       </Link>
     );
@@ -58,7 +66,7 @@ export function Button(props: ButtonProps) {
 
   if ("href" in props && props.href) {
     return (
-      <a className={buttonClassName} href={props.href} title={props.title}>
+      <a className={buttonClassName} href={props.href} onClick={props.onClick} title={props.title}>
         <ButtonContent leadingIcon={props.leadingIcon}>{props.children}</ButtonContent>
       </a>
     );
