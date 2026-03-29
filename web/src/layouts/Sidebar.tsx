@@ -3,11 +3,16 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import brandMark from "../assets/verifiko-mark.svg";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { primaryNavigation } from "../data/navigation";
+import { trackAuthEntryClicked } from "../lib/analytics";
+import { useAuth } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
 
 export function Sidebar() {
   const location = useLocation();
-  const { copy } = useI18n();
+  const { copy, language } = useI18n();
+  const { currentUser, quotaStatus } = useAuth();
+  const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
+  const isAuthenticated = Boolean(currentUser);
 
   function isActiveItem(href: string): boolean {
     const currentPath = `${location.pathname}${location.hash}`;
@@ -49,6 +54,15 @@ export function Sidebar() {
         <button
           className="sidebar-nav__button sidebar-nav__button--mobile-only"
           data-future-auth-trigger="login"
+          onClick={() => {
+            trackAuthEntryClicked({
+              sourcePath: location.pathname,
+              language,
+              isAuthenticated,
+              plan: analyticsPlan,
+              entryPoint: "sidebar_login",
+            });
+          }}
           type="button"
         >
           {copy.navigation.login}

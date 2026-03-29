@@ -1,16 +1,20 @@
+import { useLocation } from "react-router-dom";
+
 import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
 import { EmailAuthModal } from "../components/auth/EmailAuthModal";
 import { Button } from "../components/ui/Button";
 import { UpgradeModal } from "../components/ui/UpgradeModal";
 import { useAuth } from "../lib/auth";
+import { trackAuthEntryClicked, trackUpgradeIntentClicked } from "../lib/analytics";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { useI18n } from "../lib/i18n";
 import { useState } from "react";
 import { useUpgradeIntent } from "../lib/upgradeIntentStorage";
 
 export function Topbar() {
-  const { copy } = useI18n();
+  const { copy, language } = useI18n();
   const { currentUser, logout, quotaReady, quotaStatus } = useAuth();
+  const location = useLocation();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
   const [emailAuthMode, setEmailAuthMode] = useState<"login" | "register">("login");
@@ -23,6 +27,8 @@ export function Topbar() {
     .map((segment) => segment.charAt(0).toUpperCase())
     .join("");
   const quotaSummary = quotaReady && quotaStatus ? buildQuotaSummary(copy, quotaStatus) : null;
+  const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
+  const isAuthenticated = Boolean(currentUser);
 
   return (
     <>
@@ -65,7 +71,13 @@ export function Topbar() {
                   <Button
                     className={hasSubmittedUpgradeIntent ? "topbar-account__upgrade-button" : undefined}
                     onClick={() => {
-                      console.log("upgrade_clicked");
+                      trackUpgradeIntentClicked({
+                        sourcePath: location.pathname,
+                        language,
+                        isAuthenticated,
+                        plan: analyticsPlan,
+                        source: "topbar",
+                      });
                       setIsUpgradeModalOpen(true);
                     }}
                     variant={hasSubmittedUpgradeIntent ? "secondary" : "primary"}
@@ -83,10 +95,27 @@ export function Topbar() {
           ) : (
             <div className="topbar-auth">
               <p className="topbar-auth__cta">{copy.topbar.signInToUnlockMore}</p>
-              <GoogleSignInButton />
+              <GoogleSignInButton
+                onInteraction={() => {
+                  trackAuthEntryClicked({
+                    sourcePath: location.pathname,
+                    language,
+                    isAuthenticated,
+                    plan: analyticsPlan,
+                    entryPoint: "topbar_google_sign_in",
+                  });
+                }}
+              />
               <div className="topbar-auth__email-actions">
                 <Button
                   onClick={() => {
+                    trackAuthEntryClicked({
+                      sourcePath: location.pathname,
+                      language,
+                      isAuthenticated,
+                      plan: analyticsPlan,
+                      entryPoint: "topbar_sign_in_email",
+                    });
                     setEmailAuthMode("login");
                     setIsEmailAuthModalOpen(true);
                   }}
@@ -96,6 +125,13 @@ export function Topbar() {
                 </Button>
                 <Button
                   onClick={() => {
+                    trackAuthEntryClicked({
+                      sourcePath: location.pathname,
+                      language,
+                      isAuthenticated,
+                      plan: analyticsPlan,
+                      entryPoint: "topbar_create_account",
+                    });
                     setEmailAuthMode("register");
                     setIsEmailAuthModalOpen(true);
                   }}

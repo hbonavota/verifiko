@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import { AnalyzeUrlForm } from "../components/analysis/AnalyzeUrlForm";
 import { ScoreRing } from "../components/analysis/ScoreRing";
@@ -6,6 +7,7 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
+import { trackQuotaPromptShown, trackResultActionClicked } from "../lib/analytics";
 import { useAuth } from "../lib/auth";
 import { listMyVerifications } from "../lib/api";
 import { formatRiskLevel, formatVerdict } from "../lib/formatVerdict";
@@ -24,6 +26,7 @@ function cardToneForRiskLevel(riskLevel: VerificationSummary["riskLevel"]) {
 export function HomePage() {
   const { copy, language } = useI18n();
   const { authReady, currentUser, quotaReady, quotaStatus } = useAuth();
+  const location = useLocation();
 
   useDocumentMeta(
     copy.home.metaTitle,
@@ -34,6 +37,7 @@ export function HomePage() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [analysisState, setAnalysisState] = useState<"idle" | "submitting" | "error">("idle");
   const resultCardRef = useRef<HTMLDivElement | null>(null);
+  const hasTrackedAnonymousSupportRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -103,6 +107,8 @@ export function HomePage() {
   const isLoadingAnalysis = analysisState === "submitting";
   const isLoadingOwnedResult = !isLoadingAnalysis && authReady && !!currentUser && isHistoryLoading;
   const showAnonymousSupport = authReady && !currentUser;
+  const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
+  const isAuthenticated = Boolean(currentUser);
   const hasAnonymousQuotaStatus = quotaReady && quotaStatus?.plan === "ANONYMOUS";
   const anonymousSupportTitle = hasAnonymousQuotaStatus
     ? quotaStatus.blocked
@@ -117,6 +123,24 @@ export function HomePage() {
       : copy.home.authPromptCopy;
   const anonymousSupportMeta =
     hasAnonymousQuotaStatus && quotaStatus.blocked ? copy.analyzeForm.quota.resetAtMidnight : null;
+
+  useEffect(() => {
+    if (showAnonymousSupport && !hasTrackedAnonymousSupportRef.current) {
+      trackQuotaPromptShown({
+        sourcePath: location.pathname,
+        language,
+        isAuthenticated,
+        plan: analyticsPlan,
+        promptType: "support_note_anonymous",
+      });
+      hasTrackedAnonymousSupportRef.current = true;
+      return;
+    }
+
+    if (!showAnonymousSupport) {
+      hasTrackedAnonymousSupportRef.current = false;
+    }
+  }, [analyticsPlan, isAuthenticated, language, location.pathname, showAnonymousSupport]);
 
   return (
     <PageShell>
@@ -209,10 +233,36 @@ export function HomePage() {
                     </p>
                     <p className="analysis-result-card__copy">{latestVerification.executiveSummary.posture}</p>
                     <div className="analysis-result-card__actions">
-                      <Button to={`/verifications/${latestVerification.id}`} variant="primary">
+                      <Button
+                        to={`/verifications/${latestVerification.id}`}
+                        variant="primary"
+                        onClick={() => {
+                          trackResultActionClicked({
+                            sourcePath: location.pathname,
+                            language,
+                            isAuthenticated,
+                            plan: analyticsPlan,
+                            action: "view_result",
+                            resultState: "latest_result",
+                          });
+                        }}
+                      >
                         {copy.common.viewResult}
                       </Button>
-                      <Button to="/dashboard" variant="secondary">
+                      <Button
+                        to="/dashboard"
+                        variant="secondary"
+                        onClick={() => {
+                          trackResultActionClicked({
+                            sourcePath: location.pathname,
+                            language,
+                            isAuthenticated,
+                            plan: analyticsPlan,
+                            action: "review_signals",
+                            resultState: "latest_result",
+                          });
+                        }}
+                      >
                         {copy.common.reviewSignals}
                       </Button>
                     </div>
@@ -242,7 +292,20 @@ export function HomePage() {
                   <p className="analysis-result-card__headline">{copy.home.signedInReadyTitle}</p>
                   <p className="analysis-result-card__copy">{copy.home.signedInReadyCopy}</p>
                   <div className="analysis-result-card__actions">
-                    <Button href="#analyze-url" variant="secondary">
+                    <Button
+                      href="#analyze-url"
+                      variant="secondary"
+                      onClick={() => {
+                        trackResultActionClicked({
+                          sourcePath: location.pathname,
+                          language,
+                          isAuthenticated,
+                          plan: analyticsPlan,
+                          action: "verify_another_link",
+                          resultState: "signed_in_empty",
+                        });
+                      }}
+                    >
                       {copy.common.verifyAnotherLink}
                     </Button>
                   </div>
