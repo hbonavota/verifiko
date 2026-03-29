@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
 import { AnalyzeUrlForm } from "../components/analysis/AnalyzeUrlForm";
-import { EmailAuthModal } from "../components/auth/EmailAuthModal";
-import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
 import { ScoreRing } from "../components/analysis/ScoreRing";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -25,7 +23,7 @@ function cardToneForRiskLevel(riskLevel: VerificationSummary["riskLevel"]) {
 
 export function HomePage() {
   const { copy, language } = useI18n();
-  const { authReady, currentUser } = useAuth();
+  const { authReady, currentUser, quotaReady, quotaStatus } = useAuth();
 
   useDocumentMeta(
     copy.home.metaTitle,
@@ -35,8 +33,6 @@ export function HomePage() {
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [analysisState, setAnalysisState] = useState<"idle" | "submitting" | "error">("idle");
-  const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
-  const [emailAuthMode, setEmailAuthMode] = useState<"login" | "register">("login");
   const resultCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -106,18 +102,24 @@ export function HomePage() {
   const latestSignals = latestVerification?.signals.slice(0, 2) ?? [];
   const isLoadingAnalysis = analysisState === "submitting";
   const isLoadingOwnedResult = !isLoadingAnalysis && authReady && !!currentUser && isHistoryLoading;
-  const isSupportingResultCard = !isLoadingAnalysis && !isLoadingOwnedResult && !latestVerification;
-  const resultCardClassName = [
-    "analysis-hero__result",
-    latestVerification || isLoadingAnalysis || isLoadingOwnedResult ? "analysis-hero__result--live" : "",
-    isSupportingResultCard ? "analysis-hero__result--supporting" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const showAnonymousSupport = authReady && !currentUser;
+  const hasAnonymousQuotaStatus = quotaReady && quotaStatus?.plan === "ANONYMOUS";
+  const anonymousSupportTitle = hasAnonymousQuotaStatus
+    ? quotaStatus.blocked
+      ? copy.topbar.quota.anonymousBlockedTitle
+      : copy.topbar.quota.anonymousTitle
+          .replace("{remaining}", String(quotaStatus.remaining_today))
+          .replace("{dailyLimit}", String(quotaStatus.daily_limit))
+    : null;
+  const anonymousSupportDescription =
+    hasAnonymousQuotaStatus && quotaStatus.blocked
+      ? copy.topbar.quota.anonymousBlockedDetail
+      : copy.home.authPromptCopy;
+  const anonymousSupportMeta =
+    hasAnonymousQuotaStatus && quotaStatus.blocked ? copy.analyzeForm.quota.resetAtMidnight : null;
 
   return (
     <PageShell>
-      <>
       <section className="analysis-hero">
         <div className="analysis-hero__content" id="analyze-url">
           <SectionTitle
@@ -136,42 +138,13 @@ export function HomePage() {
               hint=""
               inputClassName="analysis-form__input-control"
               onStateChange={setAnalysisState}
+              showQuotaIndicator={false}
               showProPanel={false}
             />
-
-            {!currentUser ? (
-              <div className="analysis-hero__auth-strip">
-                <div className="analysis-hero__auth-copy">
-                  <p className="analysis-hero__auth-title">{copy.home.authPromptTitle}</p>
-                  <p className="analysis-hero__auth-description">{copy.home.authPromptCopy}</p>
-                </div>
-                <div className="analysis-hero__auth-actions">
-                  <GoogleSignInButton className="analysis-hero__auth-google" />
-                  <Button
-                    onClick={() => {
-                      setEmailAuthMode("login");
-                      setIsEmailAuthModalOpen(true);
-                    }}
-                    variant="secondary"
-                  >
-                    {copy.topbar.signInWithEmail}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setEmailAuthMode("register");
-                      setIsEmailAuthModalOpen(true);
-                    }}
-                    variant="ghost"
-                  >
-                    {copy.topbar.createAccount}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
           </Card>
         </div>
 
-        <div ref={resultCardRef}>
+        <div ref={resultCardRef} className="analysis-hero__result-shell">
           <Card
             eyebrow={isLoadingAnalysis ? copy.home.verifying : latestVerification ? copy.home.latestResult : copy.home.result}
             title={
@@ -183,7 +156,7 @@ export function HomePage() {
             }
             description={undefined}
             tone={isLoadingAnalysis ? "success" : latestVerification ? cardToneForRiskLevel(latestVerification.riskLevel) : "default"}
-            className={resultCardClassName}
+            className="analysis-hero__result"
           >
             {isLoadingAnalysis ? (
               <div className="analysis-result-card__hero">
@@ -264,7 +237,7 @@ export function HomePage() {
               </>
             ) : currentUser ? (
               <div className="analysis-result-card__hero analysis-result-card__hero--empty">
-                <ScoreRing label={copy.common.ready} state="idle" valueLabel="--" />
+                <ScoreRing label={copy.common.ready} size="hero" state="idle" valueLabel="--" />
                 <div className="analysis-result-card__summary-block">
                   <p className="analysis-result-card__headline">{copy.home.signedInReadyTitle}</p>
                   <p className="analysis-result-card__copy">{copy.home.signedInReadyCopy}</p>
@@ -277,7 +250,7 @@ export function HomePage() {
               </div>
             ) : (
               <div className="analysis-result-card__hero analysis-result-card__hero--empty">
-                <ScoreRing label={copy.common.ready} state="idle" valueLabel="--" />
+                <ScoreRing label={copy.common.ready} size="hero" state="idle" valueLabel="--" />
                 <div className="analysis-result-card__summary-block">
                   <p className="analysis-result-card__headline">{copy.home.noResultYet}</p>
                   <p className="analysis-result-card__copy">{copy.home.emptyCopy}</p>
@@ -285,14 +258,25 @@ export function HomePage() {
               </div>
             )}
           </Card>
+
+          {showAnonymousSupport ? (
+            <section aria-label={copy.home.authPromptTitle} className="analysis-flow-support">
+              <div className="analysis-flow-support__copy">
+                <p className="analysis-flow-support__eyebrow">{copy.home.authPromptTitle}</p>
+                {anonymousSupportTitle ? (
+                  <p className="analysis-flow-support__title">{anonymousSupportTitle}</p>
+                ) : null}
+                {anonymousSupportDescription ? (
+                  <p className="analysis-flow-support__description">{anonymousSupportDescription}</p>
+                ) : null}
+                {anonymousSupportMeta ? (
+                  <p className="analysis-flow-support__meta">{anonymousSupportMeta}</p>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
         </div>
       </section>
-      <EmailAuthModal
-        initialMode={emailAuthMode}
-        open={isEmailAuthModalOpen}
-        onClose={() => setIsEmailAuthModalOpen(false)}
-      />
-      </>
     </PageShell>
   );
 }

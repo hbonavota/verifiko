@@ -91,7 +91,7 @@
   gap: var(--space-2);
 }
 
-.sidebar__language {
+.sidebar__header .sidebar__language {
   display: none;
   margin-top: auto;
   align-self: flex-start;
@@ -485,14 +485,15 @@
   .sidebar {
     position: sticky;
     grid-template-columns: 1fr;
-    gap: var(--space-3);
-    padding-top: var(--space-3);
-    padding-bottom: var(--space-3);
+    gap: var(--space-2);
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
   }
 
-  .sidebar__language {
+  .sidebar__header .sidebar__language {
     display: inline-flex;
     margin-top: 0;
+    justify-self: end;
   }
 
   .topbar {
@@ -507,7 +508,18 @@
     width: 100%;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .sidebar__header .language-switcher {
+    gap: 0.12rem;
+    padding: 0.18rem;
+  }
+
+  .sidebar__header .language-switcher__button {
+    min-width: 2.35rem;
+    padding: 0.42rem 0.58rem;
+    font-size: 0.72rem;
   }
 
   .brand-lockup__mark {
@@ -528,11 +540,14 @@
     overflow: visible;
     justify-content: stretch;
     width: 100%;
+    gap: 0.55rem;
   }
 
   .sidebar-nav__link,
   .sidebar-nav__button {
     justify-content: center;
+    padding: 0.72rem 0.78rem;
+    font-size: 0.88rem;
     text-align: center;
   }
 

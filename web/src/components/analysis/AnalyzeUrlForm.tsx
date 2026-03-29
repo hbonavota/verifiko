@@ -57,6 +57,7 @@ interface AnalyzeUrlFormProps {
   inputLabel?: string;
   onStateChange?: (state: "idle" | "submitting" | "error") => void;
   placeholder?: string;
+  showQuotaIndicator?: boolean;
   showProPanel?: boolean;
   submittingLabel?: string;
 }
@@ -71,6 +72,7 @@ export function AnalyzeUrlForm({
   inputLabel,
   onStateChange,
   placeholder,
+  showQuotaIndicator = true,
   showProPanel = true,
   submittingLabel,
 }: AnalyzeUrlFormProps) {
@@ -292,7 +294,7 @@ export function AnalyzeUrlForm({
           {isSubmitting ? resolvedSubmittingLabel : resolvedButtonLabel}
         </Button>
       </form>
-      {!showQuotaPanel && quotaIndicator ? (
+      {!showQuotaPanel && showQuotaIndicator && quotaIndicator ? (
         <section className="analysis-form__quota-indicator" aria-live="polite">
           <div className="analysis-form__quota-indicator-copy">
             <p className="analysis-form__quota-indicator-title">{quotaIndicator.title}</p>
