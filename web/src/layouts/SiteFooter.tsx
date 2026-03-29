@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import { useI18n } from "../lib/i18n";
 
 interface SiteFooterProps {
@@ -14,6 +16,17 @@ export function SiteFooter({ onOpenCookiePreferences }: SiteFooterProps) {
         <button className="site-footer__button" onClick={onOpenCookiePreferences} type="button">
           {copy.footer.cookiePreferences}
         </button>
+        <nav aria-label={copy.footer.legalLabel} className="site-footer__nav">
+          <Link className="site-footer__link" to="/privacy">
+            {copy.footer.privacyPolicy}
+          </Link>
+          <Link className="site-footer__link" to="/terms">
+            {copy.footer.termsOfService}
+          </Link>
+          <Link className="site-footer__link" to="/contact">
+            {copy.footer.contact}
+          </Link>
+        </nav>
         <p className="site-footer__text">
           <span className="site-footer__year">&copy; {year} Verifiko</span>
           <span className="site-footer__separator" aria-hidden="true">

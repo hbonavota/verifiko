@@ -97,6 +97,10 @@ const translations = {
     footer: {
       developedBy: "Developed by",
       cookiePreferences: "Cookie preferences",
+      legalLabel: "Legal",
+      privacyPolicy: "Privacy Policy",
+      termsOfService: "Terms of Service",
+      contact: "Contact",
     },
     cookieBanner: {
       dialogLabel: "Cookie consent",
@@ -499,6 +503,88 @@ const translations = {
       description: "Return to the main analysis flow or open the review screen.",
       returnHome: "Return to home",
     },
+    privacyPage: {
+      metaTitle: "Privacy Policy",
+      metaDescription: "How Verifiko handles account data, saved verifications, and analytics.",
+      eyebrow: "Privacy",
+      title: "Privacy Policy",
+      description: "A plain-language summary of the data used to operate Verifiko.",
+      overviewTitle: "What Verifiko does",
+      overviewCopy: [
+        "Verifiko helps people review links and understand whether a target appears safe, suspicious, or malicious.",
+        "The product supports anonymous verification and optional Google sign-in for saved history.",
+      ],
+      accountTitle: "Account information",
+      accountItems: [
+        "If you continue with Google, Verifiko may receive your email address, display name, and profile image from your Google account.",
+        "That information is used to create or maintain your account and show your saved verification history.",
+      ],
+      verificationTitle: "Verification data",
+      verificationItems: [
+        "Verification submissions are processed so Verifiko can analyze the target and return a result.",
+        "If you are signed in, verifications created while signed in may be stored with your account so you can revisit them later.",
+      ],
+      cookiesTitle: "Cookies and analytics",
+      cookiesItems: [
+        "Verifiko uses browser storage and cookies for session state, language preferences, and cookie preferences.",
+        "If you accept analytics cookies, Verifiko may collect high-level usage data to understand product usage and improve the service.",
+      ],
+      contactTitle: "Privacy questions",
+      contactCopy: "For privacy or data questions, contact {email}.",
+    },
+    termsPage: {
+      metaTitle: "Terms of Service",
+      metaDescription: "Basic conditions for using Verifiko.",
+      eyebrow: "Terms",
+      title: "Terms of Service",
+      description: "Basic conditions for using Verifiko.",
+      serviceTitle: "Service scope",
+      serviceItems: [
+        "Verifiko provides link verification results, supporting signals, and saved history for signed-in users.",
+        "Results reflect the signals available at the time of analysis and may change as a target changes.",
+      ],
+      judgmentTitle: "No absolute guarantee",
+      judgmentItems: [
+        "A result is a support tool, not a guarantee that a link is risk-free or safe in every context.",
+        "You remain responsible for your own decisions and any action you take based on a verification.",
+      ],
+      useTitle: "Acceptable use",
+      useItems: [
+        "Do not misuse the service, interfere with normal operation, scrape it abusively, or attempt to bypass limits or access controls.",
+        "Verifiko may restrict or suspend access when usage is abusive, unlawful, or harmful to the service or other users.",
+      ],
+      availabilityTitle: "Availability and changes",
+      availabilityItems: [
+        "The service may change, be updated, or be interrupted from time to time.",
+        "Verifiko may revise features, limits, or product behavior as the service evolves.",
+      ],
+      contactTitle: "Contact",
+      contactCopy: "Questions about these terms can be sent to {email}.",
+    },
+    contactPage: {
+      metaTitle: "Contact",
+      metaDescription: "Contact Verifiko for support, privacy questions, or product issues.",
+      eyebrow: "Contact",
+      title: "Contact Verifiko",
+      description: "Reach the team for support, privacy questions, or product issues.",
+      aboutTitle: "About Verifiko",
+      aboutCopy: [
+        "Verifiko is a link verification product focused on clear risk judgment and evidence-led review.",
+        "Signed-in users can save verification history to revisit results later.",
+      ],
+      emailTitle: "Contact email",
+      emailLabel: "Email",
+      emailCopy:
+        "Use this address for product support, privacy questions, account issues, and OAuth review contact.",
+      topicsTitle: "What you can reach out about",
+      topics: [
+        "Product or verification issues",
+        "Account and saved history questions",
+        "Privacy or data questions",
+        "Google sign-in and access issues",
+      ],
+      developedBy: "Verifiko is developed by Orbytia.",
+    },
   },
   es: {
     document: {
@@ -584,6 +670,10 @@ const translations = {
     footer: {
       developedBy: "Desarrollado por",
       cookiePreferences: "Preferencias de cookies",
+      legalLabel: "Legal",
+      privacyPolicy: "Política de privacidad",
+      termsOfService: "Términos del servicio",
+      contact: "Contacto",
     },
     cookieBanner: {
       dialogLabel: "Consentimiento de cookies",
@@ -986,6 +1076,89 @@ const translations = {
       title: "La ruta solicitada no está disponible.",
       description: "Vuelve al flujo principal de análisis o abre la pantalla de revisión.",
       returnHome: "Volver al inicio",
+    },
+    privacyPage: {
+      metaTitle: "Política de privacidad",
+      metaDescription:
+        "Cómo gestiona Verifiko los datos de cuenta, las verificaciones guardadas y la analítica.",
+      eyebrow: "Privacidad",
+      title: "Política de privacidad",
+      description: "Un resumen en lenguaje claro de los datos usados para operar Verifiko.",
+      overviewTitle: "Qué hace Verifiko",
+      overviewCopy: [
+        "Verifiko ayuda a revisar enlaces y entender si un destino parece seguro, sospechoso o malicioso.",
+        "El producto permite verificación anónima y acceso opcional con Google para guardar historial.",
+      ],
+      accountTitle: "Información de cuenta",
+      accountItems: [
+        "Si continúas con Google, Verifiko puede recibir tu correo, nombre visible e imagen de perfil desde tu cuenta de Google.",
+        "Esa información se usa para crear o mantener tu cuenta y mostrar tu historial de verificaciones guardadas.",
+      ],
+      verificationTitle: "Datos de verificación",
+      verificationItems: [
+        "Las verificaciones se procesan para que Verifiko pueda analizar el destino y devolver un resultado.",
+        "Si has iniciado sesión, las verificaciones creadas mientras estás autenticado pueden guardarse en tu cuenta para revisarlas más tarde.",
+      ],
+      cookiesTitle: "Cookies y analítica",
+      cookiesItems: [
+        "Verifiko usa almacenamiento del navegador y cookies para el estado de sesión, las preferencias de idioma y las preferencias de cookies.",
+        "Si aceptas cookies de analítica, Verifiko puede recoger datos de uso de alto nivel para entender el uso del producto y mejorarlo.",
+      ],
+      contactTitle: "Preguntas de privacidad",
+      contactCopy: "Para dudas de privacidad o datos, contacta con {email}.",
+    },
+    termsPage: {
+      metaTitle: "Términos del servicio",
+      metaDescription: "Condiciones básicas para usar Verifiko.",
+      eyebrow: "Términos",
+      title: "Términos del servicio",
+      description: "Condiciones básicas para usar Verifiko.",
+      serviceTitle: "Alcance del servicio",
+      serviceItems: [
+        "Verifiko ofrece resultados de verificación de enlaces, señales de apoyo e historial guardado para usuarios autenticados.",
+        "Los resultados reflejan las señales disponibles en el momento del análisis y pueden cambiar si cambia el destino.",
+      ],
+      judgmentTitle: "Sin garantía absoluta",
+      judgmentItems: [
+        "Un resultado es una herramienta de apoyo, no una garantía de que un enlace esté libre de riesgo o sea seguro en todos los contextos.",
+        "Sigues siendo responsable de tus decisiones y de cualquier acción que tomes a partir de una verificación.",
+      ],
+      useTitle: "Uso aceptable",
+      useItems: [
+        "No uses el servicio de forma abusiva, no interfieras con su funcionamiento normal, no lo raspes de forma agresiva ni intentes saltarte límites o controles de acceso.",
+        "Verifiko puede restringir o suspender el acceso cuando el uso sea abusivo, ilícito o perjudicial para el servicio o para otros usuarios.",
+      ],
+      availabilityTitle: "Disponibilidad y cambios",
+      availabilityItems: [
+        "El servicio puede cambiar, actualizarse o interrumpirse ocasionalmente.",
+        "Verifiko puede revisar funciones, límites o comportamiento del producto a medida que evoluciona el servicio.",
+      ],
+      contactTitle: "Contacto",
+      contactCopy: "Las dudas sobre estos términos pueden enviarse a {email}.",
+    },
+    contactPage: {
+      metaTitle: "Contacto",
+      metaDescription: "Contacta con Verifiko para soporte, privacidad o incidencias del producto.",
+      eyebrow: "Contacto",
+      title: "Contacta con Verifiko",
+      description: "Escríbenos para soporte, privacidad o incidencias del producto.",
+      aboutTitle: "Sobre Verifiko",
+      aboutCopy: [
+        "Verifiko es un producto de verificación de enlaces centrado en un criterio de riesgo claro y en una revisión guiada por evidencia.",
+        "Los usuarios autenticados pueden guardar su historial de verificaciones para revisarlo más tarde.",
+      ],
+      emailTitle: "Correo de contacto",
+      emailLabel: "Correo",
+      emailCopy:
+        "Usa esta dirección para soporte del producto, dudas de privacidad, incidencias de cuenta y contacto para revisión de OAuth.",
+      topicsTitle: "Temas sobre los que puedes escribir",
+      topics: [
+        "Problemas del producto o de verificaciones",
+        "Dudas sobre la cuenta y el historial guardado",
+        "Preguntas de privacidad o datos",
+        "Incidencias de acceso o de inicio con Google",
+      ],
+      developedBy: "Verifiko está desarrollado por Orbytia.",
     },
   },
 } as const;
