@@ -1288,7 +1288,7 @@
 }
 
 .activity-feed__actions {
-  grid-template-columns: repeat(4, minmax(0, max-content));
+  grid-template-columns: repeat(5, minmax(0, max-content));
   gap: var(--space-2);
   align-items: start;
 }
@@ -1562,6 +1562,18 @@
   gap: var(--space-3);
   flex-wrap: wrap;
   padding-top: var(--space-2);
+}
+
+.verification-assessment-card__utility-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.verification-assessment-card__action-message {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
 }
 
 .verification-assessment-card__verdict {
@@ -3007,6 +3019,10 @@
 
   .activity-feed__actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .verification-assessment-card__utility-actions {
+    justify-content: center;
   }
 
   .analysis-result-card__subject {

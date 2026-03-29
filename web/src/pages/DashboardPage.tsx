@@ -9,9 +9,14 @@ import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { StatPill } from "../components/ui/StatPill";
 import { useAuth } from "../lib/auth";
-import { createVerification, type ApiRequestError, listMyVerifications } from "../lib/api";
+import { createVerification, listMyVerifications } from "../lib/api";
 import { formatRiskLevel, formatVerdict } from "../lib/formatVerdict";
 import { useI18n } from "../lib/i18n";
+import {
+  copyVerificationLink,
+  copyVerificationSummary,
+  shareVerification,
+} from "../lib/verificationActions";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
@@ -47,10 +52,6 @@ function formatRelativeTimestamp(value: string, locale: string, language: "en" |
     return formatter.format(Math.round(diffSeconds / 3600), "hour");
   }
   return formatter.format(Math.round(diffSeconds / 86400), "day");
-}
-
-function verificationDetailUrl(id: string): string {
-  return new URL(`/verifications/${id}`, window.location.origin).toString();
 }
 
 export function DashboardPage() {
@@ -142,18 +143,15 @@ export function DashboardPage() {
       : [copy.dashboard.noRecentAnalysis];
 
   async function handleCopyLink(verificationId: string) {
-    if (!navigator.clipboard?.writeText) {
+    const didCopy = await copyVerificationLink(verificationId);
+
+    if (!didCopy) {
       setWorkspaceMessage(copy.dashboard.copyLinkUnavailable);
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(verificationDetailUrl(verificationId));
-      setCopiedVerificationId(verificationId);
-      setWorkspaceMessage(null);
-    } catch {
-      setWorkspaceMessage(copy.dashboard.copyLinkUnavailable);
-    }
+    setCopiedVerificationId(verificationId);
+    setWorkspaceMessage(null);
   }
 
   async function handleRerunVerification(verification: VerificationSummary) {
@@ -180,19 +178,62 @@ export function DashboardPage() {
   }
 
   async function handleShareVerification(verificationId: string) {
-    if (typeof navigator.share !== "function") {
+    const verification = verifications.find((item) => item.id === verificationId);
+    if (!verification) {
       return;
     }
 
-    try {
-      await navigator.share({
+    const result = await shareVerification(verification, {
+      language,
+      locale,
+      labels: {
         title: copy.detail.title,
-        url: verificationDetailUrl(verificationId),
-      });
-      setWorkspaceMessage(null);
-    } catch {
-      // Ignore share cancellations.
+        target: copy.common.target,
+        risk: copy.common.risk,
+        trustScore: copy.common.trustScore,
+        verdict: copy.common.verdict,
+        executedAt: copy.detail.executedAt,
+        summary: copy.common.summary,
+        signals: copy.detail.signalsRetained,
+        link: copy.common.link,
+      },
+    });
+
+    if (result === "copied") {
+      setWorkspaceMessage(copy.dashboard.shareFallbackCopied);
+      return;
     }
+
+    if (result === "unavailable") {
+      setWorkspaceMessage(copy.dashboard.copyLinkUnavailable);
+      return;
+    }
+
+    if (result === "shared") {
+      setWorkspaceMessage(null);
+    }
+  }
+
+  async function handleExportSummary(verification: VerificationSummary) {
+    const didCopy = await copyVerificationSummary(verification, {
+      language,
+      locale,
+      labels: {
+        title: copy.detail.title,
+        target: copy.common.target,
+        risk: copy.common.risk,
+        trustScore: copy.common.trustScore,
+        verdict: copy.common.verdict,
+        executedAt: copy.detail.executedAt,
+        summary: copy.common.summary,
+        signals: copy.detail.signalsRetained,
+        link: copy.common.link,
+      },
+    });
+
+    setWorkspaceMessage(
+      didCopy ? copy.dashboard.exportTextCopied : copy.dashboard.copyLinkUnavailable,
+    );
   }
 
   return (
@@ -568,7 +609,7 @@ export function DashboardPage() {
                     <p className="activity-feed__detail">{verification.summary}</p>
                     <div className="activity-feed__footer">
                       <div className="activity-feed__actions">
-                        <Button to={`/verifications/${verification.id}`} variant="ghost">
+                        <Button to={`/verifications/${verification.id}`} variant="secondary">
                           {copy.dashboard.openAction}
                         </Button>
                         <Button
@@ -580,6 +621,12 @@ export function DashboardPage() {
                             : copy.dashboard.copyLinkAction}
                         </Button>
                         <Button
+                          onClick={() => void handleExportSummary(verification)}
+                          variant="ghost"
+                        >
+                          {copy.dashboard.exportTextAction}
+                        </Button>
+                        <Button
                           disabled={rerunningVerificationId === verification.id}
                           onClick={() => void handleRerunVerification(verification)}
                           variant="ghost"
@@ -588,14 +635,12 @@ export function DashboardPage() {
                             ? copy.dashboard.rerunningAction
                             : copy.dashboard.rerunAction}
                         </Button>
-                        {typeof navigator.share === "function" ? (
-                          <Button
-                            onClick={() => void handleShareVerification(verification.id)}
-                            variant="ghost"
-                          >
-                            {copy.dashboard.shareAction}
-                          </Button>
-                        ) : null}
+                        <Button
+                          onClick={() => void handleShareVerification(verification.id)}
+                          variant="ghost"
+                        >
+                          {copy.dashboard.shareAction}
+                        </Button>
                       </div>
                     </div>
                   </article>

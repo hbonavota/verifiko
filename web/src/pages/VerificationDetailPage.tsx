@@ -11,6 +11,11 @@ import { useAuth } from "../lib/auth";
 import { formatRiskLevel, formatVerdict, formatVerificationStatus } from "../lib/formatVerdict";
 import { getOwnedVerificationById } from "../lib/api";
 import { useI18n } from "../lib/i18n";
+import {
+  copyVerificationLink,
+  copyVerificationSummary,
+  shareVerification,
+} from "../lib/verificationActions";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
@@ -77,6 +82,7 @@ export function VerificationDetailPage() {
   const location = useLocation();
   const [verificationState, setVerificationState] = useState<VerificationState>({ status: "loading" });
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
+  const [detailActionMessage, setDetailActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -220,12 +226,74 @@ export function VerificationDetailPage() {
   const topSignals = [...verification.signals].sort(
     (left, right) => right.scoreContribution - left.scoreContribution,
   );
+  const readyVerification = verification;
   const primaryReasons = topSignals.slice(0, 3);
   const clampedScore = Math.max(0, Math.min(100, Number(verification.score) || 0));
 
   const riskTone = toneForRiskLevel(verification.riskLevel);
   const emphasisTone =
     riskTone === "danger" ? "danger" : riskTone === "success" ? "success" : "warning";
+
+  async function handleCopyLink() {
+    const didCopy = await copyVerificationLink(readyVerification.id);
+    setDetailActionMessage(
+      didCopy ? copy.detail.copiedAction : copy.detail.copyLinkUnavailable,
+    );
+  }
+
+  async function handleExportSummary() {
+    const didCopy = await copyVerificationSummary(readyVerification, {
+      language,
+      locale,
+      labels: {
+        title: copy.detail.title,
+        target: copy.common.target,
+        risk: copy.common.risk,
+        trustScore: copy.common.trustScore,
+        verdict: copy.common.verdict,
+        executedAt: copy.detail.executedAt,
+        summary: copy.common.summary,
+        signals: copy.detail.signalsRetained,
+        link: copy.common.link,
+      },
+    });
+
+    setDetailActionMessage(
+      didCopy ? copy.detail.exportTextCopied : copy.detail.copyLinkUnavailable,
+    );
+  }
+
+  async function handleShare() {
+    const result = await shareVerification(readyVerification, {
+      language,
+      locale,
+      labels: {
+        title: copy.detail.title,
+        target: copy.common.target,
+        risk: copy.common.risk,
+        trustScore: copy.common.trustScore,
+        verdict: copy.common.verdict,
+        executedAt: copy.detail.executedAt,
+        summary: copy.common.summary,
+        signals: copy.detail.signalsRetained,
+        link: copy.common.link,
+      },
+    });
+
+    if (result === "copied") {
+      setDetailActionMessage(copy.detail.shareFallbackCopied);
+      return;
+    }
+
+    if (result === "unavailable") {
+      setDetailActionMessage(copy.detail.copyLinkUnavailable);
+      return;
+    }
+
+    if (result === "shared") {
+      setDetailActionMessage(null);
+    }
+  }
 
   return (
     <PageShell>
@@ -297,6 +365,22 @@ export function VerificationDetailPage() {
                   {copy.common.backToReview}
                 </Button>
               </div>
+              <div className="verification-assessment-card__utility-actions">
+                <Button onClick={() => void handleExportSummary()} variant="ghost">
+                  {copy.detail.exportTextAction}
+                </Button>
+                <Button onClick={() => void handleCopyLink()} variant="ghost">
+                  {copy.detail.copyLinkAction}
+                </Button>
+                <Button onClick={() => void handleShare()} variant="ghost">
+                  {copy.detail.shareAction}
+                </Button>
+              </div>
+              {detailActionMessage ? (
+                <p className="verification-assessment-card__action-message" role="status">
+                  {detailActionMessage}
+                </p>
+              ) : null}
             </div>
           </div>
 
