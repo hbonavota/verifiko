@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
-import { EmailAuthModal } from "../auth/EmailAuthModal";
 import { useAuth } from "../../lib/auth";
 import type { ApiQuotaStatus } from "../../types/verification";
 import { ApiRequestError, createVerification } from "../../lib/api";
@@ -93,7 +92,6 @@ export function AnalyzeUrlForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isQuotaRetrying, setIsQuotaRetrying] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
   const [upgradeModalSource, setUpgradeModalSource] = useState<UpgradeIntentSource>("pro_panel");
   const [inputType, setInputType] = useState<"manual" | "paste">("manual");
   const hasTrackedInputStartedRef = useRef(false);
@@ -422,23 +420,6 @@ export function AnalyzeUrlForm({
         <div className="analysis-form__quota-actions">
           {quotaPlan === "ANONYMOUS" ? (
             <div className="analysis-form__quota-auth-actions">
-              <Button
-                className="analysis-form__quota-email"
-                disabled={isQuotaRetrying}
-                onClick={() => {
-                  trackAuthEntryClicked({
-                    sourcePath: location.pathname,
-                    language,
-                    isAuthenticated,
-                    plan: analyticsPlan,
-                    entryPoint: "quota_panel_sign_in_email",
-                  });
-                  setIsEmailAuthModalOpen(true);
-                }}
-                variant="secondary"
-              >
-                {copy.topbar.signInWithEmail}
-              </Button>
               <GoogleSignInButton
                 className="analysis-form__quota-signin"
                 variant="quota"
@@ -476,7 +457,9 @@ export function AnalyzeUrlForm({
           {quotaPlan === "ANONYMOUS" ? (
             isQuotaRetrying ? (
               <p className="analysis-form__quota-note">{copy.analyzeForm.quota.retrying}</p>
-            ) : null
+            ) : (
+              <p className="analysis-form__quota-note">{copy.authModal.magicLinkComingSoon}</p>
+            )
           ) : (
             <p className="analysis-form__quota-note">{quotaPanelCopy.note}</p>
           )}
@@ -522,12 +505,6 @@ export function AnalyzeUrlForm({
         open={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
         source={upgradeModalSource}
-      />
-      <EmailAuthModal
-        initialMode="login"
-        open={isEmailAuthModalOpen}
-        onAuthenticated={retryAfterAuthentication}
-        onClose={() => setIsEmailAuthModalOpen(false)}
       />
     </div>
   );

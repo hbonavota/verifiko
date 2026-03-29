@@ -23,6 +23,13 @@
   transform: translateY(0);
 }
 
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+  box-shadow: none;
+  transform: none;
+}
+
 .button:focus-visible,
 .field__input:focus-visible {
   outline: none;
@@ -54,6 +61,12 @@
 .button--ghost:hover {
   border-color: rgba(0, 191, 255, 0.24);
   background: rgba(17, 29, 56, 0.96);
+}
+
+.button--secondary:disabled,
+.button--ghost:disabled {
+  border-color: rgba(128, 147, 167, 0.18);
+  background: rgba(14, 23, 45, 0.64);
 }
 
 .badge,
@@ -645,6 +658,24 @@
 
 .google-sign-in--busy .google-sign-in__button {
   pointer-events: none;
+}
+
+.google-sign-in__fallback {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.72rem 1.1rem;
+  border: 1px solid rgba(128, 147, 167, 0.3);
+  border-radius: 999px;
+  background: rgba(20, 28, 43, 0.9);
+  color: rgba(160, 176, 196, 0.92);
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+}
+
+.google-sign-in--quota .google-sign-in__fallback {
+  width: min(100%, 26rem);
+  min-height: 46px;
 }
 
 .card-grid,
@@ -1673,44 +1704,22 @@
   gap: var(--space-3);
 }
 
-.auth-modal__mode-switch {
-  display: inline-grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: rgba(14, 23, 45, 0.92);
-}
-
-.auth-modal__mode-button {
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-weight: 700;
-  padding: 0.62rem 0.85rem;
-}
-
-.auth-modal__mode-button--active {
-  background: rgba(0, 191, 255, 0.12);
-  color: var(--color-text);
-}
-
 .auth-modal__actions {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
 
-.auth-modal__alternate {
+.auth-modal__support {
+  display: grid;
+  gap: var(--space-3);
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
 }
 
 .auth-modal__alternate-label,
-.auth-modal__error {
+.auth-modal__error,
+.auth-modal__status {
   margin: 0;
 }
 
@@ -1720,6 +1729,11 @@
 
 .auth-modal__error {
   color: var(--color-danger);
+  line-height: 1.5;
+}
+
+.auth-modal__status {
+  color: var(--color-text-muted);
   line-height: 1.5;
 }
 

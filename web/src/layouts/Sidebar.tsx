@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
 import brandMark from "../assets/verifiko-mark.svg";
+import { EmailAuthModal } from "../components/auth/EmailAuthModal";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { primaryNavigation } from "../data/navigation";
 import { trackAuthEntryClicked } from "../lib/analytics";
@@ -11,6 +13,7 @@ export function Sidebar() {
   const location = useLocation();
   const { copy, language } = useI18n();
   const { currentUser, quotaStatus } = useAuth();
+  const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
   const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
   const isAuthenticated = Boolean(currentUser);
 
@@ -51,23 +54,26 @@ export function Sidebar() {
             {copy.navigation[item.labelKey]}
           </NavLink>
         ))}
-        <button
-          className="sidebar-nav__button sidebar-nav__button--mobile-only"
-          data-future-auth-trigger="login"
-          onClick={() => {
-            trackAuthEntryClicked({
-              sourcePath: location.pathname,
-              language,
-              isAuthenticated,
-              plan: analyticsPlan,
-              entryPoint: "sidebar_login",
-            });
-          }}
-          type="button"
-        >
-          {copy.navigation.login}
-        </button>
+        {!currentUser ? (
+          <button
+            className="sidebar-nav__button sidebar-nav__button--mobile-only"
+            onClick={() => {
+              trackAuthEntryClicked({
+                sourcePath: location.pathname,
+                language,
+                isAuthenticated,
+                plan: analyticsPlan,
+                entryPoint: "sidebar_login",
+              });
+              setIsEmailAuthModalOpen(true);
+            }}
+            type="button"
+          >
+            {copy.navigation.login}
+          </button>
+        ) : null}
       </nav>
+      <EmailAuthModal open={isEmailAuthModalOpen} onClose={() => setIsEmailAuthModalOpen(false)} />
     </aside>
   );
 }

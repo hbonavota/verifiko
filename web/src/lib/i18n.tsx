@@ -28,9 +28,9 @@ const translations = {
     topbar: {
       eyebrow: "Verification",
       title: "Review verified links, signals, and risk decisions.",
-      signInWithGoogle: "Sign in with Google",
-      signInWithEmail: "Sign in with email",
-      signInToUnlockMore: "Sign in to unlock more",
+      signInWithGoogle: "Continue with Google",
+      signInWithEmail: "Email me a sign-in link",
+      signInToUnlockMore: "Email sign-in links are coming soon.",
       signingIn: "Signing in...",
       signOut: "Sign out",
       upgradeToPro: "Upgrade to PRO",
@@ -40,6 +40,9 @@ const translations = {
       account: "Signed in",
       accountHistoryEnabled: "Private history enabled",
       authenticationFailed: "Authentication failed.",
+      googleSignInUnavailable: "Google Sign-In is temporarily unavailable. Try again in a moment.",
+      googleSignInNotConfigured:
+        "Google Sign-In is not configured for this deployment. Set VITE_GOOGLE_CLIENT_ID.",
       quota: {
         anonymousTitle: "{remaining} of {dailyLimit} free analyses left today",
         anonymousDetail:
@@ -231,33 +234,16 @@ const translations = {
     },
     authModal: {
       dialogLabel: "Account access",
-      modeLabel: "Authentication mode",
-      loginTab: "Sign in",
-      registerTab: "Create account",
-      displayNameLabel: "Name",
+      eyebrow: "Account access",
+      title: "Continue to Verifiko",
+      description: "Continue with Google today. Email sign-in links are coming soon.",
+      googlePrompt: "Continue with Google",
       emailLabel: "Email",
-      passwordLabel: "Password",
-      passwordHint: "Use at least 8 characters with one letter and one number.",
-      orContinueWithGoogle: "Or continue with Google",
+      emailHint: "Use a work or personal email for your future sign-in link.",
+      emailSubmitCta: "Email me a sign-in link",
+      magicLinkComingSoon: "Email sign-in links are coming soon.",
       errors: {
-        displayNameRequired: "Enter your name to create an account.",
         emailInvalid: "Enter a valid email address.",
-        passwordRequired: "Enter your password.",
-        passwordTooShort: "Password must be at least 8 characters long.",
-        passwordNeedsLetterAndNumber: "Password must include at least one letter and one number.",
-      },
-      login: {
-        eyebrow: "Email access",
-        title: "Sign in to Verifiko",
-        description: "Use your email and password to access your saved history and quotas.",
-        submitCta: "Sign in",
-      },
-      register: {
-        eyebrow: "Create account",
-        title: "Create your Verifiko account",
-        description: "Start saving verifications to your account with email and password.",
-        displayNameHint: "This will be shown in your signed-in workspace.",
-        submitCta: "Create account",
       },
     },
     home: {
@@ -497,9 +483,9 @@ const translations = {
     topbar: {
       eyebrow: "Verificación",
       title: "Revisa enlaces verificados, señales y decisiones de riesgo.",
-      signInWithGoogle: "Iniciar sesión con Google",
-      signInWithEmail: "Iniciar sesión con correo",
-      signInToUnlockMore: "Inicia sesión para desbloquear más",
+      signInWithGoogle: "Continuar con Google",
+      signInWithEmail: "Envíame un enlace de acceso",
+      signInToUnlockMore: "Los enlaces de acceso por correo llegarán pronto.",
       signingIn: "Iniciando sesión...",
       signOut: "Cerrar sesión",
       upgradeToPro: "Mejorar a PRO",
@@ -509,6 +495,10 @@ const translations = {
       account: "Sesión iniciada",
       accountHistoryEnabled: "Historial privado activado",
       authenticationFailed: "La autenticación falló.",
+      googleSignInUnavailable:
+        "El inicio de sesión con Google no está disponible temporalmente. Inténtalo de nuevo en un momento.",
+      googleSignInNotConfigured:
+        "El inicio de sesión con Google no está configurado para este despliegue. Define VITE_GOOGLE_CLIENT_ID.",
       quota: {
         anonymousTitle: "Te quedan {remaining} de {dailyLimit} análisis gratuitos hoy",
         anonymousDetail:
@@ -700,36 +690,16 @@ const translations = {
     },
     authModal: {
       dialogLabel: "Acceso a la cuenta",
-      modeLabel: "Modo de autenticación",
-      loginTab: "Iniciar sesión",
-      registerTab: "Crear cuenta",
-      displayNameLabel: "Nombre",
+      eyebrow: "Acceso a la cuenta",
+      title: "Continúa en Verifiko",
+      description: "Continúa con Google hoy. Los enlaces de acceso por correo llegarán pronto.",
+      googlePrompt: "Continuar con Google",
       emailLabel: "Correo",
-      passwordLabel: "Contraseña",
-      passwordHint: "Usa al menos 8 caracteres con una letra y un número.",
-      orContinueWithGoogle: "O continúa con Google",
+      emailHint: "Usa un correo personal o de trabajo para tu futuro enlace de acceso.",
+      emailSubmitCta: "Envíame un enlace de acceso",
+      magicLinkComingSoon: "Los enlaces de acceso por correo llegarán pronto.",
       errors: {
-        displayNameRequired: "Introduce tu nombre para crear la cuenta.",
         emailInvalid: "Introduce un correo válido.",
-        passwordRequired: "Introduce tu contraseña.",
-        passwordTooShort: "La contraseña debe tener al menos 8 caracteres.",
-        passwordNeedsLetterAndNumber:
-          "La contraseña debe incluir al menos una letra y un número.",
-      },
-      login: {
-        eyebrow: "Acceso con correo",
-        title: "Inicia sesión en Verifiko",
-        description:
-          "Usa tu correo y tu contraseña para acceder a tu historial guardado y a tus cuotas.",
-        submitCta: "Iniciar sesión",
-      },
-      register: {
-        eyebrow: "Crear cuenta",
-        title: "Crea tu cuenta de Verifiko",
-        description:
-          "Empieza a guardar verificaciones en tu cuenta con correo y contraseña.",
-        displayNameHint: "Esto se mostrará en tu espacio de trabajo con sesión iniciada.",
-        submitCta: "Crear cuenta",
       },
     },
     home: {

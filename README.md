@@ -134,6 +134,7 @@ Recommended order:
 2. Set the required API environment variables:
    - `DATABASE_URL`
    - `CORS_ALLOWED_ORIGINS` for the deployed frontend origin
+   - `GOOGLE_CLIENT_ID` with the Google OAuth web client ID used by the frontend
    - `APP_DEBUG=false`
 3. Run the migration command against the production database outside the Vercel request runtime:
 
@@ -145,6 +146,7 @@ DATABASE_URL='YOUR_PRODUCTION_DATABASE_URL' python -m alembic upgrade head
 
 4. Deploy the `web` Vercel project with Root Directory `web/`.
 5. Set `VITE_API_BASE_URL` in the `web` project to the deployed API base URL.
+6. Set `VITE_GOOGLE_CLIENT_ID` in the `web` project to the same Google OAuth web client ID used by the API.
 
 Current deployment-specific behavior:
 
@@ -152,6 +154,7 @@ Current deployment-specific behavior:
 - The API exposes a Vercel-compatible FastAPI entrypoint from `api/index.py`.
 - CORS is environment-driven and does not assume localhost-only origins.
 - The frontend refuses to guess a production API URL. `VITE_API_BASE_URL` must be set outside development.
+- Google Sign-In requires the same OAuth web client ID in both `GOOGLE_CLIENT_ID` and `VITE_GOOGLE_CLIENT_ID`.
 
 Intentional non-features for the first deployment:
 
@@ -165,7 +168,10 @@ Custom-domain cutover:
 2. Point the frontend project at the deployed API Vercel URL.
 3. After end-to-end verification, attach `verifiko.es` to `web` and `api.verifiko.es` to `api`.
 4. Update `VITE_API_BASE_URL` to `https://api.verifiko.es`.
-5. Update `CORS_ALLOWED_ORIGINS` to `https://verifiko.es`.
+5. Update `VITE_GOOGLE_CLIENT_ID` to the production Google OAuth web client ID if it differs from the preview environment.
+6. Update `GOOGLE_CLIENT_ID` to the same production Google OAuth web client ID.
+7. Update `CORS_ALLOWED_ORIGINS` to `https://verifiko.es`.
+8. Add `https://verifiko.es` and the active preview domain origins to the Google OAuth client's Authorized JavaScript origins.
 
 ## Testing
 
