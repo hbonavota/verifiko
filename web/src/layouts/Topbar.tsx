@@ -50,6 +50,7 @@ export function Topbar() {
                 )}
               </div>
               <div className="topbar-account__copy">
+                <p className="topbar-account__eyebrow">{copy.topbar.account}</p>
                 <p className="topbar-account__label">{copy.topbar.accountHistoryEnabled}</p>
                 <p className="topbar-account__value">{displayName}</p>
                 <p className="topbar-account__meta">{currentUser.email}</p>

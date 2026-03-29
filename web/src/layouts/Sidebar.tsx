@@ -106,12 +106,16 @@ export function Sidebar() {
               )}
             </div>
             <div className="sidebar-account__copy">
+              <p className="sidebar-account__eyebrow">{copy.topbar.account}</p>
               <p className="sidebar-account__label">{copy.topbar.accountHistoryEnabled}</p>
               <p className="sidebar-account__value">{displayName}</p>
               <p className="sidebar-account__meta">{currentUser.email}</p>
             </div>
           </div>
           <div className="sidebar-account__actions">
+            <Button className="sidebar-account__history" to="/dashboard" variant="ghost">
+              {copy.topbar.reviewHistory}
+            </Button>
             <Button className="sidebar-account__logout" onClick={logout} variant="secondary">
               {copy.topbar.signOut}
             </Button>
