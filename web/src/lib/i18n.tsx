@@ -22,6 +22,7 @@ const translations = {
       verify: "Verify",
       review: "Review",
       status: "Status",
+      login: "Login",
       primaryLabel: "Primary",
     },
     topbar: {
@@ -488,6 +489,7 @@ const translations = {
       verify: "Verificar",
       review: "Revisar",
       status: "Estado",
+      login: "Iniciar sesión",
       primaryLabel: "Principal",
     },
     topbar: {

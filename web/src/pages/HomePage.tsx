@@ -120,9 +120,10 @@ export function HomePage() {
               buttonLabel={copy.analyzeForm.buttonLabel}
               buttonClassName="analysis-form__button analysis-form__button--hero"
               className="analysis-form--hero"
-              hint={copy.analyzeForm.hint}
+              hint=""
               inputClassName="analysis-form__input-control"
               onStateChange={setAnalysisState}
+              showProPanel={false}
             />
           </Card>
         </div>

@@ -56,6 +56,7 @@ interface AnalyzeUrlFormProps {
   inputLabel?: string;
   onStateChange?: (state: "idle" | "submitting" | "error") => void;
   placeholder?: string;
+  showProPanel?: boolean;
   submittingLabel?: string;
 }
 
@@ -69,6 +70,7 @@ export function AnalyzeUrlForm({
   inputLabel,
   onStateChange,
   placeholder,
+  showProPanel = true,
   submittingLabel,
 }: AnalyzeUrlFormProps) {
   const { copy, language } = useI18n();
@@ -320,7 +322,7 @@ export function AnalyzeUrlForm({
           ) : null}
         </section>
       ) : null}
-      {quotaStatus?.plan !== "PRO" ? (
+      {showProPanel && quotaStatus?.plan !== "PRO" ? (
         <section className="analysis-form__pro-panel" aria-label={copy.analyzeForm.proValue.title}>
           <div className="analysis-form__pro-panel-header">
             <p className="analysis-form__pro-panel-eyebrow">{copy.analyzeForm.proValue.eyebrow}</p>

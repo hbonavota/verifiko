@@ -25,12 +25,16 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <Link className="brand-lockup" to="/">
-        <img alt="" className="brand-lockup__mark" height="52" src={brandMark} width="52" />
-        <div>
-          <span className="brand-lockup__name">Verifiko</span>
-        </div>
-      </Link>
+      <div className="sidebar__header">
+        <Link className="brand-lockup" to="/">
+          <img alt="" className="brand-lockup__mark" height="52" src={brandMark} width="52" />
+          <div>
+            <span className="brand-lockup__name">Verifiko</span>
+          </div>
+        </Link>
+
+        <LanguageSwitcher className="sidebar__language" />
+      </div>
 
       <nav aria-label={copy.navigation.primaryLabel} className="sidebar-nav">
         {primaryNavigation.map((item) => (
@@ -42,9 +46,14 @@ export function Sidebar() {
             {copy.navigation[item.labelKey]}
           </NavLink>
         ))}
+        <button
+          className="sidebar-nav__button sidebar-nav__button--mobile-only"
+          data-future-auth-trigger="login"
+          type="button"
+        >
+          {copy.navigation.login}
+        </button>
       </nav>
-
-      <LanguageSwitcher className="sidebar__language" />
     </aside>
   );
 }
