@@ -1,7 +1,7 @@
 import { Card } from "../components/ui/Card";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { useI18n } from "../lib/i18n";
-import { VERIFIKO_CONTACT_EMAIL, VERIFIKO_CONTACT_MAILTO } from "../lib/site";
+import { VERIFIKO_PRIVACY_EMAIL } from "../lib/site";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
 
@@ -59,10 +59,10 @@ export function PrivacyPage() {
         <Card className="public-page__card" title={copy.privacyPage.contactTitle}>
           <div className="public-page__prose">
             <p className="public-page__copy">
-              {copy.privacyPage.contactCopy.replace("{email}", VERIFIKO_CONTACT_EMAIL)}
+              {copy.privacyPage.contactCopy.replace("{email}", VERIFIKO_PRIVACY_EMAIL)}
             </p>
-            <a className="public-page__link" href={VERIFIKO_CONTACT_MAILTO}>
-              {VERIFIKO_CONTACT_EMAIL}
+            <a className="public-page__link" href={VERIFIKO_PRIVACY_EMAIL}>
+              {VERIFIKO_PRIVACY_EMAIL}
             </a>
           </div>
         </Card>
