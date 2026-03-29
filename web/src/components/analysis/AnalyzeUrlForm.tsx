@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
+import { EmailAuthModal } from "../auth/EmailAuthModal";
 import { useAuth } from "../../lib/auth";
 import type { ApiQuotaStatus } from "../../types/verification";
 import { ApiRequestError, createVerification } from "../../lib/api";
@@ -92,6 +93,7 @@ export function AnalyzeUrlForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isQuotaRetrying, setIsQuotaRetrying] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
   const [upgradeModalSource, setUpgradeModalSource] = useState<UpgradeIntentSource>("pro_panel");
   const [inputType, setInputType] = useState<"manual" | "paste">("manual");
   const hasTrackedInputStartedRef = useRef(false);
@@ -154,6 +156,11 @@ export function AnalyzeUrlForm({
       setQuotaExceededRetryAfter(null);
       setQuotaExceededPlan(null);
       onStateChange?.("error");
+      return;
+    }
+
+    if (!currentUser && quotaStatus?.plan === "ANONYMOUS" && quotaStatus.blocked) {
+      openAnonymousQuotaAuthModal(quotaStatus.reset_in_seconds ?? null);
       return;
     }
 
@@ -224,6 +231,11 @@ export function AnalyzeUrlForm({
       });
       if (error instanceof ApiRequestError && error.status === 429) {
         await refreshQuotaStatus();
+        if (!currentUser) {
+          openAnonymousQuotaAuthModal(error.retryAfterSeconds);
+          return;
+        }
+
         trackQuotaBlocked({
           sourcePath: location.pathname,
           language,
@@ -304,6 +316,28 @@ export function AnalyzeUrlForm({
     });
     setUpgradeModalSource(source);
     setIsUpgradeModalOpen(true);
+  }
+
+  function openAnonymousQuotaAuthModal(retryAfterSeconds: number | null) {
+    trackQuotaBlocked({
+      sourcePath: location.pathname,
+      language,
+      isAuthenticated,
+      plan: analyticsPlan,
+      retryAfterSeconds,
+    });
+    trackQuotaPromptShown({
+      sourcePath: location.pathname,
+      language,
+      isAuthenticated,
+      plan: analyticsPlan,
+      promptType: resolveQuotaPromptType("ANONYMOUS"),
+    });
+    setSubmitError(null);
+    setQuotaExceededRetryAfter(null);
+    setQuotaExceededPlan(null);
+    onStateChange?.("idle");
+    setIsEmailAuthModalOpen(true);
   }
 
   async function retryAfterAuthentication() {
@@ -505,6 +539,11 @@ export function AnalyzeUrlForm({
         open={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
         source={upgradeModalSource}
+      />
+      <EmailAuthModal
+        open={isEmailAuthModalOpen}
+        onAuthenticated={retryAfterAuthentication}
+        onClose={() => setIsEmailAuthModalOpen(false)}
       />
     </div>
   );
