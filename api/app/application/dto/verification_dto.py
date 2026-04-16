@@ -98,6 +98,10 @@ class RiskAssessmentDTO:
     explanation: RiskExplanationDTO
     calculated_at: str
 
+    @property
+    def terminal_override_applied(self) -> bool:
+        return self.terminal_override
+
 
 @dataclass(frozen=True, slots=True)
 class VerificationDTO:

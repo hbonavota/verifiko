@@ -170,6 +170,42 @@ def _authorization_header(access_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def _durable_contract_view(payload: dict) -> dict:
+    risk_assessment = payload["risk_assessment"]
+    return {
+        "id": payload["id"],
+        "is_owned": payload["is_owned"],
+        "original_input": payload["original_input"],
+        "normalized_input": payload["normalized_input"],
+        "status": payload["status"],
+        "signals": sorted(
+            (
+                signal["signal_type"],
+                signal["category"],
+                signal["severity"],
+                signal["confidence"],
+                signal["detected"],
+                signal["title"],
+                signal["description"],
+                tuple(signal["evidence"]),
+                signal["source"],
+            )
+            for signal in payload["signals"]
+        ),
+        "risk_assessment": {
+            "score": risk_assessment["score"],
+            "risk_level": risk_assessment["risk_level"],
+            "verdict": risk_assessment["verdict"],
+            "summary": risk_assessment["summary"],
+            "top_signals": sorted(risk_assessment["top_signals"]),
+            "category_breakdown": risk_assessment["category_breakdown"],
+            "terminal_override_applied": risk_assessment["terminal_override_applied"],
+            "terminal_reason": risk_assessment["terminal_reason"],
+        },
+        "calculation_version": payload["calculation_version"],
+    }
+
+
 def _register_local(
     client: TestClient,
     *,
@@ -370,6 +406,60 @@ def test_owner_can_retrieve_own_verification_but_non_owner_and_anonymous_cannot(
 
     anonymous_response = client.get(f"/api/verifications/{verification_id}")
     assert anonymous_response.status_code == 401
+
+
+def test_post_and_owner_get_are_semantically_equivalent_for_durable_fields(
+    client: TestClient,
+) -> None:
+    alice = _login(client, "valid-alice")
+
+    created = client.post(
+        "/api/verifications",
+        json={"url": "https://paypal-login-security-check.example.xyz/verify"},
+        headers=_authorization_header(alice["access_token"]),
+    )
+    assert created.status_code == 201
+    created_body = created.json()
+
+    fetched = client.get(
+        f"/api/verifications/{created_body['id']}",
+        headers=_authorization_header(alice["access_token"]),
+    )
+    assert fetched.status_code == 200
+    fetched_body = fetched.json()
+
+    assert created_body["risk_assessment"]["summary"].strip() != ""
+    assert fetched_body["risk_assessment"]["summary"].strip() != ""
+    assert _durable_contract_view(created_body) == _durable_contract_view(fetched_body)
+
+
+def test_post_and_owner_get_keep_durable_fields_equivalent_in_spanish_locale(
+    client: TestClient,
+) -> None:
+    alice = _login(client, "valid-alice")
+    headers = {
+        **_authorization_header(alice["access_token"]),
+        "Accept-Language": "es",
+    }
+
+    created = client.post(
+        "/api/verifications",
+        json={"url": "https://paypal-login-security-check.example.xyz/verify"},
+        headers=headers,
+    )
+    assert created.status_code == 201
+    created_body = created.json()
+
+    fetched = client.get(
+        f"/api/verifications/{created_body['id']}",
+        headers=headers,
+    )
+    assert fetched.status_code == 200
+    fetched_body = fetched.json()
+
+    assert created_body["risk_assessment"]["summary"].strip() != ""
+    assert fetched_body["risk_assessment"]["summary"].strip() != ""
+    assert _durable_contract_view(created_body) == _durable_contract_view(fetched_body)
 
 
 def test_my_verifications_returns_only_owned_records(client: TestClient) -> None:

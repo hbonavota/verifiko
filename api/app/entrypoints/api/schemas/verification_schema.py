@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.enums.signal_category import SignalCategory
@@ -83,12 +87,12 @@ class RiskAssessmentResponse(BaseModel):
     summary: str
     top_signals: tuple[str, ...]
     category_breakdown: dict[str, float]
-    terminal_override: bool
+    terminal_override_applied: bool
     terminal_reason: str | None
     calculation_version: str
-    analysis_warnings: tuple[str, ...]
-    analysis_trace: tuple["AnalysisStageTraceResponse", ...]
-    explanation: "RiskExplanationResponse"
+    analysis_warnings: tuple[str, ...] | None = None
+    analysis_trace: tuple[AnalysisStageTraceResponse, ...] | None = None
+    explanation: RiskExplanationResponse | None = None
     calculated_at: str
 
 
@@ -132,9 +136,9 @@ class VerificationResponse(BaseModel):
     target_type: str
     original_input: str
     normalized_input: str
-    status: str
+    status: Literal["pending", "completed", "failed"]
     signals: tuple[AnalysisSignalResponse, ...]
-    risk_assessment: RiskAssessmentResponse | None
+    risk_assessment: RiskAssessmentResponse
     trace: AnalysisTraceResponse | None
     score_breakdown: ScoreBreakdownResponse | None
     created_at: str
