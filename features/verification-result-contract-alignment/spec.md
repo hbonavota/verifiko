@@ -74,6 +74,17 @@ Esta spec depende de:
 
 Si hay conflicto, la fuente de verdad es la spec base del contrato.
 
+## 4.1 Regla sobre datos históricos previos
+
+Esta feature no garantiza compatibilidad contractual con verificaciones históricas generadas antes de la alineación del contrato.
+
+Decisión:
+
+- los registros legacy previos a esta implementación pueden eliminarse, regenerarse o considerarse fuera de contrato
+- el sistema solo garantizará cumplimiento contractual completo para verificaciones creadas después de esta alineación
+- no se introducirán fallbacks complejos en backend o frontend para sostener datos históricos fuera de contrato si la base puede limpiarse sin impacto de negocio
+- no se considerará bug contractual que una verificación legacy previa a esta alineación no cumpla esta spec
+
 ---
 
 ## 5. Objetivos concretos de alineación
@@ -161,6 +172,7 @@ Se debe auditar y ajustar, como mínimo:
 - componentes que renderizan resultado
 - cualquier helper que sintetice narrativa analítica
 - rendering defensivo para campos no garantizados
+- refactor o eliminación de componentes React que dependan de bloques sintéticos no contractuales
 
 ---
 
@@ -200,6 +212,22 @@ Esta feature debe verificar explícitamente que backend y frontend respetan como
 - `analysis_trace`
 - `explanation`
 
+Estos campos pueden aparecer en respuestas del backend, pero no deben tratarse en esta feature como parte del contrato durable exigible ni como base obligatoria de renderizado frontend.
+
+#### Regla mínima sobre `top_signals`
+
+`top_signals` debe devolver una colección derivada del resultado oficial persistido y semánticamente consistente entre POST y GET.
+No puede contener señales inventadas ni referencias a señales inexistentes.
+
+#### Regla mínima sobre `category_breakdown`
+
+`category_breakdown` debe representar el desglose por categorías usado por el backend para exponer el resultado oficial.
+Debe mantenerse semánticamente consistente entre POST y GET y no puede reconstruirse desde frontend.
+
+#### Regla adicional sobre `summary`
+
+`summary` debe ser un string no nulo y no vacío en toda respuesta contractual válida que incluya `risk_assessment`.
+
 ---
 
 ## 9. Reglas backend
@@ -223,6 +251,33 @@ La respuesta del POST y la del GET owner-scoped deben mantener equivalencia sem�
 
 ### 9.5 Ownership
 `is_owned` debe seguir existiendo como campo contractual de respuesta y no debe omitirse.
+
+### 9.6 Regla operativa de equivalencia semántica
+
+A efectos de esta feature, "equivalencia semántica" significa:
+
+- mismos valores para campos escalares durables:
+  - `id`
+  - `original_input`
+  - `normalized_input`
+  - `status`
+  - `risk_assessment.score`
+  - `risk_assessment.risk_level`
+  - `risk_assessment.verdict`
+  - `risk_assessment.summary`
+  - `risk_assessment.terminal_override_applied`
+  - `risk_assessment.terminal_reason`
+  - `calculation_version`
+
+- mismas señales persistidas en contenido funcional, aunque no necesariamente en el mismo orden si el orden no forma parte del contrato
+
+- mismo contenido funcional en:
+  - `risk_assessment.top_signals`
+  - `risk_assessment.category_breakdown`
+
+Si el orden de una colección importa para el contrato, deberá validarse explícitamente como parte de los tests. Si no importa, los tests deberán comparar contenido normalizado y no posición.
+
+Salvo que esta spec o la spec base indiquen lo contrario, el orden de colecciones no se considerará parte del contrato.
 
 ---
 
@@ -251,12 +306,34 @@ Prohibido:
 - generar decision trace oficial
 - sustituir `summary` oficial por uno generado localmente
 
+### 10.2.1 Componentes consumidores
+
+Si existen componentes React que dependan de bloques sintéticos no contractuales como:
+
+- `recommendation`
+- `evidence summary`
+- `decision trace`
+- `explanation` inventada localmente
+
+deben refactorizarse, simplificarse o eliminarse.
+
+La UI resultante debe apoyarse prioritariamente en:
+
+- `signals`
+- `risk_assessment.summary`
+- `risk_assessment.score`
+- `risk_assessment.risk_level`
+- `risk_assessment.verdict`
+
+y no en narrativa analítica fabricada por el frontend.
+
 ### 10.3 Rendering
 Si faltan campos no garantizados, el frontend debe:
 
 - no romper
 - no asumir presencia
 - no usar fallback narrativo que se presente como verdad del motor
+- no usar fallback textual local que simule `summary`, `recommendation`, `decision trace` o explicación oficial cuando esos campos no existan en la respuesta contractual
 
 ### 10.4 Prioridad del backend
 Si existe un campo oficial contractual en la respuesta backend, ese valor debe prevalecer sobre cualquier cálculo local.
@@ -300,7 +377,7 @@ según la spec base.
 
 - la spec base del contrato ya está suficientemente aprobada para implementarse
 - no se intentará resolver en esta feature la durabilidad completa de explainability
-- el backend actual ya persiste suficiente información para cumplir la primera versión contractual durable
+- el backend actual puede requerir ajustes de persistencia, mappers o schemas para cumplir completamente la primera versión contractual durable
 - el frontend puede simplificarse sin perder funcionalidad esencial
 - los cambios se harán de forma incremental y testeable
 
@@ -349,6 +426,9 @@ La suite de tests relevante debe validar explícitamente el contrato durable ent
 ### AC-10
 La implementación no debe introducir refactors grandes fuera del alcance definido.
 
+### AC-11
+La implementación no está obligada a mantener compatibilidad contractual con verificaciones históricas previas a esta alineación si dichas verificaciones pueden eliminarse o considerarse fuera de contrato.
+
 ---
 
 ## 15. Casos de test
@@ -360,6 +440,9 @@ Crear una verificación devuelve todos los campos top-level obligatorios del con
 
 #### T-2
 Crear una verificación devuelve `risk_assessment` con todos los campos durables obligatorios definidos por la spec base.
+
+#### T-2 bis
+`risk_assessment.summary` existe, es string y no es vacío en POST y GET owner-scoped.
 
 #### T-3
 Recuperar la misma verificación por owner devuelve equivalencia semántica en:
@@ -413,25 +496,33 @@ La implementación debe dividirse en pasos pequeños:
 Auditar backend real contra la spec base y localizar mismatches concretos.
 
 ### Paso 2
-Corregir contrato backend:
-- mappers
+Corregir backend contractual mínimo:
+- response schemas
 - DTOs
-- schemas
-- persistencia si aplica dentro del alcance
+- mappers dominio ↔ DTO
+- mappers persistencia ↔ dominio
 
 ### Paso 3
-Añadir o ajustar tests backend de contrato POST vs GET.
+Corregir persistencia durable:
+- modelos persistidos
+- migración de base de datos si faltan columnas o estructuras
+- validación de lectura histórica post-migración para datos nuevos
 
 ### Paso 4
-Alinear tipos frontend con el contrato aprobado.
+Añadir o ajustar tests backend de contrato POST vs GET.
 
 ### Paso 5
-Podar adapter frontend para eliminar narrativa analítica no contractual.
+Alinear tipos frontend con el contrato aprobado:
+- obligatorios para campos garantizados
+- opcionales para campos no garantizados
 
 ### Paso 6
-Validar rendering defensivo de campos no garantizados.
+Podar adapter frontend para eliminar narrativa analítica no contractual.
 
 ### Paso 7
+Validar rendering defensivo de campos no garantizados.
+
+### Paso 8
 Revisar que no haya cambios fuera de alcance.
 
 ---

@@ -133,7 +133,7 @@ def test_verification_api_create_disables_public_list_and_get(client: TestClient
 
     assert create_response.status_code == 201
     created_body = create_response.json()
-    assert created_body["status"] == "COMPLETED"
+    assert created_body["status"] == "completed"
     assert created_body["risk_assessment"]["risk_level"] in {
         "SAFE",
         "LOW",
@@ -141,6 +141,8 @@ def test_verification_api_create_disables_public_list_and_get(client: TestClient
         "HIGH",
         "CRITICAL",
     }
+    assert "terminal_override_applied" in created_body["risk_assessment"]
+    assert "terminal_override" not in created_body["risk_assessment"]
 
     verification_id = created_body["id"]
 
@@ -341,9 +343,7 @@ def test_verification_api_localizes_backend_generated_text_with_accept_language(
     created_body = create_response.json()
     signal_titles = {signal["title"] for signal in created_body["signals"]}
     assert "Cebo de credenciales en la URL" in signal_titles
-    assert created_body["risk_assessment"]["summary"].startswith(
-        "Principal riesgo:"
-    )
+    assert created_body["risk_assessment"]["summary"].strip() != ""
     assert created_body["risk_assessment"]["explanation"]["headline"].startswith("El motor produjo")
 
     list_response = client.get(

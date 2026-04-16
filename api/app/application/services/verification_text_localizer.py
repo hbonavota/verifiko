@@ -391,16 +391,9 @@ def _localize_assessment(
         localized_signals,
     )
 
-    summary = _build_spanish_summary(
-        assessment=assessment,
-        localized_signals=localized_signals,
-        localized_analysis_warnings=localized_analysis_warnings,
-        score_breakdown=score_breakdown,
-    )
-
     return replace(
         assessment,
-        summary=summary,
+        summary=assessment.summary,
         top_signals=localized_top_signals,
         analysis_warnings=localized_analysis_warnings,
         analysis_trace=localized_analysis_trace,

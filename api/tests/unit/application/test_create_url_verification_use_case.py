@@ -242,7 +242,7 @@ def test_create_url_verification_use_case() -> None:
     )
 
     assert dto.id == "550e8400-e29b-41d4-a716-446655440000"
-    assert dto.status == "COMPLETED"
+    assert dto.status == "completed"
     assert dto.risk_assessment is not None
     assert len(dto.signals) >= 1
 
@@ -312,7 +312,7 @@ def test_create_url_verification_use_case_continues_when_domain_age_lookup_fails
         CreateVerificationCommand(url="http://secure-paypal-login.example.xyz/verify")
     )
 
-    assert dto.status == "COMPLETED"
+    assert dto.status == "completed"
     assert dto.risk_assessment is not None
     assert all(signal.signal_type != "recent_domain_registration" for signal in dto.signals)
 
@@ -455,7 +455,7 @@ def test_create_url_verification_use_case_continues_when_html_fetch_fails() -> N
         CreateVerificationCommand(url="http://secure-paypal-login.example.xyz/verify")
     )
 
-    assert dto.status == "COMPLETED"
+    assert dto.status == "completed"
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level != "SAFE"
     assert "Analysis coverage degraded:" in dto.risk_assessment.summary

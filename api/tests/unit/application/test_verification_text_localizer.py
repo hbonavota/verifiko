@@ -16,6 +16,7 @@ from app.application.services.verification_text_localizer import localize_verifi
 def test_verification_text_localizer_returns_english_response_unchanged() -> None:
     dto = VerificationDTO(
         id="verification-1",
+        is_owned=False,
         target_type="URL",
         original_input="https://fresh-example.test/login",
         normalized_input="https://fresh-example.test/login",
@@ -108,6 +109,7 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
     )
     dto = VerificationDTO(
         id="verification-1",
+        is_owned=False,
         target_type="URL",
         original_input="https://fresh-example.test/login",
         normalized_input="https://fresh-example.test/login",
@@ -151,7 +153,7 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
         "Proveedor de consulta: stub-rdap.",
     )
     assert localized.risk_assessment is not None
-    assert localized.risk_assessment.summary.startswith("Cobertura del análisis degradada:")
+    assert localized.risk_assessment.summary == assessment.summary
     assert localized.risk_assessment.top_signals == ("Registro de dominio muy reciente",)
     assert localized.risk_assessment.analysis_warnings == (
         "La inteligencia de registro del dominio no estuvo disponible en esta ejecución.",
@@ -199,6 +201,7 @@ def test_verification_text_localizer_summarizes_compound_rules_without_internal_
     )
     dto = VerificationDTO(
         id="verification-1",
+        is_owned=False,
         target_type="URL",
         original_input="https://unknown-clean.example/",
         normalized_input="https://unknown-clean.example/",
@@ -223,8 +226,7 @@ def test_verification_text_localizer_summarizes_compound_rules_without_internal_
     localized = localize_verification_dto(dto, locale="es")
 
     assert localized.risk_assessment is not None
-    assert "Ajustes por patrones compuestos aplicados: 1." in localized.risk_assessment.summary
-    assert "evidence_light_clean_result" not in localized.risk_assessment.summary
+    assert localized.risk_assessment.summary == assessment.summary
 
 
 def test_verification_text_localizer_leads_with_primary_concern_for_risky_results() -> None:
@@ -276,6 +278,7 @@ def test_verification_text_localizer_leads_with_primary_concern_for_risky_result
     )
     dto = VerificationDTO(
         id="verification-2",
+        is_owned=False,
         target_type="URL",
         original_input="https://portal-example.top/pay",
         normalized_input="https://portal-example.top/pay",
@@ -298,9 +301,7 @@ def test_verification_text_localizer_leads_with_primary_concern_for_risky_result
     localized = localize_verification_dto(dto, locale="es")
 
     assert localized.risk_assessment is not None
-    assert localized.risk_assessment.summary.startswith(
-        "Principal riesgo: indicios de suplantación de marca o institución."
-    )
+    assert localized.risk_assessment.summary == assessment.summary
     assert localized.risk_assessment.explanation.headline == (
         "El motor produjo un resultado sospechoso. "
         "Principal riesgo: indicios de suplantación de marca o institución."
@@ -308,7 +309,6 @@ def test_verification_text_localizer_leads_with_primary_concern_for_risky_result
     assert localized.risk_assessment.explanation.decision_basis.startswith(
         "Este resultado está impulsado principalmente por indicios de suplantación de marca o institución."
     )
-    assert "También se detectaron otros indicadores de riesgo." not in localized.risk_assessment.summary
 
 
 def test_verification_text_localizer_translates_nested_tls_failure_reason_params() -> None:
@@ -352,6 +352,7 @@ def test_verification_text_localizer_translates_nested_tls_failure_reason_params
     )
     dto = VerificationDTO(
         id="verification-tls-1",
+        is_owned=False,
         target_type="URL",
         original_input="https://portal-example.test/login",
         normalized_input="https://portal-example.test/login",

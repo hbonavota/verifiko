@@ -95,6 +95,12 @@ def test_sqlalchemy_repository_persists_create_get_and_list(tmp_path: Path) -> N
     assert fetched is not None
     assert fetched.original_input == "https://secure-paypal-login.example.xyz/verify"
     assert fetched.risk_assessment is not None
+    assert fetched.risk_assessment.summary == "High-risk output from persisted repository test fixture."
+    assert fetched.risk_assessment.top_signals == ("Credential lure wording in URL",)
+    assert fetched.risk_assessment.category_breakdown == {"content_behavior": 44.6}
+    assert fetched.risk_assessment.terminal_override is False
+    assert fetched.risk_assessment.terminal_reason is None
+    assert fetched.risk_assessment.calculation_version == "v1"
     assert fetched.signals[0].signal_type is SignalType.PHISHING_KEYWORDS
     assert fetched.signals[0].message_key == "signal.credential_lure_wording_in_url"
 
@@ -129,6 +135,12 @@ def test_sqlalchemy_repository_survives_repository_recreation(tmp_path: Path) ->
     assert fetched.status is VerificationStatus.COMPLETED
     assert fetched.risk_assessment is not None
     assert fetched.risk_assessment.verdict is VerdictType.LIKELY_MALICIOUS
+    assert fetched.risk_assessment.summary == "High-risk output from persisted repository test fixture."
+    assert fetched.risk_assessment.top_signals == ("Credential lure wording in URL",)
+    assert fetched.risk_assessment.category_breakdown == {"content_behavior": 44.6}
+    assert fetched.risk_assessment.terminal_override is False
+    assert fetched.risk_assessment.terminal_reason is None
+    assert fetched.risk_assessment.calculation_version == "v1"
 
     drop_db(database_url)
     get_session_factory.cache_clear()

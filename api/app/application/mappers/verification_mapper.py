@@ -158,7 +158,7 @@ class VerificationMapper:
             target_type=verification.target_type.value,
             original_input=verification.original_input,
             normalized_input=verification.normalized_input.normalized,
-            status=verification.status.value,
+            status=_to_contract_status(verification.status.value),
             signals=signal_dtos,
             risk_assessment=risk_assessment_dto,
             trace=trace_dto,
@@ -168,3 +168,10 @@ class VerificationMapper:
             completed_at=verification.completed_at.isoformat() if verification.completed_at else None,
             calculation_version=verification.calculation_version,
         )
+
+
+def _to_contract_status(status: str) -> str:
+    normalized = status.strip().upper()
+    if normalized == "ANALYZING":
+        return "pending"
+    return normalized.lower()
