@@ -20,6 +20,7 @@ import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
 import { toneForRiskLevel } from "../lib/risk";
+import { findContentVariationSignal } from "../lib/verificationSignals";
 import type { ApiVerification, VerificationSummary } from "../types/verification";
 
 function formatTimestamp(value: string, locale: string) {
@@ -225,6 +226,7 @@ export function VerificationDetailPage() {
   const riskAssessment = verification.riskAssessment;
   const warnings = getVerificationWarnings(verification);
   const analysisTrace = getVerificationAnalysisTrace(verification);
+  const contentVariationSignal = findContentVariationSignal(verification);
   const readyVerification = verification;
   const primaryReasons = riskAssessment.topSignals.map((entry, index) => {
     const matchingSignal = topSignals.find(
@@ -369,6 +371,16 @@ export function VerificationDetailPage() {
                 {formatVerdict(riskAssessment.verdict, language)}
               </p>
               <p className="verification-assessment-card__posture">{riskAssessment.summary}</p>
+              {contentVariationSignal ? (
+                <div className="notes-panel" aria-label={copy.antiCamouflage.badge}>
+                  <Badge
+                    label={copy.antiCamouflage.badge}
+                    tone={toneForRiskLevel(contentVariationSignal.severity)}
+                  />
+                  <p className="notes-panel__text">{copy.antiCamouflage.lead}</p>
+                  <p className="notes-panel__meta">{copy.antiCamouflage.support}</p>
+                </div>
+              ) : null}
               <div className="verification-assessment-card__actions">
                 <Button to="/dashboard" variant="primary">
                   {copy.common.verifyAnotherLink}

@@ -18,6 +18,7 @@ import {
   shareVerification,
 } from "../lib/verificationActions";
 import { adaptApiVerification } from "../lib/verificationAdapter";
+import { findContentVariationSignal } from "../lib/verificationSignals";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
 import { toneForRiskLevel } from "../lib/risk";
@@ -130,6 +131,9 @@ export function DashboardPage() {
 
   const activeVerification = verifications[0] ?? null;
   const activeRiskAssessment = activeVerification?.riskAssessment;
+  const activeContentVariationSignal = activeVerification
+    ? findContentVariationSignal(activeVerification)
+    : undefined;
   const activeWarnings = activeVerification ? getVerificationWarnings(activeVerification) : [];
   const activeAnalysisTrace = activeVerification ? getVerificationAnalysisTrace(activeVerification) : [];
   const showOwnedLoading = authReady && !!currentUser && isHistoryLoading;
@@ -365,6 +369,15 @@ export function DashboardPage() {
                   {formatVerdict(activeRiskAssessment.verdict, language)}
                 </p>
                 <p className="dashboard-card__posture">{activeRiskAssessment.summary}</p>
+                {activeContentVariationSignal ? (
+                  <div className="notes-panel" aria-label={copy.antiCamouflage.badge}>
+                    <Badge
+                      label={copy.antiCamouflage.badge}
+                      tone={toneForRiskLevel(activeContentVariationSignal.severity)}
+                    />
+                    <p className="notes-panel__text">{copy.antiCamouflage.lead}</p>
+                  </div>
+                ) : null}
                 <div className="dashboard-assessment-card__actions">
                   <Button to={`/verifications/${activeVerification.id}`} variant="primary">
                     {copy.common.viewResult}
