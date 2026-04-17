@@ -61,7 +61,11 @@ from app.infrastructure.persistence.repositories.sqlalchemy_user_repository impo
     SQLAlchemyUserRepository,
 )
 from app.infrastructure.security.argon2_password_hasher import Argon2PasswordHasher
+from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 from app.infrastructure.security.redis_client import build_redis_client
+from app.infrastructure.security.redis_fixed_window_rate_limiter import (
+    RedisFixedWindowRateLimiter,
+)
 from app.infrastructure.security.redis_utc_day_quota_limiter import (
     RedisAuthenticatedUtcDayQuotaLimiter,
     RedisUtcDayQuotaLimiter,
@@ -187,6 +191,23 @@ def get_create_verification_rate_limiter() -> UtcDayQuotaLimiter:
     return UtcDayQuotaLimiter(
         daily_limit=settings.anonymous_daily_verification_limit,
         current_time_provider=get_time_provider().now,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_create_verification_burst_rate_limiter():
+    settings = get_settings()
+    redis_client = get_rate_limit_redis_client()
+    if redis_client is not None:
+        return RedisFixedWindowRateLimiter(
+            redis_client=redis_client,
+            max_requests=settings.verification_burst_limit_requests,
+            window_seconds=settings.verification_burst_limit_window_seconds,
+            key_prefix=f"{settings.rate_limit_key_prefix}:burst:verifications",
+        )
+    return FixedWindowRateLimiter(
+        max_requests=settings.verification_burst_limit_requests,
+        window_seconds=settings.verification_burst_limit_window_seconds,
     )
 
 

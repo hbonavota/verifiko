@@ -25,6 +25,7 @@ from app.application.services.redirect_signal_analyzer import RedirectSignalAnal
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 import app.entrypoints.api.dependencies.container as container
 from app.entrypoints.api.dependencies.container import (
+    get_create_verification_burst_rate_limiter,
     get_create_verification_rate_limiter,
     get_user_repository,
     get_verification_repository,
@@ -107,6 +108,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_verification_repository.cache_clear()
     get_user_repository.cache_clear()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_create_verification_burst_rate_limiter.cache_clear()
     container.get_rate_limit_redis_client.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
@@ -148,6 +150,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     drop_db()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_create_verification_burst_rate_limiter.cache_clear()
     container.get_rate_limit_redis_client.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
@@ -528,6 +531,29 @@ def test_authenticated_create_is_not_subject_to_anonymous_rate_limit(client: Tes
 
     limiter.reset()
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
+
+
+def test_authenticated_create_is_not_subject_to_anonymous_burst_limit(client: TestClient) -> None:
+    session = _login(client, "valid-alice")
+    limiter = get_create_verification_burst_rate_limiter()
+    limiter.reset()
+    limiter.max_requests = 1
+    limiter.window_seconds = 10
+    limiter.now_provider = lambda: 100.0
+
+    anonymous = client.post("/api/verifications", json={"url": "https://example.org"})
+    authenticated = client.post(
+        "/api/verifications",
+        json={"url": "https://example.net"},
+        headers=_authorization_header(session["access_token"]),
+    )
+
+    assert anonymous.status_code == 201
+    assert authenticated.status_code == 201
+
+    limiter.reset()
+    limiter.max_requests = get_settings().verification_burst_limit_requests
+    limiter.window_seconds = get_settings().verification_burst_limit_window_seconds
 
 
 def test_authenticated_user_hits_daily_limit(client: TestClient) -> None:

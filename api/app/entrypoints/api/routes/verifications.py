@@ -10,6 +10,7 @@ from app.domain.entities.user import User
 from app.entrypoints.api.dependencies.auth import get_current_user, get_optional_current_user
 from app.entrypoints.api.dependencies.container import (
     get_authenticated_verification_rate_limiter,
+    get_create_verification_burst_rate_limiter,
     get_create_verification_rate_limiter,
     get_create_url_verification_use_case,
     get_get_owned_verification_result_use_case,
@@ -22,6 +23,7 @@ from app.entrypoints.api.schemas.verification_schema import (
     VerificationResponse,
 )
 from app.entrypoints.api.schemas.quota_schema import QuotaStatusResponse
+from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 from app.infrastructure.security.authenticated_utc_day_quota_limiter import (
     AuthenticatedUtcDayQuotaLimiter,
 )
@@ -38,12 +40,27 @@ def create_verification(
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User | None = Depends(get_optional_current_user),
     use_case: CreateURLVerificationUseCase = Depends(get_create_url_verification_use_case),
+    burst_rate_limiter: FixedWindowRateLimiter = Depends(get_create_verification_burst_rate_limiter),
     rate_limiter: UtcDayQuotaLimiter = Depends(get_create_verification_rate_limiter),
     authenticated_rate_limiter: AuthenticatedUtcDayQuotaLimiter = Depends(
         get_authenticated_verification_rate_limiter
     ),
 ) -> VerificationResponse:
     locale = select_response_locale(accept_language)
+    burst_subject_key = (
+        _client_rate_limit_key(request) if current_user is None else str(current_user.id)
+    )
+    burst_retry_after = burst_rate_limiter.check(burst_subject_key)
+    if burst_retry_after is not None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=resolve_message(
+                "error.verification_burst_rate_limit_exceeded",
+                language=locale,
+            ),
+            headers={"Retry-After": str(burst_retry_after)},
+        )
+
     if current_user is None:
         subject_key = _client_rate_limit_key(request)
         retry_after = rate_limiter.check(subject_key)

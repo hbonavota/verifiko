@@ -21,6 +21,7 @@ from app.application.services.reputation_signal_analyzer import ReputationSignal
 import app.entrypoints.api.dependencies.container as container
 from app.entrypoints.api.dependencies.container import (
     get_auth_token_service,
+    get_create_verification_burst_rate_limiter,
     get_create_verification_rate_limiter,
     get_google_identity_verifier,
     get_user_repository,
@@ -55,7 +56,7 @@ class NoopInfrastructureLookup(InfrastructureLookupPort):
 class FakeRedisPipeline:
     def __init__(self, client: "FakeRedisClient") -> None:
         self._client = client
-        self._commands: list[tuple[str, str, int | None]] = []
+        self._commands: list[tuple[str, str, object]] = []
 
     def __enter__(self) -> "FakeRedisPipeline":
         return self
@@ -69,6 +70,15 @@ class FakeRedisPipeline:
     def get(self, key: str) -> str | None:
         return self._client.get(key)
 
+    def zremrangebyscore(self, key: str, minimum, maximum) -> int:
+        return self._client.zremrangebyscore(key, minimum, maximum)
+
+    def zcard(self, key: str) -> int:
+        return self._client.zcard(key)
+
+    def zrange(self, key: str, start: int, stop: int, *, withscores: bool = False):
+        return self._client.zrange(key, start, stop, withscores=withscores)
+
     def multi(self) -> None:
         return None
 
@@ -78,6 +88,9 @@ class FakeRedisPipeline:
     def expire(self, key: str, ttl: int) -> None:
         self._commands.append(("expire", key, ttl))
 
+    def zadd(self, key: str, mapping: dict[str, float]) -> None:
+        self._commands.append(("zadd", key, mapping))
+
     def execute(self) -> list[int | bool]:
         results: list[int | bool] = []
         for command, key, value in self._commands:
@@ -85,6 +98,8 @@ class FakeRedisPipeline:
                 results.append(self._client.incr(key))
             elif command == "expire":
                 results.append(self._client.expire(key, value or 0))
+            elif command == "zadd":
+                results.append(self._client.zadd(key, value or {}))
         self._commands.clear()
         return results
 
@@ -96,6 +111,7 @@ class FakeRedisClient:
     def __init__(self) -> None:
         self._values: dict[str, int] = {}
         self._expiry: dict[str, int] = {}
+        self._sorted_sets: dict[str, dict[str, float]] = {}
 
     def pipeline(self) -> FakeRedisPipeline:
         return FakeRedisPipeline(self)
@@ -113,9 +129,44 @@ class FakeRedisClient:
         self._expiry[key] = ttl
         return True
 
+    def zremrangebyscore(self, key: str, minimum, maximum) -> int:
+        members = self._sorted_sets.get(key, {})
+        max_score = float(maximum)
+        keys_to_remove = [member for member, score in members.items() if score <= max_score]
+        for member in keys_to_remove:
+            members.pop(member, None)
+        if not members:
+            self._sorted_sets.pop(key, None)
+        return len(keys_to_remove)
+
+    def zcard(self, key: str) -> int:
+        return len(self._sorted_sets.get(key, {}))
+
+    def zrange(self, key: str, start: int, stop: int, *, withscores: bool = False):
+        members = sorted(self._sorted_sets.get(key, {}).items(), key=lambda item: item[1])
+        if stop == -1:
+            selection = members[start:]
+        else:
+            selection = members[start : stop + 1]
+        if withscores:
+            return selection
+        return [member for member, _ in selection]
+
+    def zadd(self, key: str, mapping: dict[str, float]) -> int:
+        members = self._sorted_sets.setdefault(key, {})
+        added = 0
+        for member, score in mapping.items():
+            if member not in members:
+                added += 1
+            members[member] = score
+        return added
+
     def scan_iter(self, match: str):
         prefix = match[:-1] if match.endswith("*") else match
         for key in tuple(self._values):
+            if key.startswith(prefix):
+                yield key
+        for key in tuple(self._sorted_sets):
             if key.startswith(prefix):
                 yield key
 
@@ -125,6 +176,10 @@ class FakeRedisClient:
             if key in self._values:
                 removed += 1
                 self._values.pop(key, None)
+                self._expiry.pop(key, None)
+            if key in self._sorted_sets:
+                removed += 1
+                self._sorted_sets.pop(key, None)
                 self._expiry.pop(key, None)
         return removed
 
@@ -154,6 +209,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_verification_repository.cache_clear()
     get_user_repository.cache_clear()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_create_verification_burst_rate_limiter.cache_clear()
     container.get_rate_limit_redis_client.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
@@ -189,6 +245,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     drop_db()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_create_verification_burst_rate_limiter.cache_clear()
     container.get_rate_limit_redis_client.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
@@ -328,6 +385,37 @@ def test_verification_api_resets_anonymous_daily_limit_at_utc_midnight(client: T
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
 
 
+def test_verification_api_applies_burst_limit_before_daily_quota(client: TestClient) -> None:
+    burst_limiter = get_create_verification_burst_rate_limiter()
+    daily_limiter = get_create_verification_rate_limiter()
+    burst_limiter.reset()
+    daily_limiter.reset()
+    burst_limiter.max_requests = 1
+    burst_limiter.window_seconds = 10
+    burst_limiter.now_provider = lambda: 100.0
+    daily_limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+    first = client.post("/api/verifications", json={"url": "https://example.org"})
+    second = client.post("/api/verifications", json={"url": "https://example.net"})
+    status_response = client.get("/api/verifications/quota-status")
+
+    assert first.status_code == 201
+    assert second.status_code == 429
+    assert second.json()["detail"] == (
+        "Too many verification requests in a short period. Please wait a moment and try again."
+    )
+    assert second.headers["retry-after"] == "10"
+    assert "x-ratelimit-limit" not in second.headers
+    assert status_response.status_code == 200
+    assert status_response.json()["used_today"] == 1
+
+    burst_limiter.reset()
+    daily_limiter.reset()
+    burst_limiter.max_requests = get_settings().verification_burst_limit_requests
+    burst_limiter.window_seconds = get_settings().verification_burst_limit_window_seconds
+    daily_limiter.current_time_provider = lambda: datetime.now(tz=timezone.utc)
+
+
 def test_verification_api_quota_status_reports_anonymous_remaining_usage(client: TestClient) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
@@ -403,6 +491,37 @@ def test_verification_api_uses_redis_backed_rate_limiter_when_configured(
     assert second.headers["retry-after"] == "43200"
     assert second.headers["x-ratelimit-limit"] == "1"
     assert second.headers["x-ratelimit-remaining"] == "0"
+
+    limiter.reset()
+
+
+def test_verification_api_uses_redis_backed_burst_limiter_when_configured(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_redis = FakeRedisClient()
+    monkeypatch.setenv("REDIS_URL", "redis://fake")
+    get_settings.cache_clear()
+    container.get_rate_limit_redis_client.cache_clear()
+    container.get_create_verification_burst_rate_limiter.cache_clear()
+    monkeypatch.setattr(container, "build_redis_client", lambda redis_url: fake_redis)
+
+    limiter = get_create_verification_burst_rate_limiter()
+    limiter.reset()
+    limiter.max_requests = 1
+    limiter.window_seconds = 10
+    limiter.now_provider = lambda: 100.0
+
+    first = client.post("/api/verifications", json={"url": "https://example.org"})
+    second = client.post("/api/verifications", json={"url": "https://example.net"})
+
+    assert limiter.__class__.__name__ == "RedisFixedWindowRateLimiter"
+    assert first.status_code == 201
+    assert second.status_code == 429
+    assert second.json()["detail"] == (
+        "Too many verification requests in a short period. Please wait a moment and try again."
+    )
+    assert second.headers["retry-after"] == "10"
 
     limiter.reset()
 

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     pro_authenticated_daily_verification_limit: int = 200
     redis_url: str | None = None
     rate_limit_key_prefix: str = "verifiko:quota"
+    verification_burst_limit_requests: int = 10
+    verification_burst_limit_window_seconds: int = 60
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"
     auth_token_ttl_seconds: int = 60 * 60 * 24 * 7
