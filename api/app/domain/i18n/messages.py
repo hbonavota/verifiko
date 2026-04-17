@@ -473,6 +473,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "You’ve reached your daily verification limit. Upgrade to continue.",
         "es": "Has alcanzado tu límite diario de verificaciones. Mejora tu plan para continuar.",
     },
+    "error.verification_burst_rate_limit_exceeded": {
+        "en": "Too many verification requests in a short period. Please wait a moment and try again.",
+        "es": "Demasiadas solicitudes de verificación en un período corto. Espera un momento y vuelve a intentarlo.",
+    },
     "error.authentication_required": {
         "en": "Authentication is required for this endpoint.",
         "es": "Se requiere autenticación para este endpoint.",
