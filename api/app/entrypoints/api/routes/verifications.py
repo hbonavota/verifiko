@@ -7,6 +7,7 @@ from app.application.services.quota_status_service import QuotaStatusService
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
 from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
 from app.domain.entities.user import User
+from app.entrypoints.api.client_ip import resolve_client_ip
 from app.entrypoints.api.dependencies.auth import get_current_user, get_optional_current_user
 from app.entrypoints.api.dependencies.container import (
     get_authenticated_verification_rate_limiter,
@@ -23,6 +24,7 @@ from app.entrypoints.api.schemas.verification_schema import (
     VerificationResponse,
 )
 from app.entrypoints.api.schemas.quota_schema import QuotaStatusResponse
+from app.infrastructure.config.settings import get_settings
 from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 from app.infrastructure.security.authenticated_utc_day_quota_limiter import (
     AuthenticatedUtcDayQuotaLimiter,
@@ -47,8 +49,15 @@ def create_verification(
     ),
 ) -> VerificationResponse:
     locale = select_response_locale(accept_language)
+    anonymous_subject_key = None
+    if current_user is None:
+        anonymous_subject_key = resolve_client_ip(
+            request,
+            trusted_proxy_networks=get_settings().trusted_proxy_networks,
+        )
+
     burst_subject_key = (
-        _client_rate_limit_key(request) if current_user is None else str(current_user.id)
+        anonymous_subject_key if current_user is None else str(current_user.id)
     )
     burst_retry_after = burst_rate_limiter.check(burst_subject_key)
     if burst_retry_after is not None:
@@ -62,7 +71,7 @@ def create_verification(
         )
 
     if current_user is None:
-        subject_key = _client_rate_limit_key(request)
+        subject_key = anonymous_subject_key
         retry_after = rate_limiter.check(subject_key)
         quota_status = rate_limiter.get_status(subject_key)
         if retry_after is not None:
@@ -121,7 +130,12 @@ def get_quota_status(
     quota_status_service: QuotaStatusService = Depends(get_quota_status_service),
 ) -> QuotaStatusResponse:
     if current_user is None:
-        status = quota_status_service.for_anonymous(_client_rate_limit_key(request))
+        status = quota_status_service.for_anonymous(
+            resolve_client_ip(
+                request,
+                trusted_proxy_networks=get_settings().trusted_proxy_networks,
+            )
+        )
     else:
         status = quota_status_service.for_user(current_user)
     return QuotaStatusResponse(
@@ -165,14 +179,6 @@ def get_verification(
         )
     )
     return VerificationPresenter.to_response(result, locale=locale)
-
-
-def _client_rate_limit_key(request: Request) -> str:
-    client = request.client
-    if client is None or not client.host:
-        return "anonymous"
-    return client.host
-
 
 def _rate_limit_headers(quota_status) -> dict[str, str]:
     return {
