@@ -16,9 +16,9 @@ import { adaptApiVerification } from "../lib/verificationAdapter";
 import { toneForRiskLevel } from "../lib/risk";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
-import type { VerificationSummary } from "../types/verification";
+import type { RiskLevel, VerificationSummary } from "../types/verification";
 
-function cardToneForRiskLevel(riskLevel: VerificationSummary["riskLevel"]) {
+function cardToneForRiskLevel(riskLevel: RiskLevel) {
   const tone = toneForRiskLevel(riskLevel);
   return tone === "warning" || tone === "danger" || tone === "success" ? tone : "default";
 }
@@ -104,6 +104,7 @@ export function HomePage() {
 
   const latestVerification = verifications[0] ?? null;
   const latestSignals = latestVerification?.signals.slice(0, 2) ?? [];
+  const latestRiskAssessment = latestVerification?.riskAssessment;
   const isLoadingAnalysis = analysisState === "submitting";
   const isLoadingOwnedResult = !isLoadingAnalysis && authReady && !!currentUser && isHistoryLoading;
   const showAnonymousSupport = authReady && !currentUser;
@@ -179,7 +180,13 @@ export function HomePage() {
                   : copy.home.readyToVerify
             }
             description={undefined}
-            tone={isLoadingAnalysis ? "success" : latestVerification ? cardToneForRiskLevel(latestVerification.riskLevel) : "default"}
+            tone={
+              isLoadingAnalysis
+                ? "success"
+                : latestVerification
+                  ? cardToneForRiskLevel(latestRiskAssessment.riskLevel)
+                  : "default"
+            }
             className="analysis-hero__result"
           >
             {isLoadingAnalysis ? (
@@ -207,31 +214,34 @@ export function HomePage() {
               <>
                 <div className="analysis-result-card__topline">
                   <Badge
-                    label={formatRiskLevel(latestVerification.riskLevel, language)}
-                    tone={toneForRiskLevel(latestVerification.riskLevel)}
+                    label={formatRiskLevel(latestRiskAssessment.riskLevel, language)}
+                    tone={toneForRiskLevel(latestRiskAssessment.riskLevel)}
                   />
                 </div>
 
                 <div className="analysis-result-card__hero">
                   <ScoreRing
                     label={copy.common.trustScore}
-                    riskLevel={latestVerification.riskLevel}
-                    score={latestVerification.score}
+                    riskLevel={latestRiskAssessment.riskLevel}
+                    score={latestRiskAssessment.score}
                     size="hero"
                   />
 
                   <div className="analysis-result-card__summary-block">
-                    <p className="analysis-result-card__subject" title={latestVerification.subject}>
-                      {latestVerification.subject}
+                    <p
+                      className="analysis-result-card__subject"
+                      title={latestVerification.originalInput}
+                    >
+                      {latestVerification.originalInput}
                     </p>
                     <p className="preview-card__label">{copy.common.result}</p>
                     <p
                       className="analysis-result-card__headline"
-                      title={`${copy.common.verificationResult}: ${formatVerdict(latestVerification.verdict, language)}`}
+                      title={`${copy.common.verificationResult}: ${formatVerdict(latestRiskAssessment.verdict, language)}`}
                     >
-                      {formatVerdict(latestVerification.verdict, language)}
+                      {formatVerdict(latestRiskAssessment.verdict, language)}
                     </p>
-                    <p className="analysis-result-card__copy">{latestVerification.executiveSummary.posture}</p>
+                    <p className="analysis-result-card__copy">{latestRiskAssessment.summary}</p>
                     <div className="analysis-result-card__actions">
                       <Button
                         to={`/verifications/${latestVerification.id}`}
@@ -280,7 +290,7 @@ export function HomePage() {
                           tone={toneForRiskLevel(signal.severity)}
                         />
                       </div>
-                      <p className="preview-signal-list__detail">{signal.reason}</p>
+                      <p className="preview-signal-list__detail">{signal.description}</p>
                     </article>
                   ))}
                 </div>

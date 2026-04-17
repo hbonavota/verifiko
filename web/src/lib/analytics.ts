@@ -258,5 +258,5 @@ export function categorizeAnalysisError(error: unknown): string {
 }
 
 export function detectDegradedCoverage(verification: ApiVerification): boolean {
-  return DEGRADED_COVERAGE_PATTERN.test(verification.risk_assessment?.summary ?? "");
+  return DEGRADED_COVERAGE_PATTERN.test(verification.risk_assessment.summary);
 }
