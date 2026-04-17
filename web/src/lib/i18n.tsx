@@ -64,6 +64,11 @@ const translations = {
       english: "English",
       spanish: "Spanish",
     },
+    antiCamouflage: {
+      badge: "Evasion signal detected",
+      lead: "This site appears to show different content depending on who is visiting.",
+      support: "This can be a sign of evasion or cloaking.",
+    },
     common: {
       result: "Result",
       signals: "Signals",
@@ -636,6 +641,11 @@ const translations = {
       label: "Idioma",
       english: "Inglés",
       spanish: "Español",
+    },
+    antiCamouflage: {
+      badge: "Señal de evasión detectada",
+      lead: "Este sitio parece mostrar contenido distinto según quién lo visite.",
+      support: "Esto puede ser una señal de evasión o camuflaje.",
     },
     common: {
       result: "Resultado",
