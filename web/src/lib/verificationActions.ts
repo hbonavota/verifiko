@@ -32,21 +32,22 @@ export function buildVerificationExportText(
     labels: VerificationExportLabels;
   },
 ): string {
+  const riskAssessment = verification.riskAssessment;
   const retainedSignals = verification.signals
     .slice(0, 3)
     .map(
       (signal) =>
-        `- ${signal.title} (${formatRiskLevel(signal.severity, language)}): ${signal.reason}`,
+        `- ${signal.title} (${formatRiskLevel(signal.severity, language)}): ${signal.description}`,
     );
 
   return [
-    `${labels.title}: ${verification.subject}`,
+    `${labels.title}: ${verification.originalInput}`,
     `${labels.target}: ${verification.normalizedInput}`,
-    `${labels.risk}: ${formatRiskLevel(verification.riskLevel, language)}`,
-    `${labels.trustScore}: ${Math.round(verification.score)}/100`,
-    `${labels.verdict}: ${formatVerdict(verification.verdict, language)}`,
+    `${labels.risk}: ${formatRiskLevel(riskAssessment.riskLevel, language)}`,
+    `${labels.trustScore}: ${Math.round(riskAssessment.score)}/100`,
+    `${labels.verdict}: ${formatVerdict(riskAssessment.verdict, language)}`,
     `${labels.executedAt}: ${new Date(verification.createdAt).toLocaleString(locale)}`,
-    `${labels.summary}: ${verification.summary}`,
+    `${labels.summary}: ${riskAssessment.summary}`,
     retainedSignals.length > 0 ? `${labels.signals}:` : null,
     ...retainedSignals,
     `${labels.link}: ${buildVerificationDetailUrl(verification.id)}`,

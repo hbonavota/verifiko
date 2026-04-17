@@ -54,6 +54,21 @@ function formatRelativeTimestamp(value: string, locale: string, language: "en" |
   return formatter.format(Math.round(diffSeconds / 86400), "day");
 }
 
+function getVerificationWarnings(verification: VerificationSummary): string[] {
+  const analysisWarnings = verification.riskAssessment.analysisWarnings ?? [];
+  const coverageWarnings = verification.riskAssessment.explanation?.coverageWarnings ?? [];
+  return [...analysisWarnings, ...coverageWarnings];
+}
+
+function getVerificationAnalysisTrace(verification: VerificationSummary) {
+  const trace = verification.riskAssessment.analysisTrace ?? [];
+  if (trace.length > 0) {
+    return trace;
+  }
+
+  return verification.riskAssessment.explanation?.analysisTrace ?? [];
+}
+
 export function DashboardPage() {
   const { copy, language, locale } = useI18n();
   const { authReady, currentUser, refreshQuotaStatus } = useAuth();
@@ -114,6 +129,9 @@ export function DashboardPage() {
   }, [authReady, currentUser, language]);
 
   const activeVerification = verifications[0] ?? null;
+  const activeRiskAssessment = activeVerification?.riskAssessment;
+  const activeWarnings = activeVerification ? getVerificationWarnings(activeVerification) : [];
+  const activeAnalysisTrace = activeVerification ? getVerificationAnalysisTrace(activeVerification) : [];
   const showOwnedLoading = authReady && !!currentUser && isHistoryLoading;
   const workspaceOwner = currentUser ? firstName(currentUser.display_name || currentUser.email) : null;
   const latestSavedAt = activeVerification
@@ -138,8 +156,10 @@ export function DashboardPage() {
   }, [copiedVerificationId]);
 
   const activeReasons =
-    activeVerification && activeVerification.signals.length > 0
-      ? activeVerification.signals.slice(0, 3).map((signal) => signal.reason)
+    activeRiskAssessment && activeRiskAssessment.topSignals.length > 0
+      ? activeRiskAssessment.topSignals.slice(0, 3)
+      : activeVerification && activeVerification.signals.length > 0
+        ? activeVerification.signals.slice(0, 3).map((signal) => signal.title)
       : [copy.dashboard.noRecentAnalysis];
 
   async function handleCopyLink(verificationId: string) {
@@ -262,10 +282,10 @@ export function DashboardPage() {
               label={copy.dashboard.latestVerdictLabel}
               value={
                 activeVerification
-                  ? formatRiskLevel(activeVerification.riskLevel, language)
+                  ? formatRiskLevel(activeRiskAssessment.riskLevel, language)
                   : copy.dashboard.empty
               }
-              tone={activeVerification ? toneForRiskLevel(activeVerification.riskLevel) : "neutral"}
+              tone={activeVerification ? toneForRiskLevel(activeRiskAssessment.riskLevel) : "neutral"}
             />
             <StatPill
               label={copy.dashboard.lastSavedLabel}
@@ -323,28 +343,28 @@ export function DashboardPage() {
             <div className="dashboard-assessment-card__hero">
               <ScoreRing
                 label={copy.common.trustScore}
-                riskLevel={activeVerification.riskLevel}
-                score={activeVerification.score}
+                riskLevel={activeRiskAssessment.riskLevel}
+                score={activeRiskAssessment.score}
                 size="hero"
               />
               <div className="dashboard-assessment-card__summary">
-                <p className="dashboard-card__subject" title={activeVerification.subject}>
-                  {activeVerification.subject}
+                <p className="dashboard-card__subject" title={activeVerification.originalInput}>
+                  {activeVerification.originalInput}
                 </p>
                 <div className="dashboard-card__status-row">
                   <Badge
-                    label={formatRiskLevel(activeVerification.riskLevel, language)}
-                    tone={toneForRiskLevel(activeVerification.riskLevel)}
+                    label={formatRiskLevel(activeRiskAssessment.riskLevel, language)}
+                    tone={toneForRiskLevel(activeRiskAssessment.riskLevel)}
                   />
                 </div>
                 <p className="metric-card__label">{copy.dashboard.verdict}</p>
                 <p
                   className="dashboard-card__verdict"
-                  title={`${copy.common.verificationResult}: ${formatVerdict(activeVerification.verdict, language)}`}
+                  title={`${copy.common.verificationResult}: ${formatVerdict(activeRiskAssessment.verdict, language)}`}
                 >
-                  {formatVerdict(activeVerification.verdict, language)}
+                  {formatVerdict(activeRiskAssessment.verdict, language)}
                 </p>
-                <p className="dashboard-card__posture">{activeVerification.executiveSummary.posture}</p>
+                <p className="dashboard-card__posture">{activeRiskAssessment.summary}</p>
                 <div className="dashboard-assessment-card__actions">
                   <Button to={`/verifications/${activeVerification.id}`} variant="primary">
                     {copy.common.viewResult}
@@ -356,7 +376,11 @@ export function DashboardPage() {
             <div className="dashboard-card-headline dashboard-card-headline--muted">
               <div className="dashboard-card-pills">
                 <StatPill label={copy.dashboard.signalsCount} value={String(activeVerification.signals.length)} tone="warning" />
-                <StatPill label={copy.dashboard.openQuestions} value={String(activeVerification.inconclusive.length)} tone="danger" />
+                <StatPill
+                  label={copy.dashboard.openQuestions}
+                  value={String(activeWarnings.length)}
+                  tone={activeWarnings.length > 0 ? "danger" : "neutral"}
+                />
               </div>
             </div>
           </div>
@@ -406,7 +430,7 @@ export function DashboardPage() {
                     <span>{copy.dashboard.severity}</span>
                     <span>{copy.dashboard.confidence}</span>
                     <span>{copy.dashboard.scoreContribution}</span>
-                    <span>{copy.dashboard.status}</span>
+                    <span>{copy.dashboard.sources}</span>
                   </div>
                   {activeVerification.signals.map((signal) => (
                     <article key={signal.id} className="signal-table__row">
@@ -429,9 +453,9 @@ export function DashboardPage() {
                       <span className="signal-table__value" data-label={copy.dashboard.scoreContribution}>
                         -{signal.scoreContribution}
                       </span>
-                      <div className="signal-table__cell" data-label={copy.dashboard.status}>
-                        <Badge label={signal.status} tone={toneForRiskLevel(signal.severity)} />
-                      </div>
+                      <span className="signal-table__value" data-label={copy.dashboard.sources}>
+                        {signal.source}
+                      </span>
                     </article>
                   ))}
                 </div>
@@ -469,15 +493,15 @@ export function DashboardPage() {
                   <div className="evidence-block">
                     <p className="evidence-block__label">{copy.dashboard.observed}</p>
                     <ul className="evidence-block__list">
-                      {activeVerification.evidenceSummary.observed.map((item) => (
-                        <li key={item}>{item}</li>
+                      {activeVerification.signals.map((signal) => (
+                        <li key={signal.id}>{signal.description}</li>
                       ))}
                     </ul>
                   </div>
                   <div className="evidence-block">
                     <p className="evidence-block__label">{copy.dashboard.sources}</p>
                     <ul className="evidence-block__list">
-                      {activeVerification.evidenceSummary.sources.map((item) => (
+                      {[...new Set(activeVerification.signals.map((signal) => signal.source))].map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
@@ -485,7 +509,7 @@ export function DashboardPage() {
                   <div className="evidence-block">
                     <p className="evidence-block__label">{copy.dashboard.unresolved}</p>
                     <ul className="evidence-block__list">
-                      {activeVerification.evidenceSummary.unresolved.map((item) => (
+                      {activeWarnings.map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
@@ -503,15 +527,19 @@ export function DashboardPage() {
             description={undefined}
             id="cases"
           >
-            {activeVerification ? (
+            {activeVerification && activeAnalysisTrace.length > 0 ? (
               <div className="decision-trace">
-                {activeVerification.decisionTrace.map((step) => (
-                  <article key={step.id} className="decision-trace__item">
+                {activeAnalysisTrace.map((step) => (
+                  <article key={`${step.stage}-${step.source}-${step.status}`} className="decision-trace__item">
                     <div className="decision-trace__marker" />
                     <div className="decision-trace__content">
-                      <p className="decision-trace__label">{step.label}</p>
-                      <p className="decision-trace__detail">{step.detail}</p>
-                      <p className="decision-trace__outcome">{step.outcome}</p>
+                      <p className="decision-trace__label">{step.stage}</p>
+                      <p className="decision-trace__detail">
+                        {[step.source, ...step.signalTitles].filter(Boolean).join(" · ")}
+                      </p>
+                      <p className="decision-trace__outcome">
+                        {`${step.status} · ${step.signalCount}`}
+                      </p>
                     </div>
                   </article>
                 ))}
@@ -521,21 +549,6 @@ export function DashboardPage() {
             )}
           </Card>
 
-          <Card
-            eyebrow={copy.dashboard.caseRecommendation}
-            title={copy.dashboard.suggestedNextAction}
-            description={undefined}
-            tone="warning"
-          >
-            {activeVerification ? (
-              <div className="recommendation-panel">
-                <p className="recommendation-panel__headline">{activeVerification.recommendation.title}</p>
-                <p className="recommendation-panel__copy">{activeVerification.recommendation.detail}</p>
-              </div>
-            ) : (
-              <p className="metric-card__detail">{copy.dashboard.recommendationAppearsLater}</p>
-            )}
-          </Card>
         </div>
 
         <aside className="dashboard-rail">
@@ -577,18 +590,20 @@ export function DashboardPage() {
                     <div className="activity-feed__row">
                       <Link
                         className="activity-feed__title-link"
-                        title={verification.subject}
+                        title={verification.originalInput}
                         to={`/verifications/${verification.id}`}
                       >
-                        <p className="activity-feed__title" title={verification.subject}>{verification.subject}</p>
+                        <p className="activity-feed__title" title={verification.originalInput}>
+                          {verification.originalInput}
+                        </p>
                       </Link>
                       <div className="activity-feed__status">
                         <Badge
-                          label={formatRiskLevel(verification.riskLevel, language)}
-                          tone={toneForCount(verification.riskLevel)}
+                          label={formatRiskLevel(verification.riskAssessment.riskLevel, language)}
+                          tone={toneForCount(verification.riskAssessment.riskLevel)}
                         />
                         <p className="activity-feed__verdict">
-                          {formatVerdict(verification.verdict, language)}
+                          {formatVerdict(verification.riskAssessment.verdict, language)}
                         </p>
                       </div>
                     </div>
@@ -606,7 +621,7 @@ export function DashboardPage() {
                         )}
                       </p>
                     </div>
-                    <p className="activity-feed__detail">{verification.summary}</p>
+                    <p className="activity-feed__detail">{verification.riskAssessment.summary}</p>
                     <div className="activity-feed__footer">
                       <div className="activity-feed__actions">
                         <Button to={`/verifications/${verification.id}`} variant="secondary">
@@ -675,8 +690,7 @@ export function DashboardPage() {
           >
             {activeVerification ? (
               <div className="notes-panel">
-                <p className="recommendation-panel__headline">{activeVerification.recommendation.title}</p>
-                <p className="notes-panel__text">{activeVerification.recommendation.detail}</p>
+                <p className="notes-panel__text">{activeRiskAssessment.summary}</p>
                 <div className="dashboard-action-stack">
                   <Button to={`/verifications/${activeVerification.id}`} variant="primary">
                     {copy.dashboard.openSavedResult}
@@ -685,7 +699,9 @@ export function DashboardPage() {
                     {copy.dashboard.verifyAnotherLink}
                   </Button>
                 </div>
-                <p className="notes-panel__meta">{activeVerification.executiveSummary.operationalImpact}</p>
+                {activeRiskAssessment.terminalReason ? (
+                  <p className="notes-panel__meta">{activeRiskAssessment.terminalReason}</p>
+                ) : null}
               </div>
             ) : currentUser ? (
               <div className="notes-panel">

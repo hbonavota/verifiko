@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
 import { EmailAuthModal } from "../auth/EmailAuthModal";
 import { useAuth } from "../../lib/auth";
-import type { ApiQuotaStatus } from "../../types/verification";
+import type { ApiQuotaStatus, ApiVerification } from "../../types/verification";
 import { ApiRequestError, createVerification } from "../../lib/api";
 import {
   trackAuthEntryClicked,
@@ -18,7 +18,6 @@ import {
   trackQuotaPromptShown,
   trackUpgradeIntentClicked,
 } from "../../lib/analytics";
-import { adaptApiVerification } from "../../lib/verificationAdapter";
 import { useI18n } from "../../lib/i18n";
 import { type UpgradeIntentSource, useUpgradeIntent } from "../../lib/upgradeIntentStorage";
 import { Input } from "../ui/Input";
@@ -107,6 +106,13 @@ export function AnalyzeUrlForm({
   const analyticsPlan = quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS");
   const isAuthenticated = Boolean(currentUser);
 
+  function getVerificationWarningCount(verification: ApiVerification): number {
+    const analysisWarnings = verification.risk_assessment.analysis_warnings?.length ?? 0;
+    const coverageWarnings =
+      verification.risk_assessment.explanation?.coverage_warnings?.length ?? 0;
+    return analysisWarnings + coverageWarnings;
+  }
+
   useEffect(() => {
     if (currentUser && quotaExceededRetryAfter === null && !isQuotaRetrying) {
       setSubmitError(null);
@@ -190,21 +196,20 @@ export function AnalyzeUrlForm({
 
     try {
       const verification = await createVerification({ url: target });
-      const adaptedVerification = adaptApiVerification(verification, language);
 
-      if (verification.status === "COMPLETED" && verification.risk_assessment) {
+      if (verification.status === "completed") {
         trackAnalysisCompleted({
           sourcePath: location.pathname,
           language,
           isAuthenticated,
           plan: analyticsPlan,
-          riskLevel: adaptedVerification.riskLevel,
-          verdict: adaptedVerification.verdict,
+          riskLevel: verification.risk_assessment.risk_level,
+          verdict: verification.risk_assessment.verdict,
           signalCount: verification.signals.length,
-          warningCount: adaptedVerification.inconclusive.length,
+          warningCount: getVerificationWarningCount(verification),
           hasFetchDegradation: detectDegradedCoverage(verification),
         });
-      } else if (verification.status === "FAILED") {
+      } else if (verification.status === "failed") {
         trackAnalysisFailed({
           sourcePath: location.pathname,
           language,
