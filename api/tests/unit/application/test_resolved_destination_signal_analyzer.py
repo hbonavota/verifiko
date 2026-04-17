@@ -17,7 +17,12 @@ class FakeHtmlFetcher(HtmlFetcherPort):
         self._document = document
         self._fail = fail
 
-    def fetch(self, url: str) -> FetchedHtmlDocument | None:
+    def fetch(
+        self,
+        url: str,
+        *,
+        user_agent: str | None = None,
+    ) -> FetchedHtmlDocument | None:
         if self._fail:
             raise HtmlFetchError("resolved destination fetch failed")
         return self._document
@@ -207,3 +212,39 @@ def test_resolved_destination_signal_analyzer_skips_benign_redirect_interstitial
     )
 
     assert all(signal.signal_type.value != "credential_harvest_form" for signal in result.signals)
+
+
+def test_resolved_destination_signal_analyzer_keeps_single_fetch_behavior() -> None:
+    observed_calls: list[tuple[str, str | None]] = []
+
+    class CountingHtmlFetcher(HtmlFetcherPort):
+        def fetch(
+            self,
+            url: str,
+            *,
+            user_agent: str | None = None,
+        ) -> FetchedHtmlDocument | None:
+            observed_calls.append((url, user_agent))
+            return None
+
+    analyzer = _build_analyzer(html_fetcher=CountingHtmlFetcher())
+    resolution = RedirectResolution(
+        final_url="https://collector.bad.example/login",
+        hops=(
+            RedirectHop(
+                status_code=302,
+                source_url="https://safe.example/out",
+                target_url="https://collector.bad.example/login",
+            ),
+        ),
+        provider_name="stub-redirect",
+    )
+
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://safe.example/out"),
+        redirect_resolution=resolution,
+    )
+
+    assert all(signal.source != "resolved-destination-html-analyzer" for signal in result.signals)
+    assert result.warnings == ()
+    assert observed_calls == [("https://collector.bad.example/login", None)]

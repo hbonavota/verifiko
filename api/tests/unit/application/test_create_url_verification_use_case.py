@@ -45,7 +45,10 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
-from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
+from app.application.use_cases.create_url_verification import (
+    CreateURLVerificationUseCase,
+    _HTML_FETCH_VARIANT_PROFILES,
+)
 from app.domain.entities.verification import Verification
 from app.domain.exceptions.domain_exception import DomainException
 from app.domain.enums.signal_category import SignalCategory
@@ -106,10 +109,38 @@ class FakeHtmlFetcher(HtmlFetcherPort):
         self._document = document
         self._fail = fail
 
-    def fetch(self, url: str) -> FetchedHtmlDocument | None:
+    def fetch(
+        self,
+        url: str,
+        *,
+        user_agent: str | None = None,
+    ) -> FetchedHtmlDocument | None:
         if self._fail:
             raise HtmlFetchError(f"fetch failed for {url}")
         return self._document
+
+
+class MultiVariantHtmlFetcher(HtmlFetcherPort):
+    def __init__(
+        self,
+        *,
+        documents_by_user_agent: dict[str, FetchedHtmlDocument | None],
+        failing_user_agents: set[str] | None = None,
+    ) -> None:
+        self._documents_by_user_agent = documents_by_user_agent
+        self._failing_user_agents = failing_user_agents or set()
+        self.observed_user_agents: list[str | None] = []
+
+    def fetch(
+        self,
+        url: str,
+        *,
+        user_agent: str | None = None,
+    ) -> FetchedHtmlDocument | None:
+        self.observed_user_agents.append(user_agent)
+        if user_agent in self._failing_user_agents:
+            raise HtmlFetchError(f"fetch failed for {url}")
+        return self._documents_by_user_agent.get(user_agent)
 
 
 class FakeTlsValidator(TlsValidatorPort):
@@ -218,6 +249,18 @@ def _build_use_case(
             tls_validator=tls_validator or FakeTlsValidator()
         ),
         public_target_validator=public_target_validator,
+    )
+
+
+def _user_agent_for(profile_name: str) -> str:
+    return next(profile.user_agent for profile in _HTML_FETCH_VARIANT_PROFILES if profile.name == profile_name)
+
+
+def _html_document(content: str, source_url: str = "https://fresh-example.test/login") -> FetchedHtmlDocument:
+    return FetchedHtmlDocument(
+        content=content,
+        source_url=source_url,
+        content_type="text/html; charset=utf-8",
     )
 
 
@@ -467,6 +510,260 @@ def test_create_url_verification_use_case_continues_when_html_fetch_fails() -> N
     assert any(
         stage.stage == "html_content" and stage.status == "degraded"
         for stage in dto.risk_assessment.analysis_trace
+    )
+
+
+def test_create_url_verification_use_case_skips_signal_for_equivalent_html_variants() -> None:
+    base_desktop = _html_document(
+        """
+        <html>
+          <body>
+            <h1>Welcome back</h1>
+            <p>Review your account activity to continue.</p>
+            <form action="/session" nonce="abc123def456ghi789">
+              <input type="email" name="email" />
+              <input type="password" name="password" />
+              <button type="submit">Sign in</button>
+            </form>
+            <p>Generated at 2026-04-17T11:15:24Z</p>
+          </body>
+        </html>
+        """,
+    )
+    mobile_variant = _html_document(
+        """
+        <html>
+          <body>
+            <h1>Welcome back</h1>
+            <p>Review your account activity to continue.</p>
+            <form action="/session" nonce="zyx987wvu654tsr321">
+              <input type="email" name="email" />
+              <input type="password" name="password" />
+              <button type="submit">Sign in</button>
+            </form>
+            <p>Generated at 2026-04-17T11:16:09Z</p>
+          </body>
+        </html>
+        """,
+    )
+    googlebot_variant = _html_document(
+        """
+        <html>
+          <body>
+            <h1>Welcome back</h1>
+            <p>Review your account activity to continue.</p>
+            <form action="/session" nonce="ff11ee22dd33cc44bb55aa66">
+              <input type="email" name="email" />
+              <input type="password" name="password" />
+              <button type="submit">Sign in</button>
+            </form>
+            <p>Generated at 2026-04-17T11:17:41Z</p>
+          </body>
+        </html>
+        """,
+    )
+    html_fetcher = MultiVariantHtmlFetcher(
+        documents_by_user_agent={
+            _user_agent_for("desktop"): base_desktop,
+            _user_agent_for("mobile"): mobile_variant,
+            _user_agent_for("googlebot-like"): googlebot_variant,
+        }
+    )
+    use_case = _build_use_case(html_fetcher=html_fetcher)
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://fresh-example.test/login"))
+
+    assert html_fetcher.observed_user_agents == [
+        _user_agent_for("desktop"),
+        _user_agent_for("mobile"),
+        _user_agent_for("googlebot-like"),
+    ]
+    assert any(signal.signal_type == "credential_harvest_form" for signal in dto.signals)
+    assert not any(signal.signal_type == "content_variation_detected" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_adds_content_variation_signal_for_mobile_login_variant() -> None:
+    html_fetcher = MultiVariantHtmlFetcher(
+        documents_by_user_agent={
+            _user_agent_for("desktop"): _html_document(
+                """
+                <html>
+                  <body>
+                    <h1>Company updates</h1>
+                    <p>Read the latest status bulletin and service notes.</p>
+                  </body>
+                </html>
+                """,
+                source_url="https://fresh-example.test/",
+            ),
+            _user_agent_for("mobile"): _html_document(
+                """
+                <html>
+                  <body>
+                    <h1>Sign in to verify your account</h1>
+                    <form action="https://collector.bad.example/submit">
+                      <input type="email" name="email" />
+                      <input type="password" name="password" />
+                      <button type="submit">Sign in</button>
+                    </form>
+                  </body>
+                </html>
+                """,
+            ),
+            _user_agent_for("googlebot-like"): _html_document(
+                """
+                <html>
+                  <body>
+                    <h1>Company updates</h1>
+                    <p>Read the latest status bulletin and service notes.</p>
+                  </body>
+                </html>
+                """,
+                source_url="https://fresh-example.test/",
+            ),
+        }
+    )
+    use_case = _build_use_case(html_fetcher=html_fetcher)
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://fresh-example.test/login"))
+
+    assert any(signal.signal_type == "credential_harvest_form" for signal in dto.signals)
+    assert any(signal.signal_type == "content_variation_detected" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_adds_content_variation_signal_for_googlebot_gap() -> None:
+    login_document = _html_document(
+        """
+        <html>
+          <body>
+            <h1>Security challenge</h1>
+            <p>Approve this verification to continue your account session.</p>
+            <form action="/checkpoint">
+              <input type="text" name="otp_code" />
+              <button type="submit">Approve</button>
+            </form>
+          </body>
+        </html>
+        """,
+    )
+    html_fetcher = MultiVariantHtmlFetcher(
+        documents_by_user_agent={
+            _user_agent_for("desktop"): login_document,
+            _user_agent_for("mobile"): login_document,
+            _user_agent_for("googlebot-like"): _html_document(
+                """
+                <html>
+                  <body>
+                    <h1>Welcome</h1>
+                    <p>Static documentation landing page.</p>
+                  </body>
+                </html>
+                """,
+                source_url="https://fresh-example.test/",
+            ),
+        }
+    )
+    use_case = _build_use_case(html_fetcher=html_fetcher)
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://fresh-example.test/login"))
+
+    assert any(signal.signal_type == "suspicious_login_interface" for signal in dto.signals)
+    assert any(signal.signal_type == "content_variation_detected" for signal in dto.signals)
+
+
+def test_create_url_verification_use_case_records_partial_multi_user_agent_warning_without_degrading_result() -> None:
+    baseline_fetcher = MultiVariantHtmlFetcher(
+        documents_by_user_agent={
+            _user_agent_for("desktop"): _html_document(
+                """
+                <html>
+                  <body>
+                    <h1>Company updates</h1>
+                    <p>Read the latest status bulletin and service notes.</p>
+                  </body>
+                </html>
+                """,
+                source_url="https://fresh-example.test/",
+            ),
+            _user_agent_for("mobile"): _html_document(
+                """
+                <html>
+                  <body>
+                    <h1>Sign in to verify your account</h1>
+                    <form action="https://collector.bad.example/submit">
+                      <input type="email" name="email" />
+                      <input type="password" name="password" />
+                      <button type="submit">Sign in</button>
+                    </form>
+                  </body>
+                </html>
+                """,
+            ),
+            _user_agent_for("googlebot-like"): _html_document(
+                """
+                <html>
+                  <body>
+                    <h1>Company updates</h1>
+                    <p>Read the latest status bulletin and service notes.</p>
+                  </body>
+                </html>
+                """,
+                source_url="https://fresh-example.test/",
+            ),
+        }
+    )
+    degraded_fetcher = MultiVariantHtmlFetcher(
+        documents_by_user_agent={
+            _user_agent_for("desktop"): _html_document(
+                """
+                <html>
+                  <body>
+                    <h1>Company updates</h1>
+                    <p>Read the latest status bulletin and service notes.</p>
+                  </body>
+                </html>
+                """,
+                source_url="https://fresh-example.test/",
+            ),
+            _user_agent_for("mobile"): _html_document(
+                """
+                <html>
+                  <body>
+                    <h1>Sign in to verify your account</h1>
+                    <form action="https://collector.bad.example/submit">
+                      <input type="email" name="email" />
+                      <input type="password" name="password" />
+                      <button type="submit">Sign in</button>
+                    </form>
+                  </body>
+                </html>
+                """,
+            ),
+        },
+        failing_user_agents={_user_agent_for("googlebot-like")},
+    )
+    baseline_use_case = _build_use_case(html_fetcher=baseline_fetcher)
+    degraded_use_case = _build_use_case(html_fetcher=degraded_fetcher)
+
+    baseline_dto = baseline_use_case.execute(
+        CreateVerificationCommand(url="https://fresh-example.test/login")
+    )
+    degraded_dto = degraded_use_case.execute(
+        CreateVerificationCommand(url="https://fresh-example.test/login")
+    )
+
+    assert degraded_dto.status == "completed"
+    assert degraded_dto.risk_assessment is not None
+    assert baseline_dto.risk_assessment is not None
+    assert degraded_dto.risk_assessment.analysis_warnings == (
+        "Some user-agent HTML variants could not be fetched, but the analysis continued with the variants that responded.",
+    )
+    assert degraded_dto.risk_assessment.score == baseline_dto.risk_assessment.score
+    assert degraded_dto.risk_assessment.verdict == baseline_dto.risk_assessment.verdict
+    assert degraded_dto.risk_assessment.summary == baseline_dto.risk_assessment.summary
+    assert any(
+        stage.stage == "html_content" and stage.status == "degraded"
+        for stage in degraded_dto.risk_assessment.analysis_trace
     )
 
 
@@ -1465,7 +1762,12 @@ def test_create_url_verification_use_case_analyzes_resolved_destination_html() -
 
 def test_create_url_verification_use_case_analyzes_resolved_destination_challenge_html() -> None:
     class FinalChallengeHtmlFetcher(HtmlFetcherPort):
-        def fetch(self, url: str) -> FetchedHtmlDocument | None:
+        def fetch(
+            self,
+            url: str,
+            *,
+            user_agent: str | None = None,
+        ) -> FetchedHtmlDocument | None:
             if url != "https://collector.bad.example/challenge":
                 return None
             return FetchedHtmlDocument(
@@ -1513,7 +1815,12 @@ def test_create_url_verification_use_case_analyzes_resolved_destination_challeng
 
 def test_create_url_verification_use_case_skips_benign_redirect_interstitial_html() -> None:
     class FinalOnlyHtmlFetcher(HtmlFetcherPort):
-        def fetch(self, url: str) -> FetchedHtmlDocument | None:
+        def fetch(
+            self,
+            url: str,
+            *,
+            user_agent: str | None = None,
+        ) -> FetchedHtmlDocument | None:
             if url != "https://www.encurtador.dev/redirecionamento/7k3qpqd":
                 return None
             return FetchedHtmlDocument(

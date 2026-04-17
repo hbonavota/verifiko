@@ -18,9 +18,12 @@ from app.infrastructure.external_services.tls.tls_client import SocketTlsValidat
 
 
 def test_html_fetcher_keeps_normal_external_targets_working(monkeypatch) -> None:
+    observed_headers: list[dict[str, str]] = []
+
     monkeypatch.setattr(
         "app.infrastructure.external_services.html.simple_html_fetcher.send_pinned_get_request",
-        lambda url, headers, timeout_seconds, read_body, max_bytes: type(
+        lambda url, headers, timeout_seconds, read_body, max_bytes: observed_headers.append(headers)
+        or type(
             "Response",
             (),
             {
@@ -36,6 +39,43 @@ def test_html_fetcher_keeps_normal_external_targets_working(monkeypatch) -> None
     assert document is not None
     assert document.content == "<html>hello</html>"
     assert document.source_url == "https://example.org/login"
+    assert observed_headers == [
+        {
+            "Accept": "text/html,application/xhtml+xml",
+            "User-Agent": "Verifiko/1.0",
+        }
+    ]
+
+
+def test_html_fetcher_allows_per_request_user_agent_override(monkeypatch) -> None:
+    observed_headers: list[dict[str, str]] = []
+
+    monkeypatch.setattr(
+        "app.infrastructure.external_services.html.simple_html_fetcher.send_pinned_get_request",
+        lambda url, headers, timeout_seconds, read_body, max_bytes: observed_headers.append(headers)
+        or type(
+            "Response",
+            (),
+            {
+                "status_code": 200,
+                "headers": {"Content-Type": "text/html; charset=utf-8"},
+                "body": b"<html>variant</html>",
+            },
+        )(),
+    )
+
+    document = SimpleHtmlFetcher().fetch(
+        "https://example.org/login",
+        user_agent="TestAgent/9.9",
+    )
+
+    assert document is not None
+    assert observed_headers == [
+        {
+            "Accept": "text/html,application/xhtml+xml",
+            "User-Agent": "TestAgent/9.9",
+        }
+    ]
 
 
 def test_redirect_resolver_revalidates_each_redirect_hop(monkeypatch) -> None:

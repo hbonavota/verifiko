@@ -42,6 +42,9 @@ _TITLE_ES = {
     "Suspicious login-style interface": "Interfaz de inicio de sesión sospechosa",
     "Parked or placeholder landing page": "Página de aterrizaje aparcada o provisional",
     "Low-information landing page": "Página de aterrizaje con poca información",
+    "Content variation detected across user-agent profiles": (
+        "Variación de contenido detectada entre perfiles de user-agent"
+    ),
     "Insecure transport scheme": "Esquema de transporte inseguro",
     "TLS validation failure": "Fallo de validación TLS",
     "Reputation blacklist match": "Coincidencia en lista negra de reputación",
@@ -115,6 +118,9 @@ _DESCRIPTION_ES = {
     "The fetched HTML contains almost no meaningful visible content, which limits confidence in a clean result.": (
         "El HTML recuperado contiene muy poco contenido visible con significado, lo que limita la confianza en un resultado limpio."
     ),
+    "The same URL served materially different normalized HTML across browser profiles, which is consistent with evasive or camouflaged delivery.": (
+        "La misma URL sirvió HTML normalizado materialmente distinto entre perfiles de navegador, lo que es coherente con una entrega evasiva o camuflada."
+    ),
     "The target uses plain HTTP without TLS protection.": (
         "El destino utiliza HTTP en claro sin protección TLS."
     ),
@@ -157,6 +163,9 @@ _WARNING_ES = {
     "Resolved destination HTML inspection could not be completed.": (
         "La inspección HTML del destino resuelto no pudo completarse."
     ),
+    "Some user-agent HTML variants could not be fetched, but the analysis continued with the variants that responded.": (
+        "Algunas variantes HTML por user-agent no pudieron obtenerse, pero el análisis continuó con las variantes que sí respondieron."
+    ),
 }
 
 _CATEGORY_ES = {
@@ -193,10 +202,15 @@ _DOMINANT_SUMMARY_REASON_KEYS = {
     SignalType.LOW_INFORMATION_PAGE.value: "summary.reason.low_information_page",
     SignalType.CREDENTIAL_HARVEST_FORM.value: "summary.reason.credential_harvest_form",
     SignalType.SUSPICIOUS_LOGIN_INTERFACE.value: "summary.reason.suspicious_login_interface",
+    SignalType.CONTENT_VARIATION_DETECTED.value: "summary.reason.content_variation_detected",
     SignalType.TLS_VALIDATION_FAILURE.value: "summary.reason.tls_validation_failure",
     SignalType.INSECURE_TRANSPORT.value: "summary.reason.insecure_transport",
     SignalType.BRAND_IMPERSONATION.value: "summary.reason.brand_impersonation",
     SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN.value: "summary.reason.suspicious_infrastructure_pattern",
+}
+_NON_DEGRADING_WARNING_VALUES = {
+    resolve_message("warning.multi_user_agent_fetch_partially_unavailable"),
+    resolve_message("warning.multi_user_agent_fetch_partially_unavailable", language="es"),
 }
 _DOMINANT_EXPLANATION_CATEGORIES = _DOMINANT_SUMMARY_CATEGORIES
 _DOMINANT_EXPLANATION_REASON_KEYS = _DOMINANT_SUMMARY_REASON_KEYS
@@ -486,6 +500,9 @@ def _build_spanish_summary(
     localized_analysis_warnings: tuple[str, ...],
     score_breakdown: ScoreBreakdownDTO | None,
 ) -> str:
+    degrading_warnings = tuple(
+        warning for warning in localized_analysis_warnings if warning not in _NON_DEGRADING_WARNING_VALUES
+    )
     if assessment.terminal_override:
         summary = resolve_message("summary.terminal_blacklist_override", language="es")
     else:
@@ -551,11 +568,11 @@ def _build_spanish_summary(
                 language="es",
             )
 
-    if localized_analysis_warnings:
+    if degrading_warnings:
         summary = resolve_message(
             "summary.analysis_coverage_degraded",
             {
-                "warnings": " ".join(localized_analysis_warnings),
+                "warnings": " ".join(degrading_warnings),
                 "summary": summary,
             },
             language="es",

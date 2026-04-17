@@ -15,5 +15,10 @@ class HtmlFetchError(Exception):
 
 class HtmlFetcherPort(ABC):
     @abstractmethod
-    def fetch(self, url: str) -> FetchedHtmlDocument | None:
+    def fetch(
+        self,
+        url: str,
+        *,
+        user_agent: str | None = None,
+    ) -> FetchedHtmlDocument | None:
         raise NotImplementedError

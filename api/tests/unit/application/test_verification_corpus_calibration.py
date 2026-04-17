@@ -72,7 +72,7 @@ class FailingDomainAgeLookup(DomainAgeLookupPort):
 
 
 class NullHtmlFetcher(HtmlFetcherPort):
-    def fetch(self, url: str):
+    def fetch(self, url: str, *, user_agent: str | None = None):
         return None
 
 
@@ -80,7 +80,7 @@ class StaticHtmlFetcher(HtmlFetcherPort):
     def __init__(self, content: str) -> None:
         self._content = content
 
-    def fetch(self, url: str):
+    def fetch(self, url: str, *, user_agent: str | None = None):
         from app.application.ports.html_fetcher import FetchedHtmlDocument
 
         return FetchedHtmlDocument(

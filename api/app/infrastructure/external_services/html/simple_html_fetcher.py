@@ -15,13 +15,18 @@ class SimpleHtmlFetcher(HtmlFetcherPort):
     max_bytes: int = 200_000
     user_agent: str = "Verifiko/1.0"
 
-    def fetch(self, url: str) -> FetchedHtmlDocument | None:
+    def fetch(
+        self,
+        url: str,
+        *,
+        user_agent: str | None = None,
+    ) -> FetchedHtmlDocument | None:
         try:
             response = send_pinned_get_request(
                 url,
                 headers={
                     "Accept": "text/html,application/xhtml+xml",
-                    "User-Agent": self.user_agent,
+                    "User-Agent": user_agent or self.user_agent,
                 },
                 timeout_seconds=self.timeout_seconds,
                 read_body=True,
