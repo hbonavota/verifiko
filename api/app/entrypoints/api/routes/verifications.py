@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 
 from app.application.commands.create_verification_command import CreateVerificationCommand
 from app.application.queries.get_owned_verification_query import GetOwnedVerificationQuery
@@ -33,6 +33,7 @@ router = APIRouter(prefix="/verifications", tags=["verifications"])
 @router.post("", response_model=VerificationResponse, status_code=status.HTTP_201_CREATED)
 def create_verification(
     request: Request,
+    response: Response,
     payload: CreateVerificationRequest,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User | None = Depends(get_optional_current_user),
@@ -44,7 +45,9 @@ def create_verification(
 ) -> VerificationResponse:
     locale = select_response_locale(accept_language)
     if current_user is None:
-        retry_after = rate_limiter.check(_client_rate_limit_key(request))
+        subject_key = _client_rate_limit_key(request)
+        retry_after = rate_limiter.check(subject_key)
+        quota_status = rate_limiter.get_status(subject_key)
         if retry_after is not None:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -52,10 +55,14 @@ def create_verification(
                     "error.anonymous_daily_verification_limit_exceeded",
                     language=locale,
                 ),
-                headers={"Retry-After": str(retry_after)},
+                headers={
+                    "Retry-After": str(retry_after),
+                    **_rate_limit_headers(quota_status),
+                },
             )
     else:
         retry_after = authenticated_rate_limiter.check(current_user)
+        quota_status = authenticated_rate_limiter.get_status(current_user)
         if retry_after is not None:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -63,8 +70,12 @@ def create_verification(
                     "error.authenticated_daily_limit_exceeded",
                     language=locale,
                 ),
-                headers={"Retry-After": str(retry_after)},
+                headers={
+                    "Retry-After": str(retry_after),
+                    **_rate_limit_headers(quota_status),
+                },
             )
+    response.headers.update(_rate_limit_headers(quota_status))
     if payload.signals:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -144,3 +155,11 @@ def _client_rate_limit_key(request: Request) -> str:
     if client is None or not client.host:
         return "anonymous"
     return client.host
+
+
+def _rate_limit_headers(quota_status) -> dict[str, str]:
+    return {
+        "X-RateLimit-Limit": str(quota_status.daily_limit),
+        "X-RateLimit-Remaining": str(quota_status.remaining_today),
+        "X-RateLimit-Reset": str(int(quota_status.reset_at_utc.timestamp())),
+    }

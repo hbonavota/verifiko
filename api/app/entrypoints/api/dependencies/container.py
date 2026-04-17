@@ -61,6 +61,11 @@ from app.infrastructure.persistence.repositories.sqlalchemy_user_repository impo
     SQLAlchemyUserRepository,
 )
 from app.infrastructure.security.argon2_password_hasher import Argon2PasswordHasher
+from app.infrastructure.security.redis_client import build_redis_client
+from app.infrastructure.security.redis_utc_day_quota_limiter import (
+    RedisAuthenticatedUtcDayQuotaLimiter,
+    RedisUtcDayQuotaLimiter,
+)
 from app.infrastructure.security.signed_auth_token_service import SignedAuthTokenService
 from app.infrastructure.security.utc_day_quota_limiter import UtcDayQuotaLimiter
 from app.infrastructure.time.system_time_provider import SystemTimeProvider
@@ -171,6 +176,14 @@ def get_transport_security_signal_analyzer() -> TransportSecuritySignalAnalyzer:
 @lru_cache(maxsize=1)
 def get_create_verification_rate_limiter() -> UtcDayQuotaLimiter:
     settings = get_settings()
+    redis_client = get_rate_limit_redis_client()
+    if redis_client is not None:
+        return RedisUtcDayQuotaLimiter(
+            redis_client=redis_client,
+            daily_limit=settings.anonymous_daily_verification_limit,
+            current_time_provider=get_time_provider().now,
+            key_prefix=f"{settings.rate_limit_key_prefix}:anonymous",
+        )
     return UtcDayQuotaLimiter(
         daily_limit=settings.anonymous_daily_verification_limit,
         current_time_provider=get_time_provider().now,
@@ -188,6 +201,15 @@ def get_user_quota_policy() -> UserQuotaPolicy:
 
 @lru_cache(maxsize=1)
 def get_authenticated_verification_rate_limiter() -> AuthenticatedUtcDayQuotaLimiter:
+    settings = get_settings()
+    redis_client = get_rate_limit_redis_client()
+    if redis_client is not None:
+        return RedisAuthenticatedUtcDayQuotaLimiter(
+            redis_client=redis_client,
+            quota_policy=get_user_quota_policy(),
+            current_time_provider=get_time_provider().now,
+            key_prefix=f"{settings.rate_limit_key_prefix}:user",
+        )
     return AuthenticatedUtcDayQuotaLimiter(
         quota_policy=get_user_quota_policy(),
         current_time_provider=get_time_provider().now,
@@ -200,6 +222,14 @@ def get_quota_status_service() -> QuotaStatusService:
         anonymous_quota_limiter=get_create_verification_rate_limiter(),
         authenticated_quota_limiter=get_authenticated_verification_rate_limiter(),
     )
+
+
+@lru_cache(maxsize=1)
+def get_rate_limit_redis_client():
+    redis_url = get_settings().redis_url
+    if not redis_url:
+        return None
+    return build_redis_client(redis_url)
 
 
 @lru_cache(maxsize=1)

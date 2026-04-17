@@ -107,6 +107,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_verification_repository.cache_clear()
     get_user_repository.cache_clear()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_rate_limit_redis_client.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_quota_status_service.cache_clear()
@@ -147,6 +148,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     drop_db()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_rate_limit_redis_client.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_quota_status_service.cache_clear()
@@ -557,6 +559,9 @@ def test_authenticated_user_hits_daily_limit(client: TestClient) -> None:
     assert third.status_code == 429
     assert third.json()["detail"] == "You’ve reached your daily verification limit. Upgrade to continue."
     assert third.headers["retry-after"] == "43200"
+    assert third.headers["x-ratelimit-limit"] == "2"
+    assert third.headers["x-ratelimit-remaining"] == "0"
+    assert third.headers["x-ratelimit-reset"] == "1774742400"
 
     policy.free_daily_limit = get_settings().free_authenticated_daily_verification_limit
     limiter.reset()
