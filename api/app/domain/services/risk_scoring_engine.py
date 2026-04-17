@@ -39,6 +39,7 @@ _DOMINANT_SUMMARY_REASON_KEYS = {
     SignalType.LOW_INFORMATION_PAGE: "summary.reason.low_information_page",
     SignalType.CREDENTIAL_HARVEST_FORM: "summary.reason.credential_harvest_form",
     SignalType.SUSPICIOUS_LOGIN_INTERFACE: "summary.reason.suspicious_login_interface",
+    SignalType.CONTENT_VARIATION_DETECTED: "summary.reason.content_variation_detected",
     SignalType.TLS_VALIDATION_FAILURE: "summary.reason.tls_validation_failure",
     SignalType.INSECURE_TRANSPORT: "summary.reason.insecure_transport",
     SignalType.BRAND_IMPERSONATION: "summary.reason.brand_impersonation",

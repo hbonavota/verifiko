@@ -229,6 +229,16 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
             "description": "El HTML recuperado contiene muy poco contenido visible con significado, lo que limita la confianza en un resultado limpio.",
         },
     },
+    "signal.content_variation_detected": {
+        "en": {
+            "title": "Content variation detected across user-agent profiles",
+            "description": "The same URL served materially different normalized HTML across browser profiles, which is consistent with evasive or camouflaged delivery.",
+        },
+        "es": {
+            "title": "Variación de contenido detectada entre perfiles de user-agent",
+            "description": "La misma URL sirvió HTML normalizado materialmente distinto entre perfiles de navegador, lo que es coherente con una entrega evasiva o camuflada.",
+        },
+    },
     "signal.insecure_transport_scheme_plain": {
         "en": {
             "title": "Insecure transport scheme",
@@ -339,6 +349,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "suspicious hosting or infrastructure patterns",
         "es": "patrones sospechosos de alojamiento o infraestructura",
     },
+    "summary.reason.content_variation_detected": {
+        "en": "materially different content across user-agent profiles",
+        "es": "contenido materialmente distinto entre perfiles de user-agent",
+    },
     "explanation.headline.terminal_override": {
         "en": "The result was forced to a terminal malicious outcome by trusted backend intelligence.",
         "es": "El resultado se forzó a un desenlace malicioso terminal mediante inteligencia de backend de alta confianza.",
@@ -430,6 +444,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
     "warning.resolved_destination_html_unavailable": {
         "en": "Resolved destination HTML inspection could not be completed.",
         "es": "La inspección HTML del destino resuelto no pudo completarse.",
+    },
+    "warning.multi_user_agent_fetch_partially_unavailable": {
+        "en": "Some user-agent HTML variants could not be fetched, but the analysis continued with the variants that responded.",
+        "es": "Algunas variantes HTML por user-agent no pudieron obtenerse, pero el análisis continuó con las variantes que sí respondieron.",
     },
     "warning.html_fetch_blocked_private_target": {
         "en": "HTML content fetch was blocked for a private or special-use target.",
@@ -770,6 +788,26 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
     "evidence.no_forms_or_meaningful_visible_copy": {
         "en": "The fetched landing page exposes no forms or meaningful visible copy.",
         "es": "La página de aterrizaje recuperada no expone formularios ni contenido visible con significado.",
+    },
+    "evidence.user_agent_profiles_compared": {
+        "en": "Compared user-agent profiles: {left_profile} vs {right_profile}.",
+        "es": "Perfiles de user-agent comparados: {left_profile} frente a {right_profile}.",
+    },
+    "evidence.user_agent_variant_token_counts": {
+        "en": "Normalized visible-token counts: {left_profile}={left_tokens}, {right_profile}={right_tokens}.",
+        "es": "Recuento de tokens visibles normalizados: {left_profile}={left_tokens}, {right_profile}={right_tokens}.",
+    },
+    "evidence.user_agent_variant_similarity": {
+        "en": "Normalized token similarity between {left_profile} and {right_profile}: {similarity}.",
+        "es": "Similitud de tokens normalizados entre {left_profile} y {right_profile}: {similarity}.",
+    },
+    "evidence.login_cues_observed_for_profiles": {
+        "en": "Login-oriented HTML cues were observed for: {profiles}.",
+        "es": "Se observaron indicios HTML orientados a inicio de sesión para: {profiles}.",
+    },
+    "evidence.low_information_profiles_observed": {
+        "en": "Low-information or near-empty HTML was observed for: {profiles}.",
+        "es": "Se observó HTML de baja información o casi vacío para: {profiles}.",
     },
     "evidence.resolved_final_url": {
         "en": "Resolved final URL: {final_url}.",
