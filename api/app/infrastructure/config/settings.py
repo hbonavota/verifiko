@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     anonymous_daily_verification_limit: int = 3
     free_authenticated_daily_verification_limit: int = 10
     pro_authenticated_daily_verification_limit: int = 200
+    redis_url: str | None = None
+    rate_limit_key_prefix: str = "verifiko:quota"
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"
     auth_token_ttl_seconds: int = 60 * 60 * 24 * 7

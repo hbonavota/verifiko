@@ -52,6 +52,83 @@ class NoopInfrastructureLookup(InfrastructureLookupPort):
         )
 
 
+class FakeRedisPipeline:
+    def __init__(self, client: "FakeRedisClient") -> None:
+        self._client = client
+        self._commands: list[tuple[str, str, int | None]] = []
+
+    def __enter__(self) -> "FakeRedisPipeline":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self._commands.clear()
+
+    def watch(self, key: str) -> None:
+        return None
+
+    def get(self, key: str) -> str | None:
+        return self._client.get(key)
+
+    def multi(self) -> None:
+        return None
+
+    def incr(self, key: str) -> None:
+        self._commands.append(("incr", key, None))
+
+    def expire(self, key: str, ttl: int) -> None:
+        self._commands.append(("expire", key, ttl))
+
+    def execute(self) -> list[int | bool]:
+        results: list[int | bool] = []
+        for command, key, value in self._commands:
+            if command == "incr":
+                results.append(self._client.incr(key))
+            elif command == "expire":
+                results.append(self._client.expire(key, value or 0))
+        self._commands.clear()
+        return results
+
+    def unwatch(self) -> None:
+        return None
+
+
+class FakeRedisClient:
+    def __init__(self) -> None:
+        self._values: dict[str, int] = {}
+        self._expiry: dict[str, int] = {}
+
+    def pipeline(self) -> FakeRedisPipeline:
+        return FakeRedisPipeline(self)
+
+    def get(self, key: str) -> str | None:
+        value = self._values.get(key)
+        return None if value is None else str(value)
+
+    def incr(self, key: str) -> int:
+        next_value = self._values.get(key, 0) + 1
+        self._values[key] = next_value
+        return next_value
+
+    def expire(self, key: str, ttl: int) -> bool:
+        self._expiry[key] = ttl
+        return True
+
+    def scan_iter(self, match: str):
+        prefix = match[:-1] if match.endswith("*") else match
+        for key in tuple(self._values):
+            if key.startswith(prefix):
+                yield key
+
+    def delete(self, *keys: str) -> int:
+        removed = 0
+        for key in keys:
+            if key in self._values:
+                removed += 1
+                self._values.pop(key, None)
+                self._expiry.pop(key, None)
+        return removed
+
+
 def _test_public_target_validator(url: str) -> None:
     hostname = (urlsplit(url).hostname or "").lower()
     if hostname == "localhost":
@@ -77,6 +154,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_verification_repository.cache_clear()
     get_user_repository.cache_clear()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_rate_limit_redis_client.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_quota_status_service.cache_clear()
@@ -111,6 +189,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     drop_db()
     container.get_create_verification_rate_limiter.cache_clear()
+    container.get_rate_limit_redis_client.cache_clear()
     container.get_user_quota_policy.cache_clear()
     container.get_authenticated_verification_rate_limiter.cache_clear()
     container.get_quota_status_service.cache_clear()
@@ -218,6 +297,9 @@ def test_verification_api_rate_limits_anonymous_create_requests(client: TestClie
         "The anonymous verification limit for today has been reached. Please try again after midnight UTC or sign in."
     )
     assert third.headers["retry-after"] == "43200"
+    assert third.headers["x-ratelimit-limit"] == "2"
+    assert third.headers["x-ratelimit-remaining"] == "0"
+    assert third.headers["x-ratelimit-reset"] == "1774742400"
 
     limiter.reset()
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
@@ -289,6 +371,38 @@ def test_verification_api_quota_status_reports_anonymous_blocked_when_limit_is_e
     assert body["used_today"] == 3
     assert body["remaining_today"] == 0
     assert body["blocked"] is True
+
+    limiter.reset()
+
+
+def test_verification_api_uses_redis_backed_rate_limiter_when_configured(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_redis = FakeRedisClient()
+    monkeypatch.setenv("REDIS_URL", "redis://fake")
+    get_settings.cache_clear()
+    container.get_rate_limit_redis_client.cache_clear()
+    container.get_create_verification_rate_limiter.cache_clear()
+    monkeypatch.setattr(container, "build_redis_client", lambda redis_url: fake_redis)
+
+    limiter = get_create_verification_rate_limiter()
+    limiter.reset()
+    limiter.daily_limit = 1
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+    first = client.post("/api/verifications", json={"url": "https://example.org"})
+    second = client.post("/api/verifications", json={"url": "https://example.net"})
+
+    assert limiter.__class__.__name__ == "RedisUtcDayQuotaLimiter"
+    assert first.status_code == 201
+    assert first.headers["x-ratelimit-limit"] == "1"
+    assert first.headers["x-ratelimit-remaining"] == "0"
+    assert first.headers["x-ratelimit-reset"] == "1774742400"
+    assert second.status_code == 429
+    assert second.headers["retry-after"] == "43200"
+    assert second.headers["x-ratelimit-limit"] == "1"
+    assert second.headers["x-ratelimit-remaining"] == "0"
 
     limiter.reset()
 
