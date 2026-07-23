@@ -30,6 +30,9 @@ def test_sends_expected_payload_and_auth_header() -> None:
     assert len(poster.calls) == 1
     call = poster.calls[0]
     assert call["headers"]["Authorization"] == "Bearer re_test_key"
+    # Must not use the default urllib UA, which Cloudflare blocks (403 error 1010).
+    assert "urllib" not in call["headers"]["User-Agent"].lower()
+    assert call["headers"]["User-Agent"]
     payload = json.loads(call["body"])
     assert payload["from"] == "login@verifiko.es"
     assert payload["to"] == ["user@example.com"]
