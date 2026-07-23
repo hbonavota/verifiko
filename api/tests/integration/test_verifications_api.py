@@ -1,5 +1,7 @@
+from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Iterator
 from urllib.parse import urlsplit
 
 from fastapi.testclient import TestClient
@@ -196,8 +198,13 @@ def _test_public_target_validator(url: str) -> None:
         )
 
 
-@pytest.fixture()
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+@contextmanager
+def _test_client_context(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    client_address: tuple[str, int] = ("testclient", 50000),
+) -> Iterator[TestClient]:
     database_path = tmp_path / "verifiko-api.sqlite3"
     database_url = f"sqlite+pysqlite:///{database_path}"
 
@@ -240,7 +247,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     upgrade_to_head(database_url)
 
-    with TestClient(app) as test_client:
+    with TestClient(app, client=client_address) as test_client:
         yield test_client
 
     drop_db()
@@ -257,6 +264,12 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     get_session_factory.cache_clear()
     get_engine.cache_clear()
     get_settings.cache_clear()
+
+
+@pytest.fixture()
+def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    with _test_client_context(tmp_path, monkeypatch) as test_client:
+        yield test_client
 
 
 def test_verification_api_create_disables_public_list_and_get(client: TestClient) -> None:
@@ -414,6 +427,139 @@ def test_verification_api_applies_burst_limit_before_daily_quota(client: TestCli
     burst_limiter.max_requests = get_settings().verification_burst_limit_requests
     burst_limiter.window_seconds = get_settings().verification_burst_limit_window_seconds
     daily_limiter.current_time_provider = lambda: datetime.now(tz=timezone.utc)
+
+
+def test_verification_api_uses_trusted_proxy_client_ip_for_quota_status(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TRUSTED_PROXY_IPS", "203.0.113.0/24")
+
+    with _test_client_context(
+        tmp_path,
+        monkeypatch,
+        client_address=("203.0.113.10", 50000),
+    ) as proxied_client:
+        limiter = get_create_verification_rate_limiter()
+        limiter.reset()
+        limiter.daily_limit = 1
+        limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+        first = proxied_client.post(
+            "/api/verifications",
+            json={"url": "https://example.org"},
+            headers={"X-Forwarded-For": "198.51.100.25, 203.0.113.10"},
+        )
+        same_client_status = proxied_client.get(
+            "/api/verifications/quota-status",
+            headers={"X-Forwarded-For": "198.51.100.25, 203.0.113.10"},
+        )
+        different_client_status = proxied_client.get(
+            "/api/verifications/quota-status",
+            headers={"X-Forwarded-For": "198.51.100.26, 203.0.113.10"},
+        )
+
+        assert first.status_code == 201
+        assert same_client_status.status_code == 200
+        assert same_client_status.json()["used_today"] == 1
+        assert different_client_status.status_code == 200
+        assert different_client_status.json()["used_today"] == 0
+
+        limiter.reset()
+        limiter.daily_limit = get_settings().anonymous_daily_verification_limit
+
+
+def test_verification_api_falls_back_to_proxy_peer_host_for_invalid_forwarded_for(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TRUSTED_PROXY_IPS", "203.0.113.0/24")
+
+    with _test_client_context(
+        tmp_path,
+        monkeypatch,
+        client_address=("203.0.113.10", 50000),
+    ) as proxied_client:
+        limiter = get_create_verification_rate_limiter()
+        limiter.reset()
+        limiter.daily_limit = 1
+        limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+        first = proxied_client.post(
+            "/api/verifications",
+            json={"url": "https://example.org"},
+            headers={"X-Forwarded-For": "not-an-ip, 198.51.100.25"},
+        )
+        second = proxied_client.post(
+            "/api/verifications",
+            json={"url": "https://example.net"},
+            headers={"X-Forwarded-For": "still-not-an-ip, 198.51.100.26"},
+        )
+
+        assert first.status_code == 201
+        assert second.status_code == 429
+        assert second.headers["retry-after"] == "43200"
+
+        limiter.reset()
+        limiter.daily_limit = get_settings().anonymous_daily_verification_limit
+
+
+def test_verification_api_uses_same_resolved_ip_for_anonymous_burst_and_daily_limiters(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TRUSTED_PROXY_IPS", "203.0.113.0/24")
+
+    with _test_client_context(
+        tmp_path,
+        monkeypatch,
+        client_address=("203.0.113.10", 50000),
+    ) as proxied_client:
+        burst_limiter = get_create_verification_burst_rate_limiter()
+        daily_limiter = get_create_verification_rate_limiter()
+        burst_limiter.reset()
+        daily_limiter.reset()
+        burst_limiter.max_requests = 1
+        burst_limiter.window_seconds = 10
+        burst_limiter.now_provider = lambda: 100.0
+        daily_limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+        first = proxied_client.post(
+            "/api/verifications",
+            json={"url": "https://example.org"},
+            headers={"X-Forwarded-For": "198.51.100.25, 203.0.113.10"},
+        )
+        same_client_blocked = proxied_client.post(
+            "/api/verifications",
+            json={"url": "https://example.net"},
+            headers={"X-Forwarded-For": "198.51.100.25, 203.0.113.10"},
+        )
+        different_client_allowed = proxied_client.post(
+            "/api/verifications",
+            json={"url": "https://example.com"},
+            headers={"X-Forwarded-For": "198.51.100.26, 203.0.113.10"},
+        )
+        same_client_status = proxied_client.get(
+            "/api/verifications/quota-status",
+            headers={"X-Forwarded-For": "198.51.100.25, 203.0.113.10"},
+        )
+        different_client_status = proxied_client.get(
+            "/api/verifications/quota-status",
+            headers={"X-Forwarded-For": "198.51.100.26, 203.0.113.10"},
+        )
+
+        assert first.status_code == 201
+        assert same_client_blocked.status_code == 429
+        assert same_client_blocked.headers["retry-after"] == "10"
+        assert different_client_allowed.status_code == 201
+        assert same_client_status.json()["used_today"] == 1
+        assert different_client_status.json()["used_today"] == 1
+
+        burst_limiter.reset()
+        daily_limiter.reset()
+        burst_limiter.max_requests = get_settings().verification_burst_limit_requests
+        burst_limiter.window_seconds = get_settings().verification_burst_limit_window_seconds
+        daily_limiter.current_time_provider = lambda: datetime.now(tz=timezone.utc)
 
 
 def test_verification_api_quota_status_reports_anonymous_remaining_usage(client: TestClient) -> None:

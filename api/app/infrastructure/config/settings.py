@@ -1,4 +1,5 @@
 from functools import lru_cache
+from ipaddress import IPv4Network, IPv6Network, ip_network
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -24,6 +25,7 @@ class Settings(BaseSettings):
     rate_limit_key_prefix: str = "verifiko:quota"
     verification_burst_limit_requests: int = 10
     verification_burst_limit_window_seconds: int = 60
+    trusted_proxy_ips: str = ""
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"
     auth_token_ttl_seconds: int = 60 * 60 * 24 * 7
@@ -36,6 +38,14 @@ class Settings(BaseSettings):
             origin.strip()
             for origin in self.cors_allowed_origins.split(",")
             if origin.strip()
+        ]
+
+    @property
+    def trusted_proxy_networks(self) -> list[IPv4Network | IPv6Network]:
+        return [
+            ip_network(entry.strip(), strict=False)
+            for entry in self.trusted_proxy_ips.split(",")
+            if entry.strip()
         ]
 
 

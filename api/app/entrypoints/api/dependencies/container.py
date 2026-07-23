@@ -22,10 +22,15 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
+from app.application.ports.api_key_token_service import ApiKeyTokenServicePort
+from app.application.use_cases.authenticate_with_api_key import AuthenticateWithApiKeyUseCase
 from app.application.use_cases.authenticate_with_email_password import (
     AuthenticateWithEmailPasswordUseCase,
 )
 from app.application.use_cases.authenticate_with_google import AuthenticateWithGoogleUseCase
+from app.application.use_cases.create_api_key import CreateApiKeyUseCase
+from app.application.use_cases.list_api_keys import ListApiKeysUseCase
+from app.application.use_cases.revoke_api_key import RevokeApiKeyUseCase
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
 from app.application.use_cases.get_verification_result import GetVerificationResultUseCase
 from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
@@ -57,10 +62,14 @@ from app.infrastructure.persistence.database import get_session_factory
 from app.infrastructure.persistence.repositories.sqlalchemy_verification_repository import (
     SQLAlchemyVerificationRepository,
 )
+from app.infrastructure.persistence.repositories.sqlalchemy_api_key_repository import (
+    SQLAlchemyApiKeyRepository,
+)
 from app.infrastructure.persistence.repositories.sqlalchemy_user_repository import (
     SQLAlchemyUserRepository,
 )
 from app.infrastructure.security.argon2_password_hasher import Argon2PasswordHasher
+from app.infrastructure.security.sha256_api_key_token_service import Sha256ApiKeyTokenService
 from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 from app.infrastructure.security.redis_client import build_redis_client
 from app.infrastructure.security.redis_fixed_window_rate_limiter import (
@@ -271,6 +280,44 @@ def get_auth_token_service() -> AuthTokenServicePort:
 @lru_cache(maxsize=1)
 def get_password_hasher() -> PasswordHasherPort:
     return Argon2PasswordHasher()
+
+
+@lru_cache(maxsize=1)
+def get_api_key_repository() -> SQLAlchemyApiKeyRepository:
+    return SQLAlchemyApiKeyRepository(session_factory=get_session_factory())
+
+
+@lru_cache(maxsize=1)
+def get_api_key_token_service() -> ApiKeyTokenServicePort:
+    return Sha256ApiKeyTokenService()
+
+
+def get_create_api_key_use_case() -> CreateApiKeyUseCase:
+    return CreateApiKeyUseCase(
+        api_key_repository=get_api_key_repository(),
+        token_service=get_api_key_token_service(),
+        current_time_provider=get_time_provider().now,
+    )
+
+
+def get_list_api_keys_use_case() -> ListApiKeysUseCase:
+    return ListApiKeysUseCase(api_key_repository=get_api_key_repository())
+
+
+def get_revoke_api_key_use_case() -> RevokeApiKeyUseCase:
+    return RevokeApiKeyUseCase(
+        api_key_repository=get_api_key_repository(),
+        current_time_provider=get_time_provider().now,
+    )
+
+
+def get_authenticate_with_api_key_use_case() -> AuthenticateWithApiKeyUseCase:
+    return AuthenticateWithApiKeyUseCase(
+        api_key_repository=get_api_key_repository(),
+        user_repository=get_user_repository(),
+        token_service=get_api_key_token_service(),
+        current_time_provider=get_time_provider().now,
+    )
 
 
 def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:
