@@ -509,6 +509,14 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "Verification scan not found.",
         "es": "Análisis de verificación no encontrado.",
     },
+    "error.magic_link_invalid": {
+        "en": "This sign-in link is invalid or has expired.",
+        "es": "Este enlace de acceso no es válido o ha caducado.",
+    },
+    "error.magic_link_rate_limited": {
+        "en": "Too many sign-in link requests. Please try again later.",
+        "es": "Demasiadas solicitudes de enlace de acceso. Inténtalo más tarde.",
+    },
     "error.verification_not_found": {
         "en": "Verification not found: {verification_id}",
         "es": "Verificación no encontrada: {verification_id}",

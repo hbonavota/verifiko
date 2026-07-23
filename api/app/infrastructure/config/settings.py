@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     scan_webhook_signing_secret: str = "verifiko-dev-webhook-secret"
     scan_webhook_timeout_seconds: float = 5.0
     scan_webhook_max_attempts: int = 3
+    resend_api_key: str = ""
+    magic_link_from_email: str = "login@verifiko.es"
+    magic_link_base_url: str = "https://www.verifiko.es"
+    magic_link_ttl_seconds: int = 900
+    magic_link_store_key_prefix: str = "verifiko:magic-link"
+    magic_link_request_limit_requests: int = 5
+    magic_link_request_limit_window_seconds: int = 300
     trusted_proxy_ips: str = ""
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"
