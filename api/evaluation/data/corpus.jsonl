@@ -1,0 +1,51 @@
+# Verifiko labeled detection corpus (offline, deterministic).
+# One JSON object per line. Fields: url, label ("malicious"|"benign"),
+# optional redirect_final_url + redirect_hops, optional html, optional note.
+# Lines starting with '#' and blank lines are ignored.
+#
+# --- Malicious: brand/credential lures in the URL itself ---
+{"url": "http://paypal-login-security-check.example.xyz/verify?redirect=https://example.org", "label": "malicious", "note": "paypal credential lure on questionable tld"}
+{"url": "http://paypal.com.security-check-login.com/", "label": "malicious", "note": "brand as deceptive subdomain"}
+{"url": "http://paypal.com.security.check.login.system.update.confirm-account.info/", "label": "malicious", "note": "deep deceptive brand subdomain chain"}
+{"url": "https://microsoft-verify-account.example.top/login", "label": "malicious", "note": "microsoft impersonation"}
+{"url": "https://secure-verify-9x1k-login.net", "label": "malicious", "note": "high-entropy credential lure"}
+{"url": "https://outlook.office365.mailbox-auth.example.click/reset", "label": "malicious", "note": "mailbox staging lure"}
+{"url": "https://outlook.office365.challenge-review.mail-access.net/", "label": "malicious", "note": "office365 challenge lure"}
+{"url": "https://mailbox-8f2k-review-login.xyz", "label": "malicious", "note": "mailbox review lure"}
+{"url": "https://appleid-confirm-billing.example.info/signin", "label": "malicious", "note": "apple billing lure"}
+{"url": "https://api.mail.google.com.security.example.net", "label": "malicious", "note": "google deceptive subdomain"}
+{"url": "https://dgt.gob.es.multa-pendiente.secure-payments.xyz", "label": "malicious", "note": "institution payment lure (es)"}
+{"url": "https://gov-traffic-fine.example.click/pay", "label": "malicious", "note": "traffic-fine institution lure"}
+{"url": "https://paypal.com.security.example.net/login", "label": "malicious", "note": "brand subdomain + login"}
+{"url": "http://192.0.2.10/login/verify-account", "label": "malicious", "note": "raw ip credential form"}
+#
+# --- Malicious: only visible after resolving a shortened redirect ---
+{"url": "https://bit.ly/session-review", "label": "malicious", "redirect_final_url": "https://outlook.office365.session-review.mail-access.net/", "redirect_hops": [{"status_code": 302, "source_url": "https://bit.ly/session-review", "target_url": "https://outlook.office365.session-review.mail-access.net/"}], "note": "shortener to session lure"}
+{"url": "https://bit.ly/google-reauth", "label": "malicious", "redirect_final_url": "https://google.com.reauth-security-check.user-access.net/", "redirect_hops": [{"status_code": 302, "source_url": "https://bit.ly/google-reauth", "target_url": "https://google.com.reauth-security-check.user-access.net/"}], "note": "shortener to reauth lure"}
+#
+# --- Malicious: only visible in fetched HTML ---
+{"url": "https://secure-login.bad-example.test/", "label": "malicious", "html": "<html><body><h1>Security challenge</h1><p>Approve this verification to continue your account session.</p><form action=\"/checkpoint\"><input type=\"text\" name=\"otp_code\" /><button type=\"submit\">Approve</button></form></body></html>", "note": "credential-harvest html surface"}
+{"url": "https://for-sale-example.test/", "label": "malicious", "html": "<html><body><h1>This domain is for sale</h1><p>Buy this domain with Sedo.</p></body></html>", "note": "parked page"}
+#
+# --- Benign: reputable and ordinary sites ---
+{"url": "https://google.com/", "label": "benign"}
+{"url": "https://openai.com/research/", "label": "benign"}
+{"url": "https://github.com/openai/openai-python", "label": "benign"}
+{"url": "https://docs.python.org/3/library/urllib.parse.html", "label": "benign"}
+{"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP", "label": "benign"}
+{"url": "https://www.wikipedia.org/", "label": "benign"}
+{"url": "https://news.ycombinator.com/", "label": "benign"}
+{"url": "https://stackoverflow.com/questions/tagged/python", "label": "benign"}
+{"url": "https://verifiko.es/", "label": "benign"}
+{"url": "https://unknown-clean.example/", "label": "benign", "note": "unknown but clean"}
+{"url": "https://customer-portal.example.com/", "label": "benign", "note": "ordinary portal, no lure"}
+#
+# --- Benign: legitimate auth flows that must not be over-flagged ---
+{"url": "https://accounts.google.com/signin", "label": "benign", "note": "official google auth"}
+{"url": "https://login.microsoftonline.com/", "label": "benign", "note": "official microsoft auth"}
+{"url": "https://www.paypal.com/signin", "label": "benign", "note": "official paypal auth"}
+{"url": "https://appleid.apple.com/", "label": "benign", "note": "official apple id"}
+{"url": "https://accounts.example.org/login", "label": "benign", "note": "generic login keyword only"}
+#
+# --- Benign: clean shortener that resolves to a reputable destination ---
+{"url": "https://g.co/openai", "label": "benign", "redirect_final_url": "https://openai.com/", "redirect_hops": [{"status_code": 302, "source_url": "https://g.co/openai", "target_url": "https://openai.com/"}], "note": "clean shortener redirect"}
