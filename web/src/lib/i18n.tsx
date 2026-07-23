@@ -30,7 +30,7 @@ const translations = {
       title: "Review verified links, signals, and risk decisions.",
       signInWithGoogle: "Continue with Google",
       signInWithEmail: "Email me a sign-in link",
-      signInToUnlockMore: "Email sign-in links are coming soon.",
+      signInToUnlockMore: "Sign in to save your history and unlock more analyses.",
       signingIn: "Signing in...",
       signOut: "Sign out",
       upgradeToPro: "Upgrade to PRO",
@@ -258,7 +258,7 @@ const translations = {
       linkSentCopy:
         "If that email is valid, we've sent a sign-in link. It expires in 15 minutes.",
       resend: "Send another link",
-      magicLinkComingSoon: "Email sign-in links are coming soon.",
+      magicLinkComingSoon: "Sign in with Google or an email link to continue.",
       errors: {
         emailInvalid: "Enter a valid email address.",
         requestFailed: "We couldn't send the link. Please try again.",
@@ -623,7 +623,7 @@ const translations = {
       title: "Revisa enlaces verificados, señales y decisiones de riesgo.",
       signInWithGoogle: "Continuar con Google",
       signInWithEmail: "Envíame un enlace de acceso",
-      signInToUnlockMore: "Los enlaces de acceso por correo llegarán pronto.",
+      signInToUnlockMore: "Inicia sesión para guardar tu historial y desbloquear más análisis.",
       signingIn: "Iniciando sesión...",
       signOut: "Cerrar sesión",
       upgradeToPro: "Mejorar a PRO",
@@ -852,7 +852,7 @@ const translations = {
       linkSentCopy:
         "Si ese correo es válido, te enviamos un enlace de acceso. Caduca en 15 minutos.",
       resend: "Enviar otro enlace",
-      magicLinkComingSoon: "Los enlaces de acceso por correo llegarán pronto.",
+      magicLinkComingSoon: "Inicia sesión con Google o con un enlace por correo para continuar.",
       errors: {
         emailInvalid: "Introduce un correo válido.",
         requestFailed: "No pudimos enviar el enlace. Inténtalo de nuevo.",
