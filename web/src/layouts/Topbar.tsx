@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 
+import { EmailAuthModal } from "../components/auth/EmailAuthModal";
 import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
 import { Button } from "../components/ui/Button";
 import { UpgradeModal } from "../components/ui/UpgradeModal";
@@ -15,6 +16,7 @@ export function Topbar() {
   const { currentUser, logout, quotaReady, quotaStatus } = useAuth();
   const location = useLocation();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
   const { hasSubmittedUpgradeIntent } = useUpgradeIntent();
   const displayName = currentUser?.display_name?.trim() || currentUser?.email || "";
   const initials = displayName
@@ -104,7 +106,20 @@ export function Topbar() {
                     });
                   }}
                 />
-                <Button className="topbar-auth__email-button" disabled variant="secondary">
+                <Button
+                  className="topbar-auth__email-button"
+                  variant="secondary"
+                  onClick={() => {
+                    trackAuthEntryClicked({
+                      sourcePath: location.pathname,
+                      language,
+                      isAuthenticated,
+                      plan: analyticsPlan,
+                      entryPoint: "topbar_email",
+                    });
+                    setIsEmailAuthModalOpen(true);
+                  }}
+                >
                   {copy.topbar.signInWithEmail}
                 </Button>
               </div>
@@ -118,6 +133,10 @@ export function Topbar() {
         open={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
         source="topbar"
+      />
+      <EmailAuthModal
+        open={isEmailAuthModalOpen}
+        onClose={() => setIsEmailAuthModalOpen(false)}
       />
     </>
   );

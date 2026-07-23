@@ -1,0 +1,32 @@
+name: DB migrations
+
+# Runs Alembic migrations against the production database automatically whenever
+# a new migration lands on main. Decoupled from the Vercel deploy: this applies
+# the schema; Vercel ships the code. `alembic upgrade head` is idempotent, so a
+# re-run is a no-op when already at head.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/alembic/versions/**"
+      - ".github/workflows/migrate.yml"
+  workflow_dispatch: {}
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
