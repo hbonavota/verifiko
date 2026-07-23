@@ -9,6 +9,7 @@ from app.entrypoints.api.locale import select_response_locale
 from app.entrypoints.api.routes.api_keys import router as api_keys_router
 from app.entrypoints.api.routes.auth import router as auth_router
 from app.entrypoints.api.routes.me import router as me_router
+from app.entrypoints.api.routes.scans import router as scans_router
 from app.entrypoints.api.routes.verifications import router as verifications_router
 from app.infrastructure.config.settings import get_settings
 
@@ -46,7 +47,7 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
-_API_ROUTERS = (auth_router, me_router, api_keys_router, verifications_router)
+_API_ROUTERS = (auth_router, me_router, api_keys_router, scans_router, verifications_router)
 
 # Canonical, versioned surface. This is the documented contract and the source
 # of truth for generated SDKs and OpenAPI operation IDs.

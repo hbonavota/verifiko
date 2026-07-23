@@ -31,9 +31,12 @@ from app.application.use_cases.authenticate_with_email_password import (
     AuthenticateWithEmailPasswordUseCase,
 )
 from app.application.use_cases.authenticate_with_google import AuthenticateWithGoogleUseCase
+from app.application.services.verification_scan_processor import VerificationScanProcessor
 from app.application.use_cases.create_api_key import CreateApiKeyUseCase
+from app.application.use_cases.get_verification_scan import GetVerificationScanUseCase
 from app.application.use_cases.list_api_keys import ListApiKeysUseCase
 from app.application.use_cases.revoke_api_key import RevokeApiKeyUseCase
+from app.application.use_cases.submit_verification_scan import SubmitVerificationScanUseCase
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
 from app.application.use_cases.get_verification_result import GetVerificationResultUseCase
 from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
@@ -44,6 +47,11 @@ from app.application.use_cases.register_with_email_password import (
 )
 from app.infrastructure.external_services.google.google_tokeninfo_identity_verifier import (
     GoogleTokeninfoIdentityVerifier,
+)
+from app.infrastructure.jobs.scan_dispatchers import ThreadPoolVerificationJobDispatcher
+from app.infrastructure.jobs.verification_job_stores import (
+    InMemoryVerificationJobStore,
+    RedisVerificationJobStore,
 )
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
 from app.infrastructure.cache.caching_domain_age_lookup import CachingDomainAgeLookup
@@ -467,6 +475,48 @@ def get_authenticate_with_email_password_use_case() -> AuthenticateWithEmailPass
 
 def get_get_owned_verification_result_use_case() -> GetOwnedVerificationResultUseCase:
     return GetOwnedVerificationResultUseCase(repository=get_verification_repository())
+
+
+@lru_cache(maxsize=1)
+def get_verification_job_store():
+    settings = get_settings()
+    redis_client = get_rate_limit_redis_client()
+    if redis_client is None:
+        return InMemoryVerificationJobStore()
+    return RedisVerificationJobStore(
+        redis_client=redis_client,
+        key_prefix=settings.scan_job_key_prefix,
+        ttl_seconds=settings.scan_job_ttl_seconds,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_verification_scan_processor() -> VerificationScanProcessor:
+    return VerificationScanProcessor(
+        job_store=get_verification_job_store(),
+        create_use_case=get_create_url_verification_use_case(),
+        current_time_provider=get_time_provider().now,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_verification_scan_dispatcher() -> ThreadPoolVerificationJobDispatcher:
+    return ThreadPoolVerificationJobDispatcher(
+        processor=get_verification_scan_processor(),
+        max_workers=get_settings().scan_worker_max_workers,
+    )
+
+
+def get_submit_verification_scan_use_case() -> SubmitVerificationScanUseCase:
+    return SubmitVerificationScanUseCase(
+        job_store=get_verification_job_store(),
+        dispatcher=get_verification_scan_dispatcher(),
+        current_time_provider=get_time_provider().now,
+    )
+
+
+def get_get_verification_scan_use_case() -> GetVerificationScanUseCase:
+    return GetVerificationScanUseCase(job_store=get_verification_job_store())
 
 
 def get_list_owned_verifications_use_case() -> ListOwnedVerificationsUseCase:

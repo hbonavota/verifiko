@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     openphish_feed_refresh_seconds: float = 1_800.0
     openphish_feed_timeout_seconds: float = 5.0
     openphish_reputation_confidence: float = 95.0
+    scan_job_key_prefix: str = "verifiko:scan"
+    scan_job_ttl_seconds: int = 86_400
+    scan_worker_max_workers: int = 4
     trusted_proxy_ips: str = ""
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"

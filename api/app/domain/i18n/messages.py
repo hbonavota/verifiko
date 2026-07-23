@@ -505,6 +505,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "API key not found.",
         "es": "Clave de API no encontrada.",
     },
+    "error.verification_scan_not_found": {
+        "en": "Verification scan not found.",
+        "es": "Análisis de verificación no encontrado.",
+    },
     "error.verification_not_found": {
         "en": "Verification not found: {verification_id}",
         "es": "Verificación no encontrada: {verification_id}",
