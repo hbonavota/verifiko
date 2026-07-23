@@ -52,9 +52,8 @@ from app.application.use_cases.register_with_email_password import (
 from app.infrastructure.external_services.google.google_tokeninfo_identity_verifier import (
     GoogleTokeninfoIdentityVerifier,
 )
-from app.infrastructure.auth.magic_link_stores import (
-    InMemoryMagicLinkStore,
-    RedisMagicLinkStore,
+from app.infrastructure.persistence.repositories.sqlalchemy_magic_link_store import (
+    SqlAlchemyMagicLinkStore,
 )
 from app.infrastructure.email.logging_email_sender import LoggingEmailSender
 from app.infrastructure.email.resend_email_sender import (
@@ -453,13 +452,11 @@ def get_email_sender():
 
 @lru_cache(maxsize=1)
 def get_magic_link_store():
-    settings = get_settings()
-    redis_client = get_rate_limit_redis_client()
-    if redis_client is None:
-        return InMemoryMagicLinkStore()
-    return RedisMagicLinkStore(
-        redis_client=redis_client,
-        key_prefix=settings.magic_link_store_key_prefix,
+    # Backed by the primary database (not Redis), so tokens are durable and
+    # shared across serverless invocations independent of the Redis quota.
+    return SqlAlchemyMagicLinkStore(
+        session_factory=get_session_factory(),
+        current_time_provider=get_time_provider().now,
     )
 
 

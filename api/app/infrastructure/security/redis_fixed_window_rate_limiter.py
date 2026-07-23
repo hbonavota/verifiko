@@ -1,8 +1,11 @@
 from dataclasses import dataclass
+import logging
 import math
 from time import time
 from typing import Any, Callable
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -14,6 +17,16 @@ class RedisFixedWindowRateLimiter:
     key_prefix: str = "verifiko:rate-limit:verifications"
 
     def check(self, key: str) -> int | None:
+        # Fail open: if Redis is unavailable (down, or over its command quota),
+        # allow the request rather than turning a rate-limiter outage into an
+        # API-wide 5xx. Availability beats strict limiting here.
+        try:
+            return self._check(key)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Rate limiter unavailable; failing open: %s", exc)
+            return None
+
+    def _check(self, key: str) -> int | None:
         now = self.now_provider()
         window_start = now - self.window_seconds
         redis_key = f"{self.key_prefix}:{key}"

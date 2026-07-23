@@ -76,6 +76,16 @@ class ApiKeyModel(Base):
     user: Mapped["UserModel"] = relationship(back_populates="api_keys")
 
 
+class MagicLinkTokenModel(Base):
+    __tablename__ = "magic_link_tokens"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    expires_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+
+
 class SignalModel(Base):
     __tablename__ = "signals"
 
