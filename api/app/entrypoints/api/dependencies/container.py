@@ -32,7 +32,11 @@ from app.application.use_cases.authenticate_with_email_password import (
 )
 from app.application.use_cases.authenticate_with_google import AuthenticateWithGoogleUseCase
 from app.application.services.verification_scan_processor import VerificationScanProcessor
+from app.application.use_cases.authenticate_with_magic_link import (
+    AuthenticateWithMagicLinkUseCase,
+)
 from app.application.use_cases.create_api_key import CreateApiKeyUseCase
+from app.application.use_cases.request_magic_link import RequestMagicLinkUseCase
 from app.application.use_cases.get_verification_scan import GetVerificationScanUseCase
 from app.application.use_cases.list_api_keys import ListApiKeysUseCase
 from app.application.use_cases.revoke_api_key import RevokeApiKeyUseCase
@@ -47,6 +51,15 @@ from app.application.use_cases.register_with_email_password import (
 )
 from app.infrastructure.external_services.google.google_tokeninfo_identity_verifier import (
     GoogleTokeninfoIdentityVerifier,
+)
+from app.infrastructure.auth.magic_link_stores import (
+    InMemoryMagicLinkStore,
+    RedisMagicLinkStore,
+)
+from app.infrastructure.email.logging_email_sender import LoggingEmailSender
+from app.infrastructure.email.resend_email_sender import (
+    ResendEmailSender,
+    build_urllib_email_poster,
 )
 from app.infrastructure.jobs.scan_dispatchers import ThreadPoolVerificationJobDispatcher
 from app.infrastructure.jobs.verification_job_stores import (
@@ -423,6 +436,65 @@ def get_authenticate_with_api_key_use_case() -> AuthenticateWithApiKeyUseCase:
         user_repository=get_user_repository(),
         token_service=get_api_key_token_service(),
         current_time_provider=get_time_provider().now,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_email_sender():
+    settings = get_settings()
+    if settings.resend_api_key:
+        return ResendEmailSender(
+            api_key=settings.resend_api_key,
+            from_email=settings.magic_link_from_email,
+            http_poster=build_urllib_email_poster(),
+        )
+    return LoggingEmailSender()
+
+
+@lru_cache(maxsize=1)
+def get_magic_link_store():
+    settings = get_settings()
+    redis_client = get_rate_limit_redis_client()
+    if redis_client is None:
+        return InMemoryMagicLinkStore()
+    return RedisMagicLinkStore(
+        redis_client=redis_client,
+        key_prefix=settings.magic_link_store_key_prefix,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_magic_link_request_rate_limiter():
+    settings = get_settings()
+    redis_client = get_rate_limit_redis_client()
+    if redis_client is not None:
+        return RedisFixedWindowRateLimiter(
+            redis_client=redis_client,
+            max_requests=settings.magic_link_request_limit_requests,
+            window_seconds=settings.magic_link_request_limit_window_seconds,
+            key_prefix=f"{settings.rate_limit_key_prefix}:magic-link",
+        )
+    return FixedWindowRateLimiter(
+        max_requests=settings.magic_link_request_limit_requests,
+        window_seconds=settings.magic_link_request_limit_window_seconds,
+    )
+
+
+def get_request_magic_link_use_case() -> RequestMagicLinkUseCase:
+    settings = get_settings()
+    return RequestMagicLinkUseCase(
+        magic_link_store=get_magic_link_store(),
+        email_sender=get_email_sender(),
+        link_base_url=settings.magic_link_base_url,
+        ttl_seconds=settings.magic_link_ttl_seconds,
+    )
+
+
+def get_authenticate_with_magic_link_use_case() -> AuthenticateWithMagicLinkUseCase:
+    return AuthenticateWithMagicLinkUseCase(
+        magic_link_store=get_magic_link_store(),
+        user_repository=get_user_repository(),
+        auth_token_service=get_auth_token_service(),
     )
 
 

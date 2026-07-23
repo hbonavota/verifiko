@@ -41,6 +41,28 @@ class User:
         )
 
     @staticmethod
+    def create_email_user(
+        *,
+        email: str,
+        display_name: str,
+        plan: UserPlan = UserPlan.FREE,
+        user_id: UserId | None = None,
+    ) -> "User":
+        """A passwordless account, e.g. created on first magic-link sign-in."""
+        now = datetime.now(timezone.utc)
+        return User(
+            id=user_id or UserId.new(),
+            email=email,
+            google_subject=None,
+            password_hash=None,
+            display_name=display_name,
+            avatar_url=None,
+            plan=plan,
+            created_at=now,
+            updated_at=now,
+        )
+
+    @staticmethod
     def create_local_user(
         *,
         email: str,

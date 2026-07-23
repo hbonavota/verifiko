@@ -47,6 +47,26 @@ class LocalRegisterRequest(BaseModel):
         return stripped_value
 
 
+class MagicLinkRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        if not EMAIL_PATTERN.match(normalized_value):
+            raise ValueError("Enter a valid email address.")
+        return normalized_value
+
+
+class MagicLinkConsumeRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=512)
+
+
+class MagicLinkRequestResponse(BaseModel):
+    status: str = "sent"
+
+
 class LocalLoginRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=1, max_length=128)

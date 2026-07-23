@@ -1,6 +1,11 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.application.dto.user_dto import AuthSessionDTO
+from app.application.use_cases.authenticate_with_magic_link import (
+    AuthenticateWithMagicLinkUseCase,
+    InvalidMagicLinkError,
+)
+from app.application.use_cases.request_magic_link import RequestMagicLinkUseCase
 from app.application.ports.google_identity_verifier import (
     GoogleIdentityVerificationError,
     GoogleIdentityVerificationUnavailableError,
@@ -17,10 +22,14 @@ from app.application.use_cases.register_with_email_password import (
     RegisterWithEmailPasswordUseCase,
 )
 from app.application.services.message_resolver import resolve_message
+from app.entrypoints.api.client_ip import resolve_client_ip
 from app.entrypoints.api.dependencies.container import (
     get_authenticate_with_email_password_use_case,
     get_authenticate_with_google_use_case,
+    get_authenticate_with_magic_link_use_case,
+    get_magic_link_request_rate_limiter,
     get_register_with_email_password_use_case,
+    get_request_magic_link_use_case,
 )
 from app.entrypoints.api.locale import select_response_locale
 from app.entrypoints.api.schemas.auth_schema import (
@@ -28,8 +37,13 @@ from app.entrypoints.api.schemas.auth_schema import (
     GoogleAuthRequest,
     LocalLoginRequest,
     LocalRegisterRequest,
+    MagicLinkConsumeRequest,
+    MagicLinkRequest,
+    MagicLinkRequestResponse,
     UserResponse,
 )
+from app.infrastructure.config.settings import get_settings
+from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -111,6 +125,54 @@ def authenticate_with_email_password(
             detail=resolve_message("error.local_auth_invalid_credentials", language=locale),
         ) from exc
 
+    return _session_response(session)
+
+
+@router.post(
+    "/magic-link/request",
+    response_model=MagicLinkRequestResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def request_magic_link(
+    request: Request,
+    payload: MagicLinkRequest,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    use_case: RequestMagicLinkUseCase = Depends(get_request_magic_link_use_case),
+    rate_limiter: FixedWindowRateLimiter = Depends(get_magic_link_request_rate_limiter),
+) -> MagicLinkRequestResponse:
+    locale = select_response_locale(accept_language)
+    client_key = resolve_client_ip(
+        request, trusted_proxy_networks=get_settings().trusted_proxy_networks
+    )
+    retry_after = rate_limiter.check(client_key)
+    if retry_after is not None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=resolve_message("error.magic_link_rate_limited", language=locale),
+            headers={"Retry-After": str(retry_after)},
+        )
+    # Always succeeds silently: the link both signs in and creates accounts, so
+    # the response never reveals whether the email already exists.
+    use_case.execute(payload.email)
+    return MagicLinkRequestResponse()
+
+
+@router.post("/magic-link/consume", response_model=AuthSessionResponse)
+def consume_magic_link(
+    payload: MagicLinkConsumeRequest,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    use_case: AuthenticateWithMagicLinkUseCase = Depends(
+        get_authenticate_with_magic_link_use_case
+    ),
+) -> AuthSessionResponse:
+    locale = select_response_locale(accept_language)
+    try:
+        session = use_case.execute(payload.token)
+    except InvalidMagicLinkError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=resolve_message("error.magic_link_invalid", language=locale),
+        ) from exc
     return _session_response(session)
 
 
