@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     scan_job_key_prefix: str = "verifiko:scan"
     scan_job_ttl_seconds: int = 86_400
     scan_worker_max_workers: int = 4
+    scan_webhook_signing_secret: str = "verifiko-dev-webhook-secret"
+    scan_webhook_timeout_seconds: float = 5.0
+    scan_webhook_max_attempts: int = 3
     trusted_proxy_ips: str = ""
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"

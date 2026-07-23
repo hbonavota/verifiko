@@ -1,12 +1,16 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
 
 from app.application.commands.create_verification_command import CreateVerificationCommand
+from app.application.ports.scan_webhook_notifier import ScanWebhookNotifierPort
 from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
 from app.domain.exceptions.domain_exception import DomainException
 from app.domain.ports.verification_job_store import VerificationJobStore
 from app.domain.value_objects.user_id import UserId
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -16,11 +20,13 @@ class VerificationScanProcessor:
 
     This is what a worker (in-process today, a distributed consumer tomorrow)
     invokes. It reuses ``CreateURLVerificationUseCase`` unchanged, so async and
-    sync verification share exactly the same detection logic.
+    sync verification share exactly the same detection logic. Once the job
+    reaches a terminal state, an optional webhook is delivered best-effort.
     """
 
     job_store: VerificationJobStore
     create_use_case: CreateURLVerificationUseCase
+    webhook_notifier: ScanWebhookNotifierPort | None = None
     current_time_provider: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
 
     def process(self, job_id: str) -> None:
@@ -40,15 +46,21 @@ class VerificationScanProcessor:
             )
         except DomainException as exc:
             job.mark_failed(str(exc), self.current_time_provider())
-            self.job_store.save(job)
-            return
         except Exception:
             job.mark_failed(
                 "Verification could not be completed due to an internal error.",
                 self.current_time_provider(),
             )
-            self.job_store.save(job)
-            return
+        else:
+            job.mark_completed(dto.id, self.current_time_provider())
 
-        job.mark_completed(dto.id, self.current_time_provider())
         self.job_store.save(job)
+        self._deliver_webhook(job)
+
+    def _deliver_webhook(self, job) -> None:
+        if self.webhook_notifier is None or not job.webhook_url:
+            return
+        try:
+            self.webhook_notifier.notify(job)
+        except Exception:  # pragma: no cover - notifier is already best-effort
+            logger.exception("Webhook notification failed for scan %s", job.id)
