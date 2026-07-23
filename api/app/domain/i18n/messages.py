@@ -501,6 +501,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "An account already exists for this email.",
         "es": "Ya existe una cuenta para este correo.",
     },
+    "error.api_key_not_found": {
+        "en": "API key not found.",
+        "es": "Clave de API no encontrada.",
+    },
     "error.verification_not_found": {
         "en": "Verification not found: {verification_id}",
         "es": "Verificación no encontrada: {verification_id}",

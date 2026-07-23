@@ -51,6 +51,29 @@ class UserModel(Base):
     updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     verifications: Mapped[list[VerificationModel]] = relationship(back_populates="user")
+    api_keys: Mapped[list["ApiKeyModel"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+
+class ApiKeyModel(Base):
+    __tablename__ = "api_keys"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    token_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    last_used_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped["UserModel"] = relationship(back_populates="api_keys")
 
 
 class SignalModel(Base):
