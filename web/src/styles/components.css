@@ -1117,6 +1117,7 @@
 }
 
 .activity-feed__title-link {
+  flex: 1 1 auto;
   min-width: 0;
   color: inherit;
   text-decoration: none;
@@ -1234,11 +1235,16 @@
 .activity-feed__item {
   display: grid;
   gap: var(--space-2);
+  min-width: 0;
   padding: 0.9rem 1rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: rgba(13, 20, 38, 0.82);
   transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
+}
+
+.activity-feed__detail {
+  overflow-wrap: anywhere;
 }
 
 .activity-feed__item:hover {
@@ -1323,6 +1329,7 @@
 
 .activity-feed__status {
   display: grid;
+  flex: 0 0 auto;
   gap: 0.3rem;
   justify-items: end;
 }
@@ -1336,9 +1343,17 @@
 }
 
 .activity-feed__actions {
-  grid-template-columns: repeat(5, minmax(0, max-content));
+  display: flex;
+  flex-wrap: wrap;
+  grid-template-columns: none;
   gap: var(--space-2);
-  align-items: start;
+  align-items: stretch;
+}
+
+.activity-feed__actions > .button {
+  flex: 1 1 auto;
+  min-width: max-content;
+  justify-content: center;
 }
 
 .dashboard-workspace-message {
@@ -3104,7 +3119,13 @@
   }
 
   .activity-feed__actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .activity-feed__actions > .button {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .verification-assessment-card__utility-actions {
