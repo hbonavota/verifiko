@@ -12,9 +12,11 @@ import type { ApiQuotaStatus, ApiUser } from "../types/verification";
 import {
   authenticateWithEmailPassword,
   authenticateWithGoogle,
+  consumeMagicLink,
   fetchQuotaStatus,
   getCurrentUser,
   registerWithEmailPassword as registerWithEmailPasswordRequest,
+  requestMagicLink as requestMagicLinkRequest,
 } from "./api";
 import {
   clearStoredAuthSession,
@@ -35,6 +37,8 @@ interface AuthContextValue {
     email: string,
     password: string,
   ) => Promise<void>;
+  requestMagicLink: (email: string) => Promise<void>;
+  loginWithMagicLinkToken: (token: string) => Promise<void>;
   logout: () => void;
   refreshQuotaStatus: () => Promise<void>;
 }
@@ -156,6 +160,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }
 
+  async function requestMagicLink(email: string) {
+    await requestMagicLinkRequest(email);
+  }
+
+  async function loginWithMagicLinkToken(token: string) {
+    setIsAuthenticating(true);
+    try {
+      const session = await consumeMagicLink(token);
+      applyAuthenticatedSession(session);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }
+
   function logout() {
     clearStoredAuthSession();
     setCurrentUser(null);
@@ -171,6 +189,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       loginWithGoogleCredential,
       loginWithEmailPassword,
       registerWithEmailPassword,
+      requestMagicLink,
+      loginWithMagicLinkToken,
       logout,
       refreshQuotaStatus,
     }),
