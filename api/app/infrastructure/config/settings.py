@@ -30,6 +30,14 @@ class Settings(BaseSettings):
     analysis_cache_reputation_ttl_seconds: int = 300
     analysis_cache_domain_age_ttl_seconds: int = 86_400
     analysis_cache_infrastructure_ttl_seconds: int = 3_600
+    reputation_consensus_threshold: int = 2
+    reputation_circuit_breaker_failure_threshold: int = 3
+    reputation_circuit_breaker_reset_seconds: float = 30.0
+    openphish_reputation_enabled: bool = False
+    openphish_feed_url: str = "https://openphish.com/feed.txt"
+    openphish_feed_refresh_seconds: float = 1_800.0
+    openphish_feed_timeout_seconds: float = 5.0
+    openphish_reputation_confidence: float = 95.0
     trusted_proxy_ips: str = ""
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"
