@@ -1,3 +1,5 @@
+import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -9,6 +11,8 @@ from app.application.services.magic_link_token import (
     hash_magic_link_token,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(slots=True)
 class RequestMagicLinkUseCase:
@@ -17,6 +21,11 @@ class RequestMagicLinkUseCase:
     Always succeeds silently regardless of whether the email already has an
     account: the link both signs in existing users and creates passwordless
     accounts on first use, so there is no user-enumeration signal.
+
+    Email delivery is best-effort and time-bounded: the token is stored first,
+    then the email is sent with a hard timeout. A slow, hanging, or failing
+    provider is logged and never turned into a 5xx or a request that outlives
+    the serverless function budget.
     """
 
     magic_link_store: MagicLinkStorePort
@@ -24,6 +33,7 @@ class RequestMagicLinkUseCase:
     link_base_url: str
     ttl_seconds: int
     token_factory: Callable[[], str] = field(default=generate_magic_link_token)
+    send_timeout_seconds: float = 8.0
 
     def execute(self, email: str) -> None:
         normalized_email = normalize_email(email)
@@ -32,7 +42,21 @@ class RequestMagicLinkUseCase:
             hash_magic_link_token(token), normalized_email, self.ttl_seconds
         )
         link = f"{self.link_base_url}/auth/magic?token={token}"
-        self.email_sender.send(self._build_message(normalized_email, link))
+        self._deliver(normalized_email, link)
+
+    def _deliver(self, email: str, link: str) -> None:
+        message = self._build_message(email, link)
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(self.email_sender.send, message)
+        try:
+            future.result(timeout=self.send_timeout_seconds)
+        except FuturesTimeoutError:
+            logger.warning("Magic-link email delivery timed out for %s", email)
+        except Exception:
+            logger.warning("Magic-link email delivery failed for %s", email, exc_info=True)
+        finally:
+            # Never block the request on a hanging send; abandon the worker.
+            executor.shutdown(wait=False, cancel_futures=True)
 
     def _build_message(self, email: str, link: str) -> EmailMessage:
         minutes = max(1, self.ttl_seconds // 60)
