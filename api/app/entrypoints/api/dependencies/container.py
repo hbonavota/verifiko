@@ -53,6 +53,17 @@ from app.infrastructure.cache.json_redis_cache import JsonRedisCache
 from app.infrastructure.external_services.blacklist.urlhaus_reputation_client import (
     UrlhausReputationClient,
 )
+from app.infrastructure.reputation.aggregating_reputation_lookup import (
+    AggregatingReputationLookup,
+)
+from app.infrastructure.reputation.circuit_breaker_reputation_lookup import (
+    CircuitBreakerReputationLookup,
+)
+from app.infrastructure.reputation.openphish_reputation_client import (
+    OpenPhishReputationClient,
+    build_openphish_feed_fetcher,
+)
+from app.infrastructure.resilience.circuit_breaker import CircuitBreaker
 from app.infrastructure.external_services.domain_age.rdap_domain_age_lookup import RdapDomainAgeLookup
 from app.infrastructure.external_services.dns.socket_infrastructure_lookup import (
     SocketInfrastructureLookup,
@@ -168,18 +179,58 @@ def get_redirect_signal_analyzer() -> RedirectSignalAnalyzer:
 
 @lru_cache(maxsize=1)
 def get_reputation_lookup() -> ReputationLookupPort:
-    inner = UrlhausReputationClient()
+    settings = get_settings()
+    providers = [
+        _guarded_reputation_provider(
+            UrlhausReputationClient(), "urlhaus.abuse.ch", settings
+        ),
+    ]
+    if settings.openphish_reputation_enabled:
+        providers.append(
+            _guarded_reputation_provider(
+                OpenPhishReputationClient(
+                    feed_fetcher=build_openphish_feed_fetcher(
+                        feed_url=settings.openphish_feed_url,
+                        timeout_seconds=settings.openphish_feed_timeout_seconds,
+                    ),
+                    refresh_seconds=settings.openphish_feed_refresh_seconds,
+                    confidence=settings.openphish_reputation_confidence,
+                ),
+                "openphish.com",
+                settings,
+            )
+        )
+
+    aggregated: ReputationLookupPort = AggregatingReputationLookup(
+        providers=tuple(providers),
+        consensus_threshold=settings.reputation_consensus_threshold,
+    )
+
     redis_client = get_rate_limit_redis_client()
     if redis_client is None:
-        return inner
-    settings = get_settings()
+        return aggregated
     return CachingReputationLookup(
-        inner=inner,
+        inner=aggregated,
         cache=JsonRedisCache(
             redis_client=redis_client,
             key_prefix=settings.analysis_cache_key_prefix,
             ttl_seconds=settings.analysis_cache_reputation_ttl_seconds,
         ),
+    )
+
+
+def _guarded_reputation_provider(
+    inner: ReputationLookupPort,
+    provider_name: str,
+    settings,
+) -> ReputationLookupPort:
+    return CircuitBreakerReputationLookup(
+        inner=inner,
+        breaker=CircuitBreaker(
+            failure_threshold=settings.reputation_circuit_breaker_failure_threshold,
+            reset_seconds=settings.reputation_circuit_breaker_reset_seconds,
+        ),
+        provider_name=provider_name,
     )
 
 
