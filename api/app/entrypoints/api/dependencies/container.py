@@ -23,6 +23,9 @@ from app.application.services.transport_security_signal_analyzer import (
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
 from app.application.ports.api_key_token_service import ApiKeyTokenServicePort
+from app.application.ports.domain_age_lookup import DomainAgeLookupPort
+from app.application.ports.infrastructure_lookup import InfrastructureLookupPort
+from app.application.ports.reputation_lookup import ReputationLookupPort
 from app.application.use_cases.authenticate_with_api_key import AuthenticateWithApiKeyUseCase
 from app.application.use_cases.authenticate_with_email_password import (
     AuthenticateWithEmailPasswordUseCase,
@@ -43,6 +46,10 @@ from app.infrastructure.external_services.google.google_tokeninfo_identity_verif
     GoogleTokeninfoIdentityVerifier,
 )
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
+from app.infrastructure.cache.caching_domain_age_lookup import CachingDomainAgeLookup
+from app.infrastructure.cache.caching_infrastructure_lookup import CachingInfrastructureLookup
+from app.infrastructure.cache.caching_reputation_lookup import CachingReputationLookup
+from app.infrastructure.cache.json_redis_cache import JsonRedisCache
 from app.infrastructure.external_services.blacklist.urlhaus_reputation_client import (
     UrlhausReputationClient,
 )
@@ -110,8 +117,20 @@ def get_url_signal_analyzer() -> DeterministicUrlSignalAnalyzer:
 
 
 @lru_cache(maxsize=1)
-def get_domain_age_lookup() -> RdapDomainAgeLookup:
-    return RdapDomainAgeLookup()
+def get_domain_age_lookup() -> DomainAgeLookupPort:
+    inner = RdapDomainAgeLookup()
+    redis_client = get_rate_limit_redis_client()
+    if redis_client is None:
+        return inner
+    settings = get_settings()
+    return CachingDomainAgeLookup(
+        inner=inner,
+        cache=JsonRedisCache(
+            redis_client=redis_client,
+            key_prefix=settings.analysis_cache_key_prefix,
+            ttl_seconds=settings.analysis_cache_domain_age_ttl_seconds,
+        ),
+    )
 
 
 @lru_cache(maxsize=1)
@@ -148,8 +167,20 @@ def get_redirect_signal_analyzer() -> RedirectSignalAnalyzer:
 
 
 @lru_cache(maxsize=1)
-def get_reputation_lookup() -> UrlhausReputationClient:
-    return UrlhausReputationClient()
+def get_reputation_lookup() -> ReputationLookupPort:
+    inner = UrlhausReputationClient()
+    redis_client = get_rate_limit_redis_client()
+    if redis_client is None:
+        return inner
+    settings = get_settings()
+    return CachingReputationLookup(
+        inner=inner,
+        cache=JsonRedisCache(
+            redis_client=redis_client,
+            key_prefix=settings.analysis_cache_key_prefix,
+            ttl_seconds=settings.analysis_cache_reputation_ttl_seconds,
+        ),
+    )
 
 
 @lru_cache(maxsize=1)
@@ -158,8 +189,20 @@ def get_reputation_signal_analyzer() -> ReputationSignalAnalyzer:
 
 
 @lru_cache(maxsize=1)
-def get_infrastructure_lookup() -> SocketInfrastructureLookup:
-    return SocketInfrastructureLookup()
+def get_infrastructure_lookup() -> InfrastructureLookupPort:
+    inner = SocketInfrastructureLookup()
+    redis_client = get_rate_limit_redis_client()
+    if redis_client is None:
+        return inner
+    settings = get_settings()
+    return CachingInfrastructureLookup(
+        inner=inner,
+        cache=JsonRedisCache(
+            redis_client=redis_client,
+            key_prefix=settings.analysis_cache_key_prefix,
+            ttl_seconds=settings.analysis_cache_infrastructure_ttl_seconds,
+        ),
+    )
 
 
 @lru_cache(maxsize=1)
@@ -335,6 +378,7 @@ def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:
         html_credential_signal_analyzer=get_html_credential_signal_analyzer(),
         transport_security_signal_analyzer=get_transport_security_signal_analyzer(),
         public_target_validator=assert_safe_outbound_url,
+        parallel_analysis_enabled=get_settings().verification_parallel_analysis_enabled,
     )
 
 
