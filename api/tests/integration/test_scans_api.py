@@ -55,7 +55,13 @@ _SCAN_CACHES = (
     "get_verification_job_store",
     "get_verification_scan_processor",
     "get_verification_scan_dispatcher",
+    "get_scan_webhook_notifier",
 )
+
+
+class _NoopWebhookNotifier:
+    def notify(self, job) -> None:  # keep integration tests network-free
+        return None
 
 
 def _clear_scan_caches() -> None:
@@ -102,6 +108,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         lambda: InfrastructureSignalAnalyzer(infrastructure_lookup=NoopInfrastructureLookup()),
     )
     monkeypatch.setattr(container, "assert_safe_outbound_url", _test_public_target_validator)
+    monkeypatch.setattr(container, "get_scan_webhook_notifier", lambda: _NoopWebhookNotifier())
     # Deterministic: process the scan inline so a poll immediately after submit
     # observes the completed result.
     monkeypatch.setattr(
@@ -184,6 +191,27 @@ def test_scan_is_owner_scoped(client: TestClient) -> None:
 def test_scan_endpoints_require_authentication(client: TestClient) -> None:
     assert client.post("/api/v1/scans", json={"url": "https://example.org"}).status_code == 401
     assert client.get("/api/v1/scans/anything").status_code == 401
+
+
+def test_submit_rejects_invalid_webhook_url(client: TestClient) -> None:
+    headers = _register(client)
+    response = client.post(
+        "/api/v1/scans",
+        json={"url": "https://example.org", "webhook_url": "ftp://not-http.example"},
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
+def test_submit_accepts_valid_webhook_url(client: TestClient) -> None:
+    headers = _register(client)
+    response = client.post(
+        "/api/v1/scans",
+        json={"url": "https://example.org", "webhook_url": "https://hooks.example/cb"},
+        headers=headers,
+    )
+    assert response.status_code == 202
+    assert response.json()["status"] == "queued"
 
 
 def test_invalid_url_scan_reports_failed(client: TestClient) -> None:

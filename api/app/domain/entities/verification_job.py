@@ -21,6 +21,7 @@ class VerificationJob:
     updated_at: datetime
     result_verification_id: str | None = None
     error_message: str | None = None
+    webhook_url: str | None = None
 
     @staticmethod
     def queue(
@@ -28,6 +29,7 @@ class VerificationJob:
         job_id: str,
         owner_user_id: str,
         url: str,
+        webhook_url: str | None = None,
         now: datetime | None = None,
     ) -> "VerificationJob":
         moment = now or datetime.now(timezone.utc)
@@ -38,6 +40,7 @@ class VerificationJob:
             status=VerificationJobStatus.QUEUED,
             created_at=moment,
             updated_at=moment,
+            webhook_url=webhook_url,
         )
 
     @property

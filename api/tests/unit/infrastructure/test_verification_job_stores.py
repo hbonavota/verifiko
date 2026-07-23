@@ -81,3 +81,19 @@ def test_redis_owner_scoping_and_missing() -> None:
     assert store.get_for_owner("scan-1", "owner-1") is not None
     assert store.get_for_owner("scan-1", "other") is None
     assert store.get("missing") is None
+
+
+def test_redis_round_trips_webhook_url() -> None:
+    store = RedisVerificationJobStore(FakeRedis(), key_prefix="verifiko:scan", ttl_seconds=99)
+    job = VerificationJob.queue(
+        job_id="scan-1",
+        owner_user_id="owner-1",
+        url="https://example.com",
+        webhook_url="https://hooks.example/cb",
+        now=datetime(2026, 7, 23, tzinfo=timezone.utc),
+    )
+    store.save(job)
+
+    fetched = store.get("scan-1")
+    assert fetched is not None
+    assert fetched.webhook_url == "https://hooks.example/cb"

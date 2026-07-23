@@ -38,7 +38,11 @@ def submit_scan(
     current_user: User = Depends(get_current_user),
     use_case: SubmitVerificationScanUseCase = Depends(get_submit_verification_scan_use_case),
 ) -> ScanAcceptedResponse:
-    job = use_case.execute(owner_user_id=str(current_user.id), url=payload.url)
+    job = use_case.execute(
+        owner_user_id=str(current_user.id),
+        url=payload.url,
+        webhook_url=payload.webhook_url,
+    )
     return _accepted(job)
 
 
@@ -48,7 +52,11 @@ def submit_scan_batch(
     current_user: User = Depends(get_current_user),
     use_case: SubmitVerificationScanUseCase = Depends(get_submit_verification_scan_use_case),
 ) -> ScanBatchAcceptedResponse:
-    jobs = use_case.execute_batch(owner_user_id=str(current_user.id), urls=list(payload.urls))
+    jobs = use_case.execute_batch(
+        owner_user_id=str(current_user.id),
+        urls=list(payload.urls),
+        webhook_url=payload.webhook_url,
+    )
     return ScanBatchAcceptedResponse(scans=tuple(_accepted(job) for job in jobs))
 
 

@@ -20,16 +20,27 @@ class SubmitVerificationScanUseCase:
     dispatcher: VerificationJobDispatcher
     current_time_provider: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
 
-    def execute(self, owner_user_id: str, url: str) -> VerificationJob:
+    def execute(
+        self,
+        owner_user_id: str,
+        url: str,
+        webhook_url: str | None = None,
+    ) -> VerificationJob:
         job = VerificationJob.queue(
             job_id=uuid.uuid4().hex,
             owner_user_id=owner_user_id,
             url=url,
+            webhook_url=webhook_url,
             now=self.current_time_provider(),
         )
         self.job_store.save(job)
         self.dispatcher.dispatch(job.id)
         return job
 
-    def execute_batch(self, owner_user_id: str, urls: list[str]) -> list[VerificationJob]:
-        return [self.execute(owner_user_id, url) for url in urls]
+    def execute_batch(
+        self,
+        owner_user_id: str,
+        urls: list[str],
+        webhook_url: str | None = None,
+    ) -> list[VerificationJob]:
+        return [self.execute(owner_user_id, url, webhook_url) for url in urls]

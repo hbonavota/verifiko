@@ -53,6 +53,10 @@ from app.infrastructure.jobs.verification_job_stores import (
     InMemoryVerificationJobStore,
     RedisVerificationJobStore,
 )
+from app.infrastructure.webhooks.http_scan_webhook_notifier import (
+    HttpScanWebhookNotifier,
+    build_urllib_webhook_poster,
+)
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
 from app.infrastructure.cache.caching_domain_age_lookup import CachingDomainAgeLookup
 from app.infrastructure.cache.caching_infrastructure_lookup import CachingInfrastructureLookup
@@ -491,10 +495,23 @@ def get_verification_job_store():
 
 
 @lru_cache(maxsize=1)
+def get_scan_webhook_notifier() -> HttpScanWebhookNotifier:
+    settings = get_settings()
+    return HttpScanWebhookNotifier(
+        signing_secret=settings.scan_webhook_signing_secret,
+        target_validator=assert_safe_outbound_url,
+        http_poster=build_urllib_webhook_poster(settings.scan_webhook_timeout_seconds),
+        max_attempts=settings.scan_webhook_max_attempts,
+        current_time_provider=get_time_provider().now,
+    )
+
+
+@lru_cache(maxsize=1)
 def get_verification_scan_processor() -> VerificationScanProcessor:
     return VerificationScanProcessor(
         job_store=get_verification_job_store(),
         create_use_case=get_create_url_verification_use_case(),
+        webhook_notifier=get_scan_webhook_notifier(),
         current_time_provider=get_time_provider().now,
     )
 
