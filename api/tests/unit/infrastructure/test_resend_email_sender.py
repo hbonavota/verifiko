@@ -7,13 +7,14 @@ from app.infrastructure.email.resend_email_sender import ResendEmailSender
 
 
 class RecordingPoster:
-    def __init__(self, status: int) -> None:
+    def __init__(self, status: int, detail: str = "") -> None:
         self.status = status
+        self.detail = detail
         self.calls = []
 
     def __call__(self, url, headers, body):
         self.calls.append({"url": url, "headers": headers, "body": body})
-        return self.status
+        return self.status, self.detail
 
 
 def _message() -> EmailMessage:
@@ -43,3 +44,14 @@ def test_non_2xx_raises_delivery_error() -> None:
     )
     with pytest.raises(EmailDeliveryError):
         sender.send(_message())
+
+
+def test_error_includes_resend_response_body() -> None:
+    poster = RecordingPoster(403, detail='{"message":"The verifiko.es domain is not verified."}')
+    sender = ResendEmailSender(
+        api_key="re_test_key", from_email="login@verifiko.es", http_poster=poster
+    )
+    with pytest.raises(EmailDeliveryError) as excinfo:
+        sender.send(_message())
+    assert "403" in str(excinfo.value)
+    assert "not verified" in str(excinfo.value)
