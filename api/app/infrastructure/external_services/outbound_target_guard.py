@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import ipaddress
 import socket
+import time
 from urllib.parse import urlsplit
 
 from app.domain.i18n.resolver import resolve_message
@@ -11,6 +12,8 @@ class UnsafeOutboundTargetError(Exception):
 
 
 _BLOCKED_HOST_SUFFIXES = (".internal", ".local", ".localhost", ".home.arpa")
+_DNS_RESOLUTION_ATTEMPTS = 3
+_DNS_RESOLUTION_BACKOFF_SECONDS = 0.05
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,16 +74,7 @@ def _resolve_host_addresses(
     hostname: str,
     port: int | None,
 ) -> tuple[ipaddress.IPv4Address | ipaddress.IPv6Address, ...]:
-    try:
-        addrinfo = socket.getaddrinfo(
-            hostname,
-            port or 443,
-            type=socket.SOCK_STREAM,
-        )
-    except socket.gaierror as exc:
-        raise UnsafeOutboundTargetError(
-            resolve_message("error.outbound_target_host_unresolved_for_safety_validation")
-        ) from exc
+    addrinfo = _getaddrinfo_with_retry(hostname, port or 443)
 
     addresses: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = []
     seen: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
@@ -91,6 +85,34 @@ def _resolve_host_addresses(
         seen.add(ip_address)
         addresses.append(ip_address)
     return tuple(addresses)
+
+
+def _getaddrinfo_with_retry(hostname: str, port: int) -> list:
+    """Resolve a hostname, tolerating transient resolver failures.
+
+    ``socket.getaddrinfo`` can raise a plain ``OSError`` such as ``EBUSY``
+    (Errno 16, "Device or resource busy") when the underlying DNS resolver is
+    contended — notably under concurrent lookups on some serverless runtimes.
+    That is transient, so we retry a few times with a short backoff. A genuine
+    name-resolution failure (``gaierror``) is not retried. If resolution still
+    fails, we surface it as an unsafe/unresolvable target (a clean 4xx) rather
+    than an unhandled 500.
+    """
+    last_error: OSError | None = None
+    for attempt in range(_DNS_RESOLUTION_ATTEMPTS):
+        try:
+            return socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+        except socket.gaierror as exc:
+            raise UnsafeOutboundTargetError(
+                resolve_message("error.outbound_target_host_unresolved_for_safety_validation")
+            ) from exc
+        except OSError as exc:
+            last_error = exc
+            if attempt < _DNS_RESOLUTION_ATTEMPTS - 1:
+                time.sleep(_DNS_RESOLUTION_BACKOFF_SECONDS * (attempt + 1))
+    raise UnsafeOutboundTargetError(
+        resolve_message("error.outbound_target_host_unresolved_for_safety_validation")
+    ) from last_error
 
 
 def _looks_like_ip_address(value: str) -> bool:
