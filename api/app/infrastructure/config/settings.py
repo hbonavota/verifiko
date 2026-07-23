@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     rate_limit_key_prefix: str = "verifiko:quota"
     verification_burst_limit_requests: int = 10
     verification_burst_limit_window_seconds: int = 60
+    verification_parallel_analysis_enabled: bool = True
+    analysis_cache_key_prefix: str = "verifiko:analysis"
+    analysis_cache_reputation_ttl_seconds: int = 300
+    analysis_cache_domain_age_ttl_seconds: int = 86_400
+    analysis_cache_infrastructure_ttl_seconds: int = 3_600
     trusted_proxy_ips: str = ""
     google_client_id: str = ""
     auth_token_secret: str = "verifiko-dev-auth-secret"

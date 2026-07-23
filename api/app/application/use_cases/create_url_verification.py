@@ -1,10 +1,11 @@
 import hashlib
 import html
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from dataclasses import replace
 from itertools import combinations
-from typing import Callable
+from typing import Callable, TypeVar
 
 from app.application.commands.create_verification_command import CreateVerificationCommand
 from app.application.dto.verification_dto import VerificationDTO
@@ -45,6 +46,8 @@ from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CAT
 from app.domain.services.scoring_service import ScoringService
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
+
+_StageResultT = TypeVar("_StageResultT")
 
 _HTML_COVERAGE_WARNING_KEYS = (
     "warning.html_content_inspection_unavailable",
@@ -149,6 +152,7 @@ class CreateURLVerificationUseCase:
     html_credential_signal_analyzer: HtmlCredentialSignalAnalyzer
     transport_security_signal_analyzer: TransportSecuritySignalAnalyzer
     public_target_validator: Callable[[str], None] | None = None
+    parallel_analysis_enabled: bool = True
 
     def execute(self, command: CreateVerificationCommand) -> VerificationDTO:
         verification = Verification.create_url(
@@ -162,7 +166,8 @@ class CreateURLVerificationUseCase:
 
         analysis_warnings: list[str] = []
         analysis_trace: list[AnalysisTraceStage] = []
-        detected_signals = self.signal_analyzer.analyze(verification.normalized_input)
+        normalized_input = verification.normalized_input
+        detected_signals = self.signal_analyzer.analyze(normalized_input)
         analysis_trace.append(
             self._build_trace_stage(
                 stage="url_analysis",
@@ -171,96 +176,93 @@ class CreateURLVerificationUseCase:
                 warnings=(),
             )
         )
-        domain_recency_result = self.domain_recency_signal_analyzer.analyze_with_context(
-            verification.normalized_input
-        )
-        detected_signals.extend(domain_recency_result.signals)
-        analysis_warnings.extend(domain_recency_result.warnings)
-        analysis_trace.append(
-            self._build_trace_stage(
-                stage="domain_recency",
-                source=self.domain_recency_signal_analyzer.source,
-                signals=domain_recency_result.signals,
-                warnings=domain_recency_result.warnings,
-            )
-        )
 
-        redirect_result = self.redirect_signal_analyzer.analyze_with_context(
-            verification.normalized_input
+        # Wave 1: analyzers that depend only on the input URL run concurrently.
+        # Each analyzer performs blocking network I/O, so overlapping them turns
+        # the total wait from a sum of latencies into a maximum.
+        wave_one = self._run_stage_group(
+            {
+                "domain_recency": lambda: self.domain_recency_signal_analyzer.analyze_with_context(
+                    normalized_input
+                ),
+                "redirect": lambda: self.redirect_signal_analyzer.analyze_with_context(
+                    normalized_input
+                ),
+                "transport": lambda: self.transport_security_signal_analyzer.analyze_with_context(
+                    normalized_input
+                ),
+                "html": lambda: self._analyze_html_content(verification),
+            }
         )
-        detected_signals.extend(redirect_result.signals)
-        analysis_warnings.extend(redirect_result.warnings)
-        analysis_trace.append(
-            self._build_trace_stage(
-                stage="redirect_resolution",
-                source=self.redirect_signal_analyzer.source,
-                signals=redirect_result.signals,
-                warnings=redirect_result.warnings,
-            )
-        )
+        domain_recency_result = wave_one["domain_recency"]
+        redirect_result = wave_one["redirect"]
+        transport_result = wave_one["transport"]
+        html_result = wave_one["html"]
 
-        reputation_result = self.reputation_signal_analyzer.analyze_with_context(
-            verification.normalized_input,
-            redirect_resolution=redirect_result.redirect_resolution,
-        )
-        detected_signals.extend(reputation_result.signals)
-        analysis_warnings.extend(reputation_result.warnings)
-        analysis_trace.append(
-            self._build_trace_stage(
-                stage="reputation",
-                source=self.reputation_signal_analyzer.source,
-                signals=reputation_result.signals,
-                warnings=reputation_result.warnings,
-            )
-        )
+        redirect_resolution = redirect_result.redirect_resolution
 
-        infrastructure_result = self.infrastructure_signal_analyzer.analyze_with_context(
-            verification.normalized_input,
-            redirect_resolution=redirect_result.redirect_resolution,
+        # Wave 2: analyzers that additionally need the resolved redirect
+        # destination. They only depend on wave 1's redirect result, so they run
+        # concurrently with each other.
+        wave_two = self._run_stage_group(
+            {
+                "reputation": lambda: self.reputation_signal_analyzer.analyze_with_context(
+                    normalized_input, redirect_resolution=redirect_resolution
+                ),
+                "infrastructure": lambda: self.infrastructure_signal_analyzer.analyze_with_context(
+                    normalized_input, redirect_resolution=redirect_resolution
+                ),
+                "resolved_destination": lambda: self.resolved_destination_signal_analyzer.analyze_with_context(
+                    normalized_input, redirect_resolution=redirect_resolution
+                ),
+            }
         )
-        detected_signals.extend(infrastructure_result.signals)
-        analysis_warnings.extend(infrastructure_result.warnings)
-        analysis_trace.append(
-            self._build_trace_stage(
-                stage="infrastructure",
-                source=self.infrastructure_signal_analyzer.source,
-                signals=infrastructure_result.signals,
-                warnings=infrastructure_result.warnings,
-            )
-        )
+        reputation_result = wave_two["reputation"]
+        infrastructure_result = wave_two["infrastructure"]
+        resolved_destination_result = wave_two["resolved_destination"]
 
-        resolved_destination_result = (
-            self.resolved_destination_signal_analyzer.analyze_with_context(
-                verification.normalized_input,
-                redirect_resolution=redirect_result.redirect_resolution,
+        # Assemble signals, warnings and trace stages in the original,
+        # deterministic order so the scored result is byte-for-byte identical to
+        # the sequential pipeline regardless of completion timing.
+        for stage, source, result in (
+            (
+                "domain_recency",
+                self.domain_recency_signal_analyzer.source,
+                domain_recency_result,
+            ),
+            (
+                "redirect_resolution",
+                self.redirect_signal_analyzer.source,
+                redirect_result,
+            ),
+            ("reputation", self.reputation_signal_analyzer.source, reputation_result),
+            (
+                "infrastructure",
+                self.infrastructure_signal_analyzer.source,
+                infrastructure_result,
+            ),
+            (
+                "resolved_destination",
+                "resolved-destination-analysis",
+                resolved_destination_result,
+            ),
+            (
+                "transport_security",
+                self.transport_security_signal_analyzer.source,
+                transport_result,
+            ),
+        ):
+            detected_signals.extend(result.signals)
+            analysis_warnings.extend(result.warnings)
+            analysis_trace.append(
+                self._build_trace_stage(
+                    stage=stage,
+                    source=source,
+                    signals=result.signals,
+                    warnings=result.warnings,
+                )
             )
-        )
-        detected_signals.extend(resolved_destination_result.signals)
-        analysis_warnings.extend(resolved_destination_result.warnings)
-        analysis_trace.append(
-            self._build_trace_stage(
-                stage="resolved_destination",
-                source="resolved-destination-analysis",
-                signals=resolved_destination_result.signals,
-                warnings=resolved_destination_result.warnings,
-            )
-        )
 
-        transport_result = self.transport_security_signal_analyzer.analyze_with_context(
-            verification.normalized_input
-        )
-        detected_signals.extend(transport_result.signals)
-        analysis_warnings.extend(transport_result.warnings)
-        analysis_trace.append(
-            self._build_trace_stage(
-                stage="transport_security",
-                source=self.transport_security_signal_analyzer.source,
-                signals=transport_result.signals,
-                warnings=transport_result.warnings,
-            )
-        )
-
-        html_result = self._analyze_html_content(verification)
         detected_signals.extend(html_result.signals)
         analysis_warnings.extend(html_result.warnings)
         analysis_trace.append(
@@ -314,6 +316,26 @@ class CreateURLVerificationUseCase:
         verification.redact_sensitive_input()
         saved = self.repository.save(verification)
         return VerificationMapper.to_dto(saved, trace=trace)
+
+    def _run_stage_group(
+        self,
+        tasks: dict[str, Callable[[], "_StageResultT"]],
+    ) -> dict[str, "_StageResultT"]:
+        """Run independent analysis stages, concurrently when enabled.
+
+        Falls back to sequential execution when parallelism is disabled or a
+        single task is scheduled, so behaviour is identical either way — only
+        timing differs. Task exceptions propagate unchanged.
+        """
+        if not self.parallel_analysis_enabled or len(tasks) <= 1:
+            return {name: task() for name, task in tasks.items()}
+
+        results: dict[str, _StageResultT] = {}
+        with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+            futures = {executor.submit(task): name for name, task in tasks.items()}
+            for future in as_completed(futures):
+                results[futures[future]] = future.result()
+        return results
 
     def _analyze_html_content(self, verification: Verification) -> SignalAnalysisResult:
         observations: list[_HtmlVariantObservation] = []
