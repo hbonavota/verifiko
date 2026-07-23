@@ -152,6 +152,20 @@ export function authenticateWithEmailPassword(
   });
 }
 
+export function requestMagicLink(email: string): Promise<{ status: string }> {
+  return readJson<{ status: string }>("/api/auth/magic-link/request", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function consumeMagicLink(token: string): Promise<ApiAuthSession> {
+  return readJson<ApiAuthSession>("/api/auth/magic-link/consume", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}
+
 export function getCurrentUser(): Promise<ApiUser> {
   return readJson<ApiUser>("/api/me");
 }
