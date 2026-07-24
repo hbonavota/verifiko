@@ -8,6 +8,12 @@ from app.application.ports.domain_age_lookup import (
     DomainRegistrationInfo,
     DomainRegistrationLookupError,
 )
+from app.application.ports.headless_detonation import (
+    DetonationForm,
+    DetonationResult,
+    HeadlessDetonationError,
+    HeadlessDetonationPort,
+)
 from app.application.ports.html_fetcher import FetchedHtmlDocument, HtmlFetchError, HtmlFetcherPort
 from app.application.ports.infrastructure_lookup import (
     InfrastructureLookupError,
@@ -219,6 +225,8 @@ def _build_use_case(
     reputation_lookup: ReputationLookupPort | None = None,
     infrastructure_lookup: InfrastructureLookupPort | None = None,
     public_target_validator=None,
+    headless_detonation=None,
+    detonation_enabled: bool = False,
 ) -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=FakeRepository(),
@@ -249,6 +257,8 @@ def _build_use_case(
             tls_validator=tls_validator or FakeTlsValidator()
         ),
         public_target_validator=public_target_validator,
+        headless_detonation=headless_detonation,
+        detonation_enabled=detonation_enabled,
     )
 
 
@@ -1917,3 +1927,168 @@ def test_create_url_verification_use_case_marks_redirects_to_questionable_tlds_a
     assert dto.risk_assessment.verdict == "CAUTION"
     assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
     assert any(signal.signal_type == "questionable_destination_tld" for signal in dto.signals)
+
+
+class RecordingDetonation(HeadlessDetonationPort):
+    """Fake headless backend: records the URLs it was asked to detonate and
+    returns a canned observation (or raises to exercise the fail-open path)."""
+
+    def __init__(
+        self,
+        result: DetonationResult | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self._result = result
+        self._error = error
+        self.calls: list[str] = []
+
+    def detonate(self, url: str) -> DetonationResult:
+        self.calls.append(url)
+        if self._error is not None:
+            raise self._error
+        return self._result or DetonationResult(requested_url=url, final_url=url)
+
+
+def _offsite_credential_detonation(url: str) -> DetonationResult:
+    return DetonationResult(
+        requested_url=url,
+        final_url=url,
+        forms=(
+            DetonationForm(has_password_field=True, action_host="harvest.evil-collector.com"),
+        ),
+    )
+
+
+def test_async_deep_analysis_folds_behavioral_signals_into_the_verdict() -> None:
+    detonation = RecordingDetonation(
+        result=_offsite_credential_detonation("https://client-portal.io/")
+    )
+    use_case = _build_use_case(headless_detonation=detonation, detonation_enabled=True)
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://client-portal.io/", deep_analysis=True)
+    )
+
+    assert len(detonation.calls) == 1
+    assert "client-portal.io" in detonation.calls[0]
+    signal_types = {signal.signal_type for signal in dto.signals}
+    assert "rendered_credential_form" in signal_types
+    assert "offsite_form_action" in signal_types
+    assert dto.risk_assessment is not None
+    # The behavioral signals fold into the score before it is computed (band
+    # escalation/weight calibration is deferred to B.4).
+    assert dto.risk_assessment.score < 100
+    behavioral_stages = [
+        stage
+        for stage in dto.risk_assessment.analysis_trace
+        if stage.stage == "behavioral_detonation"
+    ]
+    assert behavioral_stages and behavioral_stages[0].status == "signals_detected"
+
+
+def test_sync_path_never_detonates_even_when_enabled() -> None:
+    detonation = RecordingDetonation()
+    use_case = _build_use_case(headless_detonation=detonation, detonation_enabled=True)
+
+    use_case.execute(CreateVerificationCommand(url="https://client-portal.io/"))
+
+    assert detonation.calls == []
+
+
+def test_detonation_disabled_flag_skips_the_browser() -> None:
+    detonation = RecordingDetonation()
+    use_case = _build_use_case(headless_detonation=detonation, detonation_enabled=False)
+
+    use_case.execute(
+        CreateVerificationCommand(url="https://client-portal.io/", deep_analysis=True)
+    )
+
+    assert detonation.calls == []
+
+
+def test_already_decided_verdict_is_not_detonated() -> None:
+    detonation = RecordingDetonation(
+        result=_offsite_credential_detonation("https://safe.example/link")
+    )
+    use_case = _build_use_case(
+        headless_detonation=detonation,
+        detonation_enabled=True,
+        redirect_resolver=FakeRedirectResolver(
+            RedirectResolution(
+                final_url="https://collector.bad.example/login",
+                hops=(
+                    RedirectHop(
+                        status_code=302,
+                        source_url="https://safe.example/link",
+                        target_url="https://collector.bad.example/login",
+                    ),
+                ),
+                provider_name="stub-redirect",
+            )
+        ),
+        reputation_lookup=FakeReputationLookup(
+            {
+                "collector.bad.example": ReputationMatch(
+                    queried_value="collector.bad.example",
+                    provider_name="stub-feed",
+                    confidence=99.0,
+                    reference_count=3,
+                    match_scope="host",
+                    description="Known malicious redirect destination.",
+                )
+            }
+        ),
+    )
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link", deep_analysis=True)
+    )
+
+    assert detonation.calls == []
+    assert dto.risk_assessment is not None
+    assert dto.risk_assessment.verdict == "CONFIRMED_MALICIOUS"
+
+
+def test_detonation_failure_is_fail_open() -> None:
+    detonation = RecordingDetonation(error=HeadlessDetonationError("browser exploded"))
+    use_case = _build_use_case(headless_detonation=detonation, detonation_enabled=True)
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://client-portal.io/", deep_analysis=True)
+    )
+
+    assert len(detonation.calls) == 1
+    assert dto.status == "completed"
+    assert all(
+        signal.signal_type
+        not in {"rendered_credential_form", "offsite_form_action", "drive_by_download"}
+        for signal in dto.signals
+    )
+    assert dto.risk_assessment is not None
+    degraded = [
+        stage
+        for stage in dto.risk_assessment.analysis_trace
+        if stage.stage == "behavioral_detonation"
+    ]
+    assert degraded and degraded[0].status == "degraded"
+
+
+def test_benign_detonation_result_adds_no_behavioral_signals() -> None:
+    detonation = RecordingDetonation()  # default result is benign
+    use_case = _build_use_case(headless_detonation=detonation, detonation_enabled=True)
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://client-portal.io/", deep_analysis=True)
+    )
+
+    assert len(detonation.calls) == 1
+    assert all(
+        signal.signal_type
+        not in {
+            "rendered_credential_form",
+            "offsite_form_action",
+            "js_redirect_to_offsite",
+            "drive_by_download",
+        }
+        for signal in dto.signals
+    )

@@ -491,6 +491,10 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
         "en": "HTML content inspection could not be completed.",
         "es": "La inspección del contenido HTML no pudo completarse.",
     },
+    "warning.detonation_unavailable": {
+        "en": "Dynamic (headless detonation) analysis could not be completed for this run.",
+        "es": "El análisis dinámico (detonación headless) no pudo completarse en esta ejecución.",
+    },
     "warning.resolved_destination_html_unavailable": {
         "en": "Resolved destination HTML inspection could not be completed.",
         "es": "La inspección HTML del destino resuelto no pudo completarse.",

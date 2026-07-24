@@ -18,13 +18,17 @@ class DetonationPolicy:
       detonated.
     - Clearly benign (SAFE) URLs are not detonated automatically.
 
-    When the caller explicitly requests a deep scan, we honour it and detonate
-    regardless of the preliminary level (they opted in and pay for it).
+    When the caller explicitly requests a deep scan (the async scan path), we
+    widen the net: detonate for everything the dynamic pass could still change —
+    SAFE/LOW/MEDIUM — and skip only the already-decided HIGH/CRITICAL, where the
+    verdict is settled and a browser would not move it.
     """
+
+    _DECIDED_LEVELS = frozenset({RiskLevel.HIGH, RiskLevel.CRITICAL})
 
     def should_detonate(
         self, url_only_risk_level: RiskLevel, *, deep_scan_requested: bool = False
     ) -> bool:
         if deep_scan_requested:
-            return True
+            return url_only_risk_level not in self._DECIDED_LEVELS
         return url_only_risk_level in {RiskLevel.LOW, RiskLevel.MEDIUM}

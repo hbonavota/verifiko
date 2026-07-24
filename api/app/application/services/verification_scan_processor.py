@@ -42,6 +42,10 @@ class VerificationScanProcessor:
                 CreateVerificationCommand(
                     url=job.url,
                     user_id=UserId.from_string(job.owner_user_id),
+                    # Async scans opt into dynamic analysis; the use case still
+                    # gates the actual browser run behind DetonationPolicy and the
+                    # DETONATION_ENABLED flag.
+                    deep_analysis=True,
                 )
             )
         except DomainException as exc:
