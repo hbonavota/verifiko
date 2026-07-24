@@ -510,6 +510,7 @@ def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:
         transport_security_signal_analyzer=get_transport_security_signal_analyzer(),
         public_target_validator=assert_safe_outbound_url,
         parallel_analysis_enabled=get_settings().verification_parallel_analysis_enabled,
+        fast_path_enabled=get_settings().verification_fast_path_enabled,
     )
 
 
