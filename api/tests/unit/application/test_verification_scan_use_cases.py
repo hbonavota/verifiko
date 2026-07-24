@@ -31,9 +31,11 @@ class FakeCreateUseCase:
         self.result_id = result_id
         self.error = error
         self.calls: list[str] = []
+        self.commands: list[object] = []
 
     def execute(self, command):
         self.calls.append(command.url)
+        self.commands.append(command)
         if self.error is not None:
             raise self.error
         return SimpleNamespace(id=self.result_id)
@@ -102,6 +104,19 @@ def test_processor_completes_job_with_result_id() -> None:
     assert done is not None
     assert done.status is VerificationJobStatus.COMPLETED
     assert done.result_verification_id == "ver-99"
+
+
+def test_processor_opts_the_scan_into_deep_analysis() -> None:
+    store = InMemoryVerificationJobStore()
+    _queued_job(store)
+    fake = FakeCreateUseCase(result_id="ver-99")
+    processor = VerificationScanProcessor(
+        job_store=store, create_use_case=fake, current_time_provider=_NOW
+    )
+
+    processor.process("scan-1")
+
+    assert [command.deep_analysis for command in fake.commands] == [True]
 
 
 def test_processor_marks_failed_on_domain_exception() -> None:

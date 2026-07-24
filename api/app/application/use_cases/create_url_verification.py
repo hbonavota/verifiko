@@ -2,7 +2,8 @@ import hashlib
 import html
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from dataclasses import replace
 from itertools import combinations
 from typing import Callable, TypeVar
@@ -10,9 +11,11 @@ from typing import Callable, TypeVar
 from app.application.commands.create_verification_command import CreateVerificationCommand
 from app.application.dto.verification_dto import VerificationDTO
 from app.application.mappers.verification_mapper import VerificationMapper
+from app.application.ports.headless_detonation import HeadlessDetonationPort
 from app.application.ports.html_fetcher import FetchedHtmlDocument, HtmlFetchError, HtmlFetcherPort
 from app.application.services.analysis_trace_builder import AnalysisTraceBuilder
 from app.application.services.analysis_result import SignalAnalysisResult
+from app.application.services.behavioral_signal_analyzer import BehavioralSignalAnalyzer
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
 from app.application.services.infrastructure_signal_analyzer import (
@@ -43,11 +46,14 @@ from app.domain.enums.signal_type import SignalType
 from app.domain.exceptions.domain_exception import DomainException
 from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
+from app.domain.services.detonation_policy import DetonationPolicy
 from app.domain.services.risk_scoring_engine import risk_level_for_score, verdict_for_level
 from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
 from app.domain.services.scoring_service import ScoringService
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
+
+logger = logging.getLogger(__name__)
 
 _StageResultT = TypeVar("_StageResultT")
 
@@ -156,6 +162,15 @@ class CreateURLVerificationUseCase:
     public_target_validator: Callable[[str], None] | None = None
     parallel_analysis_enabled: bool = True
     fast_path_enabled: bool = False
+    # Dynamic analysis (Phase B). The port is only injected when detonation is
+    # configured; when it is None (default) the stage is inert, so nothing changes
+    # for callers that never opt in.
+    headless_detonation: HeadlessDetonationPort | None = None
+    detonation_policy: DetonationPolicy = field(default_factory=DetonationPolicy)
+    behavioral_signal_analyzer: BehavioralSignalAnalyzer = field(
+        default_factory=BehavioralSignalAnalyzer
+    )
+    detonation_enabled: bool = False
 
     def execute(self, command: CreateVerificationCommand) -> VerificationDTO:
         verification = Verification.create_url(
@@ -228,6 +243,17 @@ class CreateURLVerificationUseCase:
                 )
             )
 
+        # Dynamic analysis: on the async scan path only, actually load the URL in
+        # an isolated headless browser and fold the behavioral evidence into the
+        # signal set *before* scoring, so the verdict accounts for what the page
+        # does, not just how it looks statically.
+        behavioral_signals, detonation_stage = self._run_detonation(
+            command, verification, detected_signals
+        )
+        detected_signals.extend(behavioral_signals)
+        if detonation_stage is not None:
+            analysis_trace.append(detonation_stage)
+
         verification.add_signals(detected_signals)
         verification.complete(self.scoring_service)
         verification.risk_assessment = self._apply_analysis_warnings(
@@ -260,6 +286,59 @@ class CreateURLVerificationUseCase:
             list(url_signals), "fast-path-preliminary"
         )
         return preliminary.risk_level in {RiskLevel.HIGH, RiskLevel.CRITICAL}
+
+    def _run_detonation(
+        self,
+        command: CreateVerificationCommand,
+        verification: Verification,
+        static_signals: list[AnalysisSignal],
+    ) -> tuple[list[AnalysisSignal], AnalysisTraceStage | None]:
+        """Detonate the URL when this run has opted into deep analysis and the
+        static verdict is not already decided, then return the behavioral signals
+        and a trace stage describing what happened.
+
+        Detonation is best-effort: any failure degrades gracefully to a recorded
+        trace stage and the static verdict stands — it can never fail the scan or
+        fabricate risk (a no-op backend yields an empty, benign result).
+        """
+        if not (
+            self.detonation_enabled
+            and command.deep_analysis
+            and self.headless_detonation is not None
+        ):
+            return [], None
+
+        preliminary = self.scoring_service.calculate(
+            list(static_signals), "detonation-preliminary"
+        )
+        if not self.detonation_policy.should_detonate(
+            preliminary.risk_level, deep_scan_requested=True
+        ):
+            return [], None
+
+        try:
+            result = self.headless_detonation.detonate(
+                verification.normalized_input.normalized
+            )
+        except Exception:  # noqa: BLE001 - fail open; a browser error never fails the scan
+            logger.warning(
+                "Headless detonation failed; continuing with the static verdict.",
+                exc_info=True,
+            )
+            return [], self._build_trace_stage(
+                stage="behavioral_detonation",
+                source=self.behavioral_signal_analyzer.source,
+                signals=(),
+                warnings=(resolve_message("warning.detonation_unavailable"),),
+            )
+
+        behavioral_signals = self.behavioral_signal_analyzer.analyze(result)
+        return behavioral_signals, self._build_trace_stage(
+            stage="behavioral_detonation",
+            source=self.behavioral_signal_analyzer.source,
+            signals=tuple(behavioral_signals),
+            warnings=(),
+        )
 
     def _run_network_analysis(
         self, verification: Verification, normalized_input: NormalizedUrl

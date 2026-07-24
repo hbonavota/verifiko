@@ -25,3 +25,7 @@ class CreateVerificationCommand:
     signals: tuple[SignalInput, ...] = ()
     calculation_version: str = "v1"
     user_id: UserId | None = None
+    # Opt into the dynamic (headless detonation) stage. Only the async scan path
+    # sets this; the synchronous ``/verifications`` path leaves it False so it
+    # never pays for a browser and its behaviour stays byte-for-byte unchanged.
+    deep_analysis: bool = False

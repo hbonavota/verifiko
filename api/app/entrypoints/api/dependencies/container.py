@@ -31,7 +31,15 @@ from app.application.use_cases.authenticate_with_email_password import (
     AuthenticateWithEmailPasswordUseCase,
 )
 from app.application.use_cases.authenticate_with_google import AuthenticateWithGoogleUseCase
+from app.application.services.behavioral_signal_analyzer import BehavioralSignalAnalyzer
+from app.application.ports.headless_detonation import HeadlessDetonationPort
 from app.application.services.verification_scan_processor import VerificationScanProcessor
+from app.domain.services.detonation_policy import DetonationPolicy
+from app.infrastructure.detonation.browserless_detonation_client import (
+    BrowserlessDetonationClient,
+    NullHeadlessDetonation,
+    build_urllib_detonation_poster,
+)
 from app.application.use_cases.authenticate_with_magic_link import (
     AuthenticateWithMagicLinkUseCase,
 )
@@ -494,6 +502,33 @@ def get_authenticate_with_magic_link_use_case() -> AuthenticateWithMagicLinkUseC
     )
 
 
+@lru_cache(maxsize=1)
+def get_headless_detonation() -> HeadlessDetonationPort:
+    # Only build the real Browserless client when detonation is enabled and an
+    # endpoint (which carries the token) is configured. Otherwise fall back to the
+    # no-op backend so an accidental call can never fabricate risk.
+    settings = get_settings()
+    if settings.detonation_enabled and settings.browserless_endpoint:
+        return BrowserlessDetonationClient(
+            endpoint=settings.browserless_endpoint,
+            http_poster=build_urllib_detonation_poster(
+                settings.detonation_timeout_seconds
+            ),
+            capture_screenshot=settings.detonation_capture_screenshot,
+        )
+    return NullHeadlessDetonation()
+
+
+@lru_cache(maxsize=1)
+def get_detonation_policy() -> DetonationPolicy:
+    return DetonationPolicy()
+
+
+@lru_cache(maxsize=1)
+def get_behavioral_signal_analyzer() -> BehavioralSignalAnalyzer:
+    return BehavioralSignalAnalyzer()
+
+
 def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:
     return CreateURLVerificationUseCase(
         repository=get_verification_repository(),
@@ -511,6 +546,10 @@ def get_create_url_verification_use_case() -> CreateURLVerificationUseCase:
         public_target_validator=assert_safe_outbound_url,
         parallel_analysis_enabled=get_settings().verification_parallel_analysis_enabled,
         fast_path_enabled=get_settings().verification_fast_path_enabled,
+        headless_detonation=get_headless_detonation(),
+        detonation_policy=get_detonation_policy(),
+        behavioral_signal_analyzer=get_behavioral_signal_analyzer(),
+        detonation_enabled=get_settings().detonation_enabled,
     )
 
 
