@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     browserless_endpoint: str = ""
     detonation_timeout_seconds: float = 30.0
     detonation_capture_screenshot: bool = True
+    # Screenshot storage (Phase B.3). Off by default; when enabled, detonation
+    # screenshots are persisted to Cloudflare R2 (S3-compatible) and only the
+    # object key travels through the pipeline.
+    screenshot_storage_enabled: bool = False
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket: str = ""
     analysis_cache_key_prefix: str = "verifiko:analysis"
     # Reputation stays short: a freshly blacklisted host must not be served as
     # "clean" for long. Domain age (registration date) is effectively immutable
