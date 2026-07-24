@@ -86,6 +86,26 @@ class MagicLinkTokenModel(Base):
     )
 
 
+class VerificationJobModel(Base):
+    """Durable record of an asynchronous scan job.
+
+    Kept in the primary database (not Redis) so scan state is shared across
+    serverless invocations and does not depend on the Redis command quota.
+    """
+
+    __tablename__ = "verification_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    result_verification_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class SignalModel(Base):
     __tablename__ = "signals"
 

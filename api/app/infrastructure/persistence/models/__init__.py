@@ -4,6 +4,7 @@ from app.infrastructure.persistence.models.base_model import (
     RiskAssessmentModel,
     SignalModel,
     UserModel,
+    VerificationJobModel,
     VerificationModel,
 )
 
@@ -14,4 +15,5 @@ __all__ = [
     "RiskAssessmentModel",
     "ApiKeyModel",
     "MagicLinkTokenModel",
+    "VerificationJobModel",
 ]
