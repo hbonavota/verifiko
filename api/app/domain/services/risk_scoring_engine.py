@@ -8,6 +8,7 @@ from app.domain.enums.verdict_type import VerdictType
 from app.domain.i18n.resolver import resolve_message
 from app.domain.services.compound_rules import (
     BrandNewLookalikeDomainRule,
+    BrandTyposquattingRule,
     CompoundRule,
     CredentialLurePatternRule,
     DeceptiveBrandSubdomainRule,
@@ -51,6 +52,7 @@ class RiskScoringEngine(ScoringService):
     def __init__(self, compound_rules: list[CompoundRule] | None = None) -> None:
         self._compound_rules = compound_rules or [
             BrandNewLookalikeDomainRule(),
+            BrandTyposquattingRule(),
             CredentialLurePatternRule(),
             DeceptiveBrandSubdomainRule(),
             EmailFraudStagingPatternRule(),

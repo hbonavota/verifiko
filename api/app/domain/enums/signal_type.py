@@ -19,6 +19,7 @@ class SignalType(str, Enum):
     ZERO_WIDTH_CHAR_INJECTION = "zero_width_char_injection"
     HIGH_DOMAIN_ENTROPY = "high_domain_entropy"
     TLD_TYPOSQUATTING = "tld_typosquatting"
+    BRAND_TYPOSQUATTING = "brand_typosquatting"
     SHORTENED_URL = "shortened_url"
     SUSPICIOUS_REDIRECT_CHAIN = "suspicious_redirect_chain"
     QUESTIONABLE_DESTINATION_TLD = "questionable_destination_tld"

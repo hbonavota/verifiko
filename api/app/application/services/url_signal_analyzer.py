@@ -133,6 +133,46 @@ _GENERIC_AUTH_KEYWORDS = {
     "verification",
     "verify",
 }
+# Common "leetspeak" homoglyph substitutions used to disguise a brand in a domain
+# (e.g. paypa1 -> paypal, g00gle -> google, micr0soft -> microsoft).
+_LEET_TRANSLATION = str.maketrans(
+    {"0": "o", "1": "l", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "9": "g", "$": "s", "@": "a", "|": "l"}
+)
+# Only brands at least this long are considered, to avoid false positives from
+# near-collisions with very short brand tokens.
+_TYPOSQUAT_MIN_BRAND_LEN = 5
+# Edit-distance-1 matching is restricted to longer brands where an accidental
+# real-word collision is much less likely than for short ones.
+_TYPOSQUAT_EDIT_DISTANCE_MIN_BRAND_LEN = 6
+
+
+def _is_edit_distance_one(shorter: str, longer: str) -> bool:
+    """True iff ``shorter`` and ``longer`` differ by exactly one edit.
+
+    Handles a single substitution (equal lengths) or a single insertion/deletion
+    (lengths differing by one). Assumes the two strings are not already equal.
+    """
+    len_shorter, len_longer = len(shorter), len(longer)
+    if len_shorter > len_longer:
+        shorter, longer = longer, shorter
+        len_shorter, len_longer = len_longer, len_shorter
+    if len_longer - len_shorter > 1:
+        return False
+    if len_shorter == len_longer:
+        return sum(1 for a, b in zip(shorter, longer) if a != b) == 1
+    # longer has exactly one extra character: verify a single clean insertion.
+    i = j = 0
+    edited = False
+    while i < len_shorter and j < len_longer:
+        if shorter[i] == longer[j]:
+            i += 1
+            j += 1
+            continue
+        if edited:
+            return False
+        edited = True
+        j += 1
+    return True
 
 
 @dataclass(slots=True)
@@ -422,6 +462,35 @@ class DeterministicUrlSignalAnalyzer:
                 )
             )
 
+        typosquat_match = self._brand_typosquat_match(normalized_url)
+        if typosquat_match is not None:
+            impersonated_brand, observed_label = typosquat_match
+            signals.append(
+                self._signal(
+                    signal_type=SignalType.BRAND_TYPOSQUATTING,
+                    severity=SignalSeverity.HIGH,
+                    confidence=93,
+                    message_key="signal.brand_typosquatting_pattern",
+                    message_params={
+                        "evidence": [
+                            evidence_ref(
+                                "evidence.typosquat_impersonated_brand",
+                                brand=impersonated_brand,
+                            ),
+                            evidence_ref(
+                                "evidence.typosquat_observed_label",
+                                label=observed_label,
+                            ),
+                            evidence_ref(
+                                "evidence.registered_domain_observed",
+                                registered_domain=normalized_url.registered_domain,
+                            ),
+                        ]
+                    },
+                    tags=("typosquat", "brand-lookalike", "domain-structure"),
+                )
+            )
+
         if (
             (
                 deceptive_brand_pattern is None
@@ -669,6 +738,44 @@ class DeterministicUrlSignalAnalyzer:
             normalized_url.ascii_host in official_domains
             or normalized_url.registered_domain in official_domains
         )
+
+    def _brand_typosquat_match(
+        self, normalized_url: NormalizedUrl
+    ) -> tuple[str, str] | None:
+        """Detect a registered domain that mimics a known brand.
+
+        Returns ``(brand, observed_label)`` when the registrable label looks like
+        a disguised version of a known brand, via either a leetspeak homoglyph
+        swap (``paypa1`` -> ``paypal``) or a single edit (``amazn`` -> ``amazon``).
+        Official brand domains and labels that are themselves exact brand tokens
+        are never flagged.
+        """
+        registered_domain = normalized_url.registered_domain
+        if not registered_domain or "." not in registered_domain:
+            return None
+        if self._is_official_brand_target(normalized_url):
+            return None
+
+        label = registered_domain.split(".", 1)[0].lower()
+        if len(label) < 4 or label in _BRAND_KEYWORDS:
+            return None
+
+        deleeted = label.translate(_LEET_TRANSLATION)
+        # Strongest signal: a pure look-alike swap that resolves exactly to a brand.
+        for brand in _BRAND_KEYWORDS:
+            if len(brand) < _TYPOSQUAT_MIN_BRAND_LEN:
+                continue
+            if deleeted == brand and label != brand:
+                return brand, label
+
+        # Weaker but still specific: one typo away from a longer brand.
+        for brand in _BRAND_KEYWORDS:
+            if len(brand) < _TYPOSQUAT_EDIT_DISTANCE_MIN_BRAND_LEN or label == brand:
+                continue
+            if abs(len(label) - len(brand)) <= 1 and _is_edit_distance_one(label, brand):
+                return brand, label
+
+        return None
 
     def _is_official_institution_target(self, normalized_url: NormalizedUrl) -> bool:
         if self._is_official_brand_target(normalized_url):

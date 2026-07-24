@@ -49,3 +49,5 @@
 #
 # --- Benign: clean shortener that resolves to a reputable destination ---
 {"url": "https://g.co/openai", "label": "benign", "redirect_final_url": "https://openai.com/", "redirect_hops": [{"status_code": 302, "source_url": "https://g.co/openai", "target_url": "https://openai.com/"}], "note": "clean shortener redirect"}
+{"url": "https://paypa1.com/account/verify", "label": "malicious", "note": "brand typosquatting (leetspeak l->1 of paypal)"}
+{"url": "https://amaz0n.com/signin", "label": "malicious", "note": "brand typosquatting (o->0 of amazon)"}
