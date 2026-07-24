@@ -11,7 +11,15 @@ Base = declarative_base()
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-def _normalize_database_url(database_url: str) -> str:
+def normalize_database_url(database_url: str) -> str:
+    """Force the psycopg (v3) driver, which is the one we depend on.
+
+    SQLAlchemy maps a bare ``postgresql://`` (and ``postgres://``) URL to the
+    psycopg2 dialect by default, but this project only ships ``psycopg`` v3.
+    Rewriting to ``postgresql+psycopg://`` keeps the app and the Alembic
+    migration runner on the same driver regardless of how the URL is provided
+    (e.g. a raw Neon connection string in a CI secret).
+    """
     if database_url.startswith("postgresql+psycopg://"):
         return database_url
     if database_url.startswith("postgres://"):
@@ -19,6 +27,10 @@ def _normalize_database_url(database_url: str) -> str:
     if database_url.startswith("postgresql://"):
         return database_url.replace("postgresql://", "postgresql+psycopg://", 1)
     return database_url
+
+
+# Backwards-compatible private alias (kept for existing imports/tests).
+_normalize_database_url = normalize_database_url
 
 
 def _resolved_database_url(database_url: str | None = None) -> str:
