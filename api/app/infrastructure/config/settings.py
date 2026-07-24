@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # decisively malicious verdict, skip the expensive network-bound waves.
     # Off by default; enable in production to cut latency/cost on obvious cases.
     verification_fast_path_enabled: bool = False
+    # Headless detonation (Phase B). Off by default; requires a Browserless
+    # endpoint (its URL carries the token). Runs only on the async scan path.
+    detonation_enabled: bool = False
+    browserless_endpoint: str = ""
+    detonation_timeout_seconds: float = 30.0
+    detonation_capture_screenshot: bool = True
     analysis_cache_key_prefix: str = "verifiko:analysis"
     # Reputation stays short: a freshly blacklisted host must not be served as
     # "clean" for long. Domain age (registration date) is effectively immutable
