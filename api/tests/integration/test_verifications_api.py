@@ -118,6 +118,30 @@ class FakeRedisClient:
     def pipeline(self) -> FakeRedisPipeline:
         return FakeRedisPipeline(self)
 
+    def eval(self, script: str, numkeys: int, *args: object):
+        keys = list(args[:numkeys])
+        argv = list(args[numkeys:])
+        key = str(keys[0])
+        if "TTL" in script:  # fixed-window rate limit script
+            window, limit = int(argv[0]), int(argv[1])
+            current = self._values.get(key, 0) + 1
+            self._values[key] = current
+            if current == 1:
+                self._expiry[key] = window
+            if current > limit:
+                return self._expiry.get(key, window)
+            return -1
+        # quota check-then-increment script
+        limit, reset = int(argv[0]), int(argv[1])
+        current = self._values.get(key, 0)
+        if current >= limit:
+            return [current, 0]
+        current += 1
+        self._values[key] = current
+        if current == 1:
+            self._expiry[key] = reset
+        return [current, 1]
+
     def get(self, key: str) -> str | None:
         value = self._values.get(key)
         return None if value is None else str(value)

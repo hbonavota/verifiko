@@ -1,11 +1,30 @@
 from dataclasses import dataclass
 import logging
-import math
 from time import time
 from typing import Any, Callable
-from uuid import uuid4
 
 logger = logging.getLogger(__name__)
+
+# Atomic fixed-window counter evaluated server-side in a single Redis command.
+# Returns the seconds until the window resets when the caller is over the limit,
+# or -1 when the request is allowed. This replaces the previous sliding-window
+# ZSET implementation, which spent ~6 commands (WATCH/ZREMRANGEBYSCORE/ZCARD/
+# MULTI/ZADD/EXPIRE) and could retry its optimistic-lock loop. One EVAL keeps the
+# hot verification path down to a single Redis command.
+_RATE_LIMIT_SCRIPT = """
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+  redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+end
+if current > tonumber(ARGV[2]) then
+  local ttl = redis.call('TTL', KEYS[1])
+  if ttl < 0 then
+    ttl = tonumber(ARGV[1])
+  end
+  return ttl
+end
+return -1
+"""
 
 
 @dataclass(slots=True)
@@ -27,42 +46,20 @@ class RedisFixedWindowRateLimiter:
             return None
 
     def _check(self, key: str) -> int | None:
-        now = self.now_provider()
-        window_start = now - self.window_seconds
         redis_key = f"{self.key_prefix}:{key}"
-        watch_error = _redis_watch_error_type()
-
-        while True:
-            with self.redis_client.pipeline() as pipe:
-                try:
-                    pipe.watch(redis_key)
-                    pipe.zremrangebyscore(redis_key, "-inf", window_start)
-                    current = int(pipe.zcard(redis_key))
-                    if current >= self.max_requests:
-                        oldest = pipe.zrange(redis_key, 0, 0, withscores=True)
-                        pipe.unwatch()
-                        if not oldest:
-                            return 1
-                        retry_after = oldest[0][1] + self.window_seconds - now
-                        return max(1, math.ceil(retry_after))
-
-                    pipe.multi()
-                    pipe.zadd(redis_key, {f"{now}:{uuid4().hex}": now})
-                    pipe.expire(redis_key, self.window_seconds)
-                    pipe.execute()
-                    return None
-                except watch_error:
-                    continue
+        result = self.redis_client.eval(
+            _RATE_LIMIT_SCRIPT,
+            1,
+            redis_key,
+            self.window_seconds,
+            self.max_requests,
+        )
+        retry_after = int(result)
+        if retry_after < 0:
+            return None
+        return max(1, retry_after)
 
     def reset(self) -> None:
         keys = list(self.redis_client.scan_iter(match=f"{self.key_prefix}:*"))
         if keys:
             self.redis_client.delete(*keys)
-
-
-def _redis_watch_error_type() -> type[Exception]:
-    try:
-        from redis.exceptions import WatchError
-    except Exception:  # pragma: no cover - redis is optional in the local test env
-        return RuntimeError
-    return WatchError

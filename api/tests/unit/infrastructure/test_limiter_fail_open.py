@@ -11,6 +11,9 @@ from app.infrastructure.security.redis_utc_day_quota_limiter import (
 class ExplodingRedis:
     """Simulates Redis being unavailable / over its command quota."""
 
+    def eval(self, *args, **kwargs):
+        raise RuntimeError("max requests limit exceeded")
+
     def pipeline(self):
         raise RuntimeError("max requests limit exceeded")
 

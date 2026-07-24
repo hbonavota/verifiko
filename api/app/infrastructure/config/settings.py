@@ -27,9 +27,13 @@ class Settings(BaseSettings):
     verification_burst_limit_window_seconds: int = 60
     verification_parallel_analysis_enabled: bool = True
     analysis_cache_key_prefix: str = "verifiko:analysis"
-    analysis_cache_reputation_ttl_seconds: int = 300
-    analysis_cache_domain_age_ttl_seconds: int = 86_400
-    analysis_cache_infrastructure_ttl_seconds: int = 3_600
+    # Reputation stays short: a freshly blacklisted host must not be served as
+    # "clean" for long. Domain age (registration date) is effectively immutable
+    # and infrastructure (DNS/hosting) changes slowly, so both cache far longer
+    # to cut repeated GET/SETEX traffic against Redis.
+    analysis_cache_reputation_ttl_seconds: int = 600
+    analysis_cache_domain_age_ttl_seconds: int = 604_800
+    analysis_cache_infrastructure_ttl_seconds: int = 21_600
     reputation_consensus_threshold: int = 2
     reputation_circuit_breaker_failure_threshold: int = 3
     reputation_circuit_breaker_reset_seconds: float = 30.0
