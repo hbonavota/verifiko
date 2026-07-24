@@ -28,3 +28,7 @@ class SignalType(str, Enum):
     LOW_INFORMATION_PAGE = "low_information_page"
     CONTENT_VARIATION_DETECTED = "content_variation_detected"
     RECOGNIZED_REPUTABLE_DOMAIN = "recognized_reputable_domain"
+    RENDERED_CREDENTIAL_FORM = "rendered_credential_form"
+    OFFSITE_FORM_ACTION = "offsite_form_action"
+    JS_REDIRECT_TO_OFFSITE = "js_redirect_to_offsite"
+    DRIVE_BY_DOWNLOAD = "drive_by_download"
