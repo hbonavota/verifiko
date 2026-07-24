@@ -18,12 +18,27 @@ class BrandNewLookalikeDomainRule(CompoundRule):
     def evaluate(self, signal_types: set[SignalType]) -> float | None:
         lookalike = {
             SignalType.BRAND_IMPERSONATION,
+            SignalType.BRAND_TYPOSQUATTING,
             SignalType.UNICODE_HOMOGRAPH,
             SignalType.ZERO_WIDTH_CHAR_INJECTION,
             SignalType.TLD_TYPOSQUATTING,
         }
         if SignalType.RECENT_DOMAIN_REGISTRATION in signal_types and signal_types.intersection(lookalike):
             return 10
+        return None
+
+
+class BrandTyposquattingRule(CompoundRule):
+    """A registered domain that is a confirmed look-alike of a known brand
+    (e.g. ``paypa1.com``) is a strong standalone indicator of malicious intent.
+    This escalates it to at least a suspicious verdict even without any other
+    signal — matching how a human would treat an obvious brand-mimicking domain."""
+
+    name = "brand_typosquatting"
+
+    def evaluate(self, signal_types: set[SignalType]) -> float | None:
+        if SignalType.BRAND_TYPOSQUATTING in signal_types:
+            return 15
         return None
 
 

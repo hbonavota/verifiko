@@ -109,6 +109,16 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
             "description": "El subdominio incrusta un fragmento con apariencia de marca antes del dominio registrado real.",
         },
     },
+    "signal.brand_typosquatting_pattern": {
+        "en": {
+            "title": "Brand look-alike domain (typosquatting)",
+            "description": "The registered domain closely mimics a well-known brand using character swaps or look-alike substitutions (e.g. paypa1.com).",
+        },
+        "es": {
+            "title": "Dominio imitación de marca (typosquatting)",
+            "description": "El dominio registrado imita de cerca a una marca conocida mediante cambios de caracteres o sustituciones parecidas (p. ej. paypa1.com).",
+        },
+    },
     "signal.misleading_subdomain_structure": {
         "en": {
             "title": "Misleading subdomain structure",
@@ -636,6 +646,14 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
     "evidence.registered_domain_observed": {
         "en": "Registered domain observed: {registered_domain}.",
         "es": "Dominio registrado observado: {registered_domain}.",
+    },
+    "evidence.typosquat_impersonated_brand": {
+        "en": "Closely resembles brand: {brand}.",
+        "es": "Se parece mucho a la marca: {brand}.",
+    },
+    "evidence.typosquat_observed_label": {
+        "en": "Observed domain label: {label}.",
+        "es": "Etiqueta de dominio observada: {label}.",
     },
     "evidence.subdomain_observed": {
         "en": "Subdomain observed: {subdomain}.",
