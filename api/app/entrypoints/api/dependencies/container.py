@@ -35,10 +35,16 @@ from app.application.services.behavioral_signal_analyzer import BehavioralSignal
 from app.application.ports.headless_detonation import HeadlessDetonationPort
 from app.application.services.verification_scan_processor import VerificationScanProcessor
 from app.domain.services.detonation_policy import DetonationPolicy
+from app.application.ports.screenshot_store import ScreenshotStorePort
 from app.infrastructure.detonation.browserless_detonation_client import (
     BrowserlessDetonationClient,
     NullHeadlessDetonation,
     build_urllib_detonation_poster,
+)
+from app.infrastructure.storage.screenshot_store import (
+    NullScreenshotStore,
+    R2ScreenshotStore,
+    build_r2_s3_client,
 )
 from app.application.use_cases.authenticate_with_magic_link import (
     AuthenticateWithMagicLinkUseCase,
@@ -503,6 +509,29 @@ def get_authenticate_with_magic_link_use_case() -> AuthenticateWithMagicLinkUseC
 
 
 @lru_cache(maxsize=1)
+def get_screenshot_store() -> ScreenshotStorePort:
+    # Only build the real R2 store when storage is enabled and a bucket +
+    # credentials are configured; otherwise the no-op store keeps screenshots off.
+    settings = get_settings()
+    if (
+        settings.screenshot_storage_enabled
+        and settings.r2_bucket
+        and settings.r2_account_id
+        and settings.r2_access_key_id
+        and settings.r2_secret_access_key
+    ):
+        return R2ScreenshotStore(
+            s3_client=build_r2_s3_client(
+                account_id=settings.r2_account_id,
+                access_key_id=settings.r2_access_key_id,
+                secret_access_key=settings.r2_secret_access_key,
+            ),
+            bucket=settings.r2_bucket,
+        )
+    return NullScreenshotStore()
+
+
+@lru_cache(maxsize=1)
 def get_headless_detonation() -> HeadlessDetonationPort:
     # Only build the real Browserless client when detonation is enabled and an
     # endpoint (which carries the token) is configured. Otherwise fall back to the
@@ -515,6 +544,7 @@ def get_headless_detonation() -> HeadlessDetonationPort:
                 settings.detonation_timeout_seconds
             ),
             capture_screenshot=settings.detonation_capture_screenshot,
+            screenshot_store=get_screenshot_store(),
         )
     return NullHeadlessDetonation()
 

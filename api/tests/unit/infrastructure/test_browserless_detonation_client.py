@@ -1,12 +1,35 @@
+import base64
 import json
 
 import pytest
 
 from app.application.ports.headless_detonation import HeadlessDetonationError
+from app.application.ports.screenshot_store import (
+    ScreenshotStoreError,
+    ScreenshotStorePort,
+)
 from app.infrastructure.detonation.browserless_detonation_client import (
     BrowserlessDetonationClient,
     NullHeadlessDetonation,
 )
+from app.infrastructure.storage.screenshot_store import NullScreenshotStore
+
+
+class _RecordingStore(ScreenshotStorePort):
+    def __init__(self, ref: str = "screenshots/fake.png", error: Exception | None = None) -> None:
+        self.ref = ref
+        self.error = error
+        self.stored: list[bytes] = []
+
+    def store(self, image_bytes: bytes, *, content_type: str = "image/png") -> str:
+        self.stored.append(image_bytes)
+        if self.error is not None:
+            raise self.error
+        return self.ref
+
+
+_PNG_BYTES = b"\x89PNG\r\n\x1a\n fake image"
+_PNG_B64 = base64.b64encode(_PNG_BYTES).decode("ascii")
 
 
 class _RecordingPoster:
@@ -83,3 +106,72 @@ def test_null_detonation_is_benign() -> None:
     assert result.final_url == "https://example.com/"
     assert result.forms == ()
     assert result.downloads == ()
+
+
+def test_screenshot_is_uploaded_and_ref_is_set() -> None:
+    store = _RecordingStore(ref="screenshots/abc.png")
+    poster = _RecordingPoster(200, _result_body(screenshot_base64=_PNG_B64))
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function",
+        http_poster=poster,
+        screenshot_store=store,
+    )
+
+    result = client.detonate("https://scan.example/login")
+
+    assert result.screenshot_ref == "screenshots/abc.png"
+    # The decoded bytes are what got uploaded, not the base64 text.
+    assert store.stored == [_PNG_BYTES]
+
+
+def test_null_store_leaves_screenshot_ref_none() -> None:
+    poster = _RecordingPoster(200, _result_body(screenshot_base64=_PNG_B64))
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function",
+        http_poster=poster,
+        screenshot_store=NullScreenshotStore(),
+    )
+
+    result = client.detonate("https://scan.example/login")
+
+    assert result.screenshot_ref is None
+
+
+def test_default_store_is_null_and_ref_stays_none() -> None:
+    poster = _RecordingPoster(200, _result_body(screenshot_base64=_PNG_B64))
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function", http_poster=poster
+    )
+
+    assert client.detonate("https://scan.example/login").screenshot_ref is None
+
+
+def test_store_failure_does_not_break_detonation() -> None:
+    store = _RecordingStore(error=ScreenshotStoreError("r2 down"))
+    poster = _RecordingPoster(200, _result_body(screenshot_base64=_PNG_B64))
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function",
+        http_poster=poster,
+        screenshot_store=store,
+    )
+
+    result = client.detonate("https://scan.example/login")
+
+    # Detonation still succeeds with its behavioral observations intact.
+    assert result.screenshot_ref is None
+    assert result.forms[0].action_host == "collector.evil.net"
+
+
+def test_no_screenshot_in_response_leaves_ref_none() -> None:
+    store = _RecordingStore()
+    poster = _RecordingPoster(200, _result_body())  # no screenshot_base64
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function",
+        http_poster=poster,
+        screenshot_store=store,
+    )
+
+    result = client.detonate("https://scan.example/login")
+
+    assert result.screenshot_ref is None
+    assert store.stored == []

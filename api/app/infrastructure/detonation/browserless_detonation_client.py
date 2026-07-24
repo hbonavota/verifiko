@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import json
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -12,6 +15,10 @@ from app.application.ports.headless_detonation import (
     HeadlessDetonationError,
     HeadlessDetonationPort,
 )
+from app.application.ports.screenshot_store import ScreenshotStorePort
+from app.infrastructure.storage.screenshot_store import NullScreenshotStore
+
+logger = logging.getLogger(__name__)
 
 # (url, headers, body) -> (HTTP status code, response body text).
 DetonationHttpPoster = Callable[[str, dict[str, str], bytes], tuple[int, str]]
@@ -99,6 +106,7 @@ class BrowserlessDetonationClient(HeadlessDetonationPort):
     endpoint: str
     http_poster: DetonationHttpPoster
     capture_screenshot: bool = True
+    screenshot_store: ScreenshotStorePort = field(default_factory=NullScreenshotStore)
 
     def detonate(self, url: str) -> DetonationResult:
         payload = json.dumps(
@@ -113,7 +121,29 @@ class BrowserlessDetonationClient(HeadlessDetonationPort):
             raise HeadlessDetonationError(
                 f"Browserless returned HTTP {status}: {body[:200]}"
             )
-        return _parse_detonation_response(url, body)
+        data = _parse_detonation_data(body)
+        screenshot_ref = self._store_screenshot(data.get("screenshot_base64"))
+        return _build_detonation_result(url, data, screenshot_ref)
+
+    def _store_screenshot(self, screenshot_base64: Any) -> str | None:
+        """Upload the captured screenshot and return its opaque reference.
+
+        Best-effort: when there is no screenshot, the store is the no-op backend,
+        or the upload fails, the detonation still succeeds with no reference — a
+        screenshot is evidence, never a gate.
+        """
+        if not screenshot_base64 or isinstance(self.screenshot_store, NullScreenshotStore):
+            return None
+        try:
+            image_bytes = base64.b64decode(screenshot_base64, validate=True)
+        except (binascii.Error, ValueError):
+            logger.warning("Detonation screenshot was not valid base64; skipping upload.")
+            return None
+        try:
+            return self.screenshot_store.store(image_bytes, content_type="image/png") or None
+        except Exception:  # noqa: BLE001 - storage failure must not fail detonation
+            logger.warning("Failed to store detonation screenshot.", exc_info=True)
+            return None
 
 
 class NullHeadlessDetonation(HeadlessDetonationPort):
@@ -124,7 +154,7 @@ class NullHeadlessDetonation(HeadlessDetonationPort):
         return DetonationResult(requested_url=url, final_url=url)
 
 
-def _parse_detonation_response(requested_url: str, body: str) -> DetonationResult:
+def _parse_detonation_data(body: str) -> dict:
     try:
         payload: Any = json.loads(body)
     except (json.JSONDecodeError, TypeError) as exc:
@@ -134,7 +164,12 @@ def _parse_detonation_response(requested_url: str, body: str) -> DetonationResul
     data = payload.get("data") if isinstance(payload, dict) and "data" in payload else payload
     if not isinstance(data, dict):
         raise HeadlessDetonationError("Browserless response had no result object")
+    return data
 
+
+def _build_detonation_result(
+    requested_url: str, data: dict, screenshot_ref: str | None
+) -> DetonationResult:
     forms = tuple(
         DetonationForm(
             has_password_field=bool(form.get("has_password_field")),
@@ -151,7 +186,7 @@ def _parse_detonation_response(requested_url: str, body: str) -> DetonationResul
         downloads=tuple(d for d in data.get("downloads", []) if d),
         page_title=data.get("page_title") or None,
         detected_brand=data.get("detected_brand") or None,
-        screenshot_ref=None,  # populated by the screenshot storage step (B.3)
+        screenshot_ref=screenshot_ref,
         timed_out=bool(data.get("timed_out", False)),
     )
 
