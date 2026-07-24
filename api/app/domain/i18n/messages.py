@@ -119,6 +119,46 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
             "description": "El dominio registrado imita de cerca a una marca conocida mediante cambios de caracteres o sustituciones parecidas (p. ej. paypa1.com).",
         },
     },
+    "signal.rendered_credential_form": {
+        "en": {
+            "title": "Credential form in rendered page",
+            "description": "After the page's JavaScript ran, a password/login form appeared — a common trait of phishing pages that build their form dynamically.",
+        },
+        "es": {
+            "title": "Formulario de credenciales en la página renderizada",
+            "description": "Tras ejecutarse el JavaScript de la página apareció un formulario de contraseña/inicio de sesión, rasgo común de sitios de phishing que construyen el formulario dinámicamente.",
+        },
+    },
+    "signal.offsite_credential_form_action": {
+        "en": {
+            "title": "Credential form submits to another domain",
+            "description": "A login form on the page posts credentials to a different domain, a strong indicator of credential exfiltration.",
+        },
+        "es": {
+            "title": "Formulario de credenciales envía a otro dominio",
+            "description": "Un formulario de inicio de sesión envía las credenciales a un dominio distinto, indicador fuerte de exfiltración de credenciales.",
+        },
+    },
+    "signal.js_redirect_to_offsite": {
+        "en": {
+            "title": "JavaScript redirect to another domain",
+            "description": "The page used scripting to navigate to a different registered domain than the one requested.",
+        },
+        "es": {
+            "title": "Redirección por JavaScript a otro dominio",
+            "description": "La página usó scripting para navegar a un dominio registrado distinto del solicitado.",
+        },
+    },
+    "signal.drive_by_download": {
+        "en": {
+            "title": "Unsolicited download triggered",
+            "description": "The page attempted to download a file without any user interaction, a common drive-by delivery technique.",
+        },
+        "es": {
+            "title": "Descarga no solicitada",
+            "description": "La página intentó descargar un archivo sin interacción del usuario, técnica habitual de entrega drive-by.",
+        },
+    },
     "signal.misleading_subdomain_structure": {
         "en": {
             "title": "Misleading subdomain structure",
@@ -654,6 +694,22 @@ MESSAGES: dict[str, dict[str, str | dict[str, str]]] = {
     "evidence.typosquat_observed_label": {
         "en": "Observed domain label: {label}.",
         "es": "Etiqueta de dominio observada: {label}.",
+    },
+    "evidence.detonation_final_url": {
+        "en": "Final URL after load: {final_url}.",
+        "es": "URL final tras la carga: {final_url}.",
+    },
+    "evidence.detonation_offsite_form_hosts": {
+        "en": "Form submits to off-site host(s): {hosts}.",
+        "es": "El formulario envía a host(s) externo(s): {hosts}.",
+    },
+    "evidence.detonation_redirect_domain": {
+        "en": "Navigated to a different registered domain: {domain}.",
+        "es": "Navegó a un dominio registrado distinto: {domain}.",
+    },
+    "evidence.detonation_downloads": {
+        "en": "Unsolicited download(s): {downloads}.",
+        "es": "Descarga(s) no solicitada(s): {downloads}.",
     },
     "evidence.subdomain_observed": {
         "en": "Subdomain observed: {subdomain}.",
