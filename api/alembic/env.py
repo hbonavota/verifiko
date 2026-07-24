@@ -7,7 +7,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.infrastructure.config.settings import get_settings
-from app.infrastructure.persistence.database import Base
+from app.infrastructure.persistence.database import Base, normalize_database_url
 from app.infrastructure.persistence.models import base_model  # noqa: F401
 
 config = context.config
@@ -21,12 +21,12 @@ target_metadata = Base.metadata
 def _configured_database_url() -> str:
     environment_database_url = os.getenv("DATABASE_URL")
     if environment_database_url:
-        return environment_database_url
+        return normalize_database_url(environment_database_url)
 
     configured_option = config.get_main_option("sqlalchemy.url")
     if configured_option:
-        return configured_option
-    return get_settings().database_url
+        return normalize_database_url(configured_option)
+    return normalize_database_url(get_settings().database_url)
 
 
 def run_migrations_offline() -> None:
