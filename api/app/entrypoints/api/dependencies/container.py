@@ -61,10 +61,6 @@ from app.infrastructure.email.resend_email_sender import (
     build_urllib_email_poster,
 )
 from app.infrastructure.jobs.scan_dispatchers import ThreadPoolVerificationJobDispatcher
-from app.infrastructure.jobs.verification_job_stores import (
-    InMemoryVerificationJobStore,
-    RedisVerificationJobStore,
-)
 from app.infrastructure.webhooks.http_scan_webhook_notifier import (
     HttpScanWebhookNotifier,
     build_urllib_webhook_poster,
@@ -106,6 +102,9 @@ from app.infrastructure.persistence.repositories.sqlalchemy_verification_reposit
 )
 from app.infrastructure.persistence.repositories.sqlalchemy_api_key_repository import (
     SQLAlchemyApiKeyRepository,
+)
+from app.infrastructure.persistence.repositories.sqlalchemy_verification_job_store import (
+    SqlAlchemyVerificationJobStore,
 )
 from app.infrastructure.persistence.repositories.sqlalchemy_user_repository import (
     SQLAlchemyUserRepository,
@@ -552,15 +551,10 @@ def get_get_owned_verification_result_use_case() -> GetOwnedVerificationResultUs
 
 @lru_cache(maxsize=1)
 def get_verification_job_store():
-    settings = get_settings()
-    redis_client = get_rate_limit_redis_client()
-    if redis_client is None:
-        return InMemoryVerificationJobStore()
-    return RedisVerificationJobStore(
-        redis_client=redis_client,
-        key_prefix=settings.scan_job_key_prefix,
-        ttl_seconds=settings.scan_job_ttl_seconds,
-    )
+    # Scan job state lives in the primary database: shared across serverless
+    # invocations and independent of the Redis command quota. (The in-memory and
+    # Redis stores remain available for tests / other deployment shapes.)
+    return SqlAlchemyVerificationJobStore(session_factory=get_session_factory())
 
 
 @lru_cache(maxsize=1)
