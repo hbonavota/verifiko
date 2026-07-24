@@ -17,6 +17,22 @@ class RedirectStep:
 
 
 @dataclass(frozen=True, slots=True)
+class DetonationForm:
+    has_password_field: bool
+    action_host: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DetonationContext:
+    """Scripted headless-detonation observations for a sample, letting the
+    offline harness exercise the behavioral layer with no live browser."""
+
+    final_url: str | None = None
+    forms: tuple[DetonationForm, ...] = ()
+    downloads: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class CorpusSample:
     """A single labeled URL, optionally with deterministic network context.
 
@@ -30,11 +46,16 @@ class CorpusSample:
     redirect_final_url: str | None = None
     redirect_hops: tuple[RedirectStep, ...] = ()
     html: str | None = None
+    detonation: DetonationContext | None = None
     note: str = ""
 
     @property
     def has_redirect_context(self) -> bool:
         return self.redirect_final_url is not None
+
+    @property
+    def has_detonation_context(self) -> bool:
+        return self.detonation is not None
 
 
 def load_corpus(path: str | Path = DEFAULT_CORPUS_PATH) -> list[CorpusSample]:
@@ -79,5 +100,23 @@ def _sample_from_record(record: dict, path: Path, line_number: int) -> CorpusSam
         redirect_final_url=record.get("redirect_final_url"),
         redirect_hops=hops,
         html=record.get("html"),
+        detonation=_detonation_from_record(record.get("detonation")),
         note=record.get("note", ""),
+    )
+
+
+def _detonation_from_record(record: dict | None) -> DetonationContext | None:
+    if record is None:
+        return None
+    forms = tuple(
+        DetonationForm(
+            has_password_field=bool(form.get("has_password_field")),
+            action_host=form.get("action_host") or None,
+        )
+        for form in record.get("forms", ())
+    )
+    return DetonationContext(
+        final_url=record.get("final_url"),
+        forms=forms,
+        downloads=tuple(record.get("downloads", ())),
     )

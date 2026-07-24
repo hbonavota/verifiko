@@ -174,6 +174,35 @@ class InfrastructureBackedCredentialLureRule(CompoundRule):
         return None
 
 
+class CredentialExfiltrationRule(CompoundRule):
+    """Escalate decisive *behavioral* (headless-detonation) evidence.
+
+    Credential/behavioral signals live in the ``CONTENT_BEHAVIOR`` category,
+    whose per-category cap (15) otherwise suppresses even a CRITICAL observation
+    so it can never move the verdict on its own. This rule adds an out-of-cap
+    compound penalty for the decisive dynamic tells, so that actually loading the
+    page — and seeing it post credentials off-domain or trigger an unsolicited
+    download — can reach a HIGH verdict:
+
+    - ``OFFSITE_FORM_ACTION``: a rendered login form submits to a different
+      registered domain (credential exfiltration).
+    - ``DRIVE_BY_DOWNLOAD``: the page triggers a download with no user action.
+
+    Both are held to HIGH (not CRITICAL) for now: a legitimate federated-auth or
+    hosted-payment flow can post to a different registered domain, so until an
+    IdP/PSP allowlist gates ``OFFSITE_FORM_ACTION`` we keep a safety margin.
+    """
+
+    name = "credential_exfiltration_behavior"
+
+    def evaluate(self, signal_types: set[SignalType]) -> float | None:
+        if SignalType.OFFSITE_FORM_ACTION in signal_types:
+            return 55
+        if SignalType.DRIVE_BY_DOWNLOAD in signal_types:
+            return 50
+        return None
+
+
 class LowInformationLandingPageRule(CompoundRule):
     name = "low_information_landing_page"
 

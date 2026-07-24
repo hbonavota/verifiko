@@ -51,3 +51,7 @@
 {"url": "https://g.co/openai", "label": "benign", "redirect_final_url": "https://openai.com/", "redirect_hops": [{"status_code": 302, "source_url": "https://g.co/openai", "target_url": "https://openai.com/"}], "note": "clean shortener redirect"}
 {"url": "https://paypa1.com/account/verify", "label": "malicious", "note": "brand typosquatting (leetspeak l->1 of paypal)"}
 {"url": "https://amaz0n.com/signin", "label": "malicious", "note": "brand typosquatting (o->0 of amazon)"}
+# --- Behavioral (headless detonation) samples: exercise the CredentialExfiltrationRule ---
+{"url": "https://bluefig-workspace.com/", "label": "malicious", "detonation": {"final_url": "https://bluefig-workspace.com/", "forms": [{"has_password_field": true, "action_host": "form-sink.datazone-collect.xyz"}]}, "note": "detonation: rendered login form posts credentials off-domain (exfiltration)"}
+{"url": "https://greenpath-media.com/", "label": "malicious", "detonation": {"final_url": "https://greenpath-media.com/", "downloads": ["statement_2026.pdf.exe"]}, "note": "detonation: unsolicited drive-by download"}
+{"url": "https://orangetree-hub.com/", "label": "benign", "detonation": {"final_url": "https://orangetree-hub.com/", "forms": [{"has_password_field": true, "action_host": "orangetree-hub.com"}]}, "note": "detonation guard: legitimate same-domain login must stay safe (no offsite action)"}
