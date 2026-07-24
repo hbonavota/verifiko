@@ -5,6 +5,11 @@ from datetime import datetime, timezone
 
 from app.application.commands.create_verification_command import CreateVerificationCommand
 from app.application.ports.domain_age_lookup import DomainAgeLookupPort
+from app.application.ports.headless_detonation import (
+    DetonationForm,
+    DetonationResult,
+    HeadlessDetonationPort,
+)
 from app.application.ports.html_fetcher import FetchedHtmlDocument, HtmlFetcherPort
 from app.application.ports.infrastructure_lookup import (
     InfrastructureLookupPort,
@@ -123,6 +128,30 @@ class _NoopInfrastructureLookup(InfrastructureLookupPort):
         )
 
 
+class _ScriptedDetonation(HeadlessDetonationPort):
+    """Returns a sample's declared detonation observations verbatim, so the
+    behavioral layer runs deterministically with no live browser."""
+
+    def __init__(self, sample: CorpusSample) -> None:
+        self._sample = sample
+
+    def detonate(self, url: str) -> DetonationResult:
+        context = self._sample.detonation
+        assert context is not None  # only wired when the sample declares one
+        return DetonationResult(
+            requested_url=url,
+            final_url=context.final_url or url,
+            forms=tuple(
+                DetonationForm(
+                    has_password_field=form.has_password_field,
+                    action_host=form.action_host,
+                )
+                for form in context.forms
+            ),
+            downloads=tuple(context.downloads),
+        )
+
+
 class OfflineDeterministicClassifier:
     """Runs the real verification use case with fully deterministic, offline
     stubs for every network-backed layer.
@@ -135,7 +164,11 @@ class OfflineDeterministicClassifier:
 
     def classify(self, sample: CorpusSample) -> ClassifiedResult:
         use_case = self._build_use_case(sample)
-        dto = use_case.execute(CreateVerificationCommand(url=sample.url))
+        dto = use_case.execute(
+            CreateVerificationCommand(
+                url=sample.url, deep_analysis=sample.has_detonation_context
+            )
+        )
         assessment = dto.risk_assessment
         if assessment is None:
             raise RuntimeError(f"Verification produced no risk assessment for {sample.url!r}")
@@ -180,6 +213,10 @@ class OfflineDeterministicClassifier:
                 tls_validator=_ValidTlsValidator()
             ),
             public_target_validator=None,
+            headless_detonation=(
+                _ScriptedDetonation(sample) if sample.has_detonation_context else None
+            ),
+            detonation_enabled=sample.has_detonation_context,
         )
 
     @staticmethod

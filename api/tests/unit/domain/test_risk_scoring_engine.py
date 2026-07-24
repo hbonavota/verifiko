@@ -405,3 +405,79 @@ def test_reputable_domain_bonus_does_not_override_suspicious_signals() -> None:
 
     assert result.score.value < 100
     assert "recognized_reputable_domain_bonus" not in result.summary
+
+
+def _behavioral_signal(
+    signal_type: SignalType,
+    severity: SignalSeverity,
+    confidence: int,
+) -> AnalysisSignal:
+    return AnalysisSignal.create(
+        signal_type=signal_type,
+        category=SignalCategory.CONTENT_BEHAVIOR,
+        severity=severity,
+        confidence=ConfidenceScore(confidence),
+        title=signal_type.value,
+        description="behavioral detonation observation",
+        source="behavioral-detonation-analyzer",
+        base_weight=BASE_SIGNAL_WEIGHTS[signal_type],
+    )
+
+
+def test_offsite_form_action_escalates_to_high_bypassing_content_cap() -> None:
+    from app.domain.enums.risk_level import RiskLevel
+
+    engine = RiskScoringEngine()
+    signals = [
+        _behavioral_signal(SignalType.RENDERED_CREDENTIAL_FORM, SignalSeverity.HIGH, 88),
+        _behavioral_signal(SignalType.OFFSITE_FORM_ACTION, SignalSeverity.CRITICAL, 95),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    # CONTENT_BEHAVIOR is capped at 15, so without the compound rule this would
+    # stay SAFE (score 85). The +55 out-of-cap escalation lands it in HIGH.
+    assert result.risk_level is RiskLevel.HIGH
+    assert result.score_breakdown is not None
+    assert any(
+        entry.rule_name == "credential_exfiltration_behavior"
+        for entry in result.score_breakdown.compound_rules_applied
+    )
+
+
+def test_drive_by_download_escalates_to_high() -> None:
+    from app.domain.enums.risk_level import RiskLevel
+
+    engine = RiskScoringEngine()
+    signals = [
+        _behavioral_signal(SignalType.DRIVE_BY_DOWNLOAD, SignalSeverity.HIGH, 90),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.risk_level is RiskLevel.HIGH
+    assert result.score_breakdown is not None
+    assert any(
+        entry.rule_name == "credential_exfiltration_behavior"
+        for entry in result.score_breakdown.compound_rules_applied
+    )
+
+
+def test_benign_behavioral_signals_do_not_trigger_exfiltration_rule() -> None:
+    from app.domain.enums.risk_level import RiskLevel
+
+    engine = RiskScoringEngine()
+    # A rendered same-domain login form (no offsite action, no download) is only
+    # the capped CONTENT_BEHAVIOR signal, so it must stay SAFE.
+    signals = [
+        _behavioral_signal(SignalType.RENDERED_CREDENTIAL_FORM, SignalSeverity.HIGH, 88),
+    ]
+
+    result = engine.calculate(signals, calculation_version="v1")
+
+    assert result.risk_level is RiskLevel.SAFE
+    assert result.score_breakdown is not None
+    assert all(
+        entry.rule_name != "credential_exfiltration_behavior"
+        for entry in result.score_breakdown.compound_rules_applied
+    )

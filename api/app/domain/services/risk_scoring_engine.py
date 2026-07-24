@@ -10,6 +10,7 @@ from app.domain.services.compound_rules import (
     BrandNewLookalikeDomainRule,
     BrandTyposquattingRule,
     CompoundRule,
+    CredentialExfiltrationRule,
     CredentialLurePatternRule,
     DeceptiveBrandSubdomainRule,
     EvidenceLightCleanResultRule,
@@ -53,6 +54,7 @@ class RiskScoringEngine(ScoringService):
         self._compound_rules = compound_rules or [
             BrandNewLookalikeDomainRule(),
             BrandTyposquattingRule(),
+            CredentialExfiltrationRule(),
             CredentialLurePatternRule(),
             DeceptiveBrandSubdomainRule(),
             EmailFraudStagingPatternRule(),
