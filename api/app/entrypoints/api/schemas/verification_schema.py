@@ -145,3 +145,6 @@ class VerificationResponse(BaseModel):
     updated_at: str
     completed_at: str | None
     calculation_version: str
+    # Presigned, time-limited URL to the detonation screenshot, when one was
+    # captured (scan path only). Generated on read, never persisted.
+    screenshot_url: str | None = None

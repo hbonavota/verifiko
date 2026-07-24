@@ -106,6 +106,7 @@ export interface VerificationSummary {
   updatedAt: string;
   completedAt: string | null;
   calculationVersion: string;
+  screenshotUrl?: string | null;
 }
 
 export interface HealthCheckResult {
@@ -213,6 +214,7 @@ export interface ApiVerification {
   updated_at: string;
   completed_at: string | null;
   calculation_version: string;
+  screenshot_url?: string | null;
 }
 
 export interface CreateVerificationInput {

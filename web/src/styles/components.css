@@ -2208,6 +2208,26 @@
   gap: var(--space-4);
 }
 
+.detonation-screenshot {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.detonation-screenshot__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.detonation-screenshot__caption {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
 .verification-summary-panel {
   gap: var(--space-3);
 }

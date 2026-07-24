@@ -11,12 +11,21 @@ class _RecordingS3Client:
     def __init__(self, error: Exception | None = None) -> None:
         self.error = error
         self.calls: list[dict] = []
+        self.presign_calls: list[dict] = []
 
     def put_object(self, **kwargs):
         self.calls.append(kwargs)
         if self.error is not None:
             raise self.error
         return {"ETag": "stub"}
+
+    def generate_presigned_url(self, operation, *, Params, ExpiresIn):
+        self.presign_calls.append(
+            {"operation": operation, "Params": Params, "ExpiresIn": ExpiresIn}
+        )
+        if self.error is not None:
+            raise self.error
+        return f"https://signed.example/{Params['Key']}?exp={ExpiresIn}"
 
 
 def test_r2_store_puts_object_and_returns_key() -> None:
@@ -55,5 +64,27 @@ def test_r2_store_wraps_backend_errors() -> None:
         store.store(b"a")
 
 
+def test_r2_store_presigned_url_calls_boto3_with_bucket_and_key() -> None:
+    s3 = _RecordingS3Client()
+    store = R2ScreenshotStore(s3_client=s3, bucket="verifiko-screenshots")
+
+    url = store.presigned_url("screenshots/abc.png", expires_in=120)
+
+    assert len(s3.presign_calls) == 1
+    call = s3.presign_calls[0]
+    assert call["operation"] == "get_object"
+    assert call["Params"] == {"Bucket": "verifiko-screenshots", "Key": "screenshots/abc.png"}
+    assert call["ExpiresIn"] == 120
+    assert url == "https://signed.example/screenshots/abc.png?exp=120"
+
+
+def test_r2_store_presigned_url_returns_none_on_backend_error() -> None:
+    s3 = _RecordingS3Client(error=RuntimeError("boom"))
+    store = R2ScreenshotStore(s3_client=s3, bucket="b")
+
+    assert store.presigned_url("screenshots/x.png") is None
+
+
 def test_null_store_returns_none() -> None:
     assert NullScreenshotStore().store(b"anything") is None
+    assert NullScreenshotStore().presigned_url("screenshots/x.png") is None

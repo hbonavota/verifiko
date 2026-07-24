@@ -20,12 +20,17 @@ class NullScreenshotStore(ScreenshotStorePort):
     def store(self, image_bytes: bytes, *, content_type: str = "image/png") -> None:
         return None
 
+    def presigned_url(self, ref: str, *, expires_in: int = 3600) -> None:
+        return None
+
 
 class S3PutClient(Protocol):
     """The minimal slice of a boto3 S3 client this adapter needs. Injecting it
     keeps ``R2ScreenshotStore`` fully unit-testable without network or boto3."""
 
     def put_object(self, **kwargs: Any) -> Any: ...
+
+    def generate_presigned_url(self, *args: Any, **kwargs: Any) -> str: ...
 
 
 @dataclass(slots=True)
@@ -52,6 +57,16 @@ class R2ScreenshotStore(ScreenshotStorePort):
         except Exception as exc:  # noqa: BLE001 - surface any backend error uniformly
             raise ScreenshotStoreError(f"Failed to store screenshot: {exc}") from exc
         return key
+
+    def presigned_url(self, ref: str, *, expires_in: int = 3600) -> str | None:
+        try:
+            return self.s3_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": self.bucket, "Key": ref},
+                ExpiresIn=expires_in,
+            )
+        except Exception:  # noqa: BLE001 - a missing URL must never break a scan read
+            return None
 
 
 def build_r2_s3_client(

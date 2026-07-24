@@ -55,6 +55,7 @@ def _to_model(job: VerificationJob) -> VerificationJobModel:
         result_verification_id=job.result_verification_id,
         error_message=job.error_message,
         webhook_url=job.webhook_url,
+        screenshot_ref=job.screenshot_ref,
     )
 
 
@@ -69,6 +70,7 @@ def _to_entity(model: VerificationJobModel) -> VerificationJob:
         result_verification_id=model.result_verification_id,
         error_message=model.error_message,
         webhook_url=model.webhook_url,
+        screenshot_ref=model.screenshot_ref,
     )
 
 

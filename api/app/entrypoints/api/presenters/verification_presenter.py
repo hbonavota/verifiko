@@ -11,6 +11,10 @@ class VerificationPresenter:
     def to_response(
         verification: VerificationDTO,
         locale: SupportedLocale = "en",
+        screenshot_url: str | None = None,
     ) -> VerificationResponse:
         localized = localize_verification_dto(verification, locale=locale)
-        return VerificationResponse.model_validate(localized)
+        response = VerificationResponse.model_validate(localized)
+        if screenshot_url is not None:
+            response = response.model_copy(update={"screenshot_url": screenshot_url})
+        return response

@@ -214,5 +214,6 @@ export function adaptApiVerification(
     updatedAt: verification.updated_at,
     completedAt: verification.completed_at,
     calculationVersion: verification.calculation_version,
+    screenshotUrl: verification.screenshot_url ?? null,
   };
 }

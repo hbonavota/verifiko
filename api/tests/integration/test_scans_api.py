@@ -214,6 +214,51 @@ def test_submit_accepts_valid_webhook_url(client: TestClient) -> None:
     assert response.json()["status"] == "queued"
 
 
+class _FakeScreenshotStore:
+    def store(self, image_bytes: bytes, *, content_type: str = "image/png") -> str:
+        return "screenshots/x.png"
+
+    def presigned_url(self, ref: str, *, expires_in: int = 3600) -> str:
+        return f"https://signed.example/{ref}?exp={expires_in}"
+
+
+def test_scan_result_exposes_presigned_screenshot_url(client: TestClient) -> None:
+    from app.entrypoints.api.dependencies.container import get_screenshot_store
+
+    app.dependency_overrides[get_screenshot_store] = lambda: _FakeScreenshotStore()
+    try:
+        headers = _register(client)
+        scan_id = client.post(
+            "/api/v1/scans", json={"url": "https://example.org"}, headers=headers
+        ).json()["scan_id"]
+
+        # Seed a screenshot reference onto the completed job. This also exercises
+        # migration 0009: the write fails if the screenshot_ref column is absent.
+        job_store = container.get_verification_job_store()
+        job = job_store.get(scan_id)
+        assert job is not None
+        job.screenshot_ref = "screenshots/x.png"
+        job_store.save(job)
+
+        polled = client.get(f"/api/v1/scans/{scan_id}", headers=headers).json()
+        expected = "https://signed.example/screenshots/x.png?exp=3600"
+        assert polled["screenshot_url"] == expected
+        assert polled["result"]["screenshot_url"] == expected
+    finally:
+        app.dependency_overrides.pop(get_screenshot_store, None)
+
+
+def test_scan_without_screenshot_has_null_screenshot_url(client: TestClient) -> None:
+    headers = _register(client)
+    scan_id = client.post(
+        "/api/v1/scans", json={"url": "https://example.org"}, headers=headers
+    ).json()["scan_id"]
+
+    polled = client.get(f"/api/v1/scans/{scan_id}", headers=headers).json()
+    assert polled["screenshot_url"] is None
+    assert polled["result"]["screenshot_url"] is None
+
+
 def test_invalid_url_scan_reports_failed(client: TestClient) -> None:
     headers = _register(client)
     scan_id = client.post(

@@ -458,6 +458,28 @@ export function VerificationDetailPage() {
         </Card>
       </section>
 
+      {verification.screenshotUrl ? (
+        <section className="verification-detail-screenshot">
+          <Card
+            eyebrow={copy.detail.screenshot.eyebrow}
+            title={copy.detail.screenshot.title}
+            description={copy.detail.screenshot.description}
+          >
+            <figure className="detonation-screenshot">
+              <img
+                className="detonation-screenshot__image"
+                src={verification.screenshotUrl}
+                alt={copy.detail.screenshot.alt}
+                loading="lazy"
+              />
+              <figcaption className="detonation-screenshot__caption">
+                {copy.detail.screenshot.caption}
+              </figcaption>
+            </figure>
+          </Card>
+        </section>
+      ) : null}
+
       <section className="verification-detail-grid">
         <div className="verification-detail-main">
           <Card

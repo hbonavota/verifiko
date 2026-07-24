@@ -27,6 +27,9 @@ class _RecordingStore(ScreenshotStorePort):
             raise self.error
         return self.ref
 
+    def presigned_url(self, ref: str, *, expires_in: int = 3600) -> str:
+        return f"https://signed.example/{ref}"
+
 
 _PNG_BYTES = b"\x89PNG\r\n\x1a\n fake image"
 _PNG_B64 = base64.b64encode(_PNG_BYTES).decode("ascii")

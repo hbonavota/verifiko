@@ -104,6 +104,7 @@ class VerificationJobModel(Base):
     result_verification_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    screenshot_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class SignalModel(Base):
