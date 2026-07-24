@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     verification_burst_limit_requests: int = 10
     verification_burst_limit_window_seconds: int = 60
     verification_parallel_analysis_enabled: bool = True
+    # Fail-fast orchestrator: when the URL-only analysis already yields a
+    # decisively malicious verdict, skip the expensive network-bound waves.
+    # Off by default; enable in production to cut latency/cost on obvious cases.
+    verification_fast_path_enabled: bool = False
     analysis_cache_key_prefix: str = "verifiko:analysis"
     # Reputation stays short: a freshly blacklisted host must not be served as
     # "clean" for long. Domain age (registration date) is effectively immutable

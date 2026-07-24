@@ -36,6 +36,8 @@ from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.entities.analysis_trace_stage import AnalysisTraceStage
 from app.domain.entities.risk_assessment import RiskAssessment
 from app.domain.entities.verification import Verification
+from app.domain.enums.risk_level import RiskLevel
+from app.domain.value_objects.normalized_url import NormalizedUrl
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
 from app.domain.exceptions.domain_exception import DomainException
@@ -153,6 +155,7 @@ class CreateURLVerificationUseCase:
     transport_security_signal_analyzer: TransportSecuritySignalAnalyzer
     public_target_validator: Callable[[str], None] | None = None
     parallel_analysis_enabled: bool = True
+    fast_path_enabled: bool = False
 
     def execute(self, command: CreateVerificationCommand) -> VerificationDTO:
         verification = Verification.create_url(
@@ -177,102 +180,28 @@ class CreateURLVerificationUseCase:
             )
         )
 
-        # Wave 1: analyzers that depend only on the input URL run concurrently.
-        # Each analyzer performs blocking network I/O, so overlapping them turns
-        # the total wait from a sum of latencies into a maximum.
-        wave_one = self._run_stage_group(
-            {
-                "domain_recency": lambda: self.domain_recency_signal_analyzer.analyze_with_context(
-                    normalized_input
-                ),
-                "redirect": lambda: self.redirect_signal_analyzer.analyze_with_context(
-                    normalized_input
-                ),
-                "transport": lambda: self.transport_security_signal_analyzer.analyze_with_context(
-                    normalized_input
-                ),
-                "html": lambda: self._analyze_html_content(verification),
-            }
-        )
-        domain_recency_result = wave_one["domain_recency"]
-        redirect_result = wave_one["redirect"]
-        transport_result = wave_one["transport"]
-        html_result = wave_one["html"]
-
-        redirect_resolution = redirect_result.redirect_resolution
-
-        # Wave 2: analyzers that additionally need the resolved redirect
-        # destination. They only depend on wave 1's redirect result, so they run
-        # concurrently with each other.
-        wave_two = self._run_stage_group(
-            {
-                "reputation": lambda: self.reputation_signal_analyzer.analyze_with_context(
-                    normalized_input, redirect_resolution=redirect_resolution
-                ),
-                "infrastructure": lambda: self.infrastructure_signal_analyzer.analyze_with_context(
-                    normalized_input, redirect_resolution=redirect_resolution
-                ),
-                "resolved_destination": lambda: self.resolved_destination_signal_analyzer.analyze_with_context(
-                    normalized_input, redirect_resolution=redirect_resolution
-                ),
-            }
-        )
-        reputation_result = wave_two["reputation"]
-        infrastructure_result = wave_two["infrastructure"]
-        resolved_destination_result = wave_two["resolved_destination"]
-
-        # Assemble signals, warnings and trace stages in the original,
-        # deterministic order so the scored result is byte-for-byte identical to
-        # the sequential pipeline regardless of completion timing.
-        for stage, source, result in (
-            (
-                "domain_recency",
-                self.domain_recency_signal_analyzer.source,
-                domain_recency_result,
-            ),
-            (
-                "redirect_resolution",
-                self.redirect_signal_analyzer.source,
-                redirect_result,
-            ),
-            ("reputation", self.reputation_signal_analyzer.source, reputation_result),
-            (
-                "infrastructure",
-                self.infrastructure_signal_analyzer.source,
-                infrastructure_result,
-            ),
-            (
-                "resolved_destination",
-                "resolved-destination-analysis",
-                resolved_destination_result,
-            ),
-            (
-                "transport_security",
-                self.transport_security_signal_analyzer.source,
-                transport_result,
-            ),
-        ):
-            detected_signals.extend(result.signals)
-            analysis_warnings.extend(result.warnings)
+        # Fail-fast orchestrator: the URL-only analysis above needs no network
+        # I/O. When it already yields a decisively malicious verdict, skip the
+        # expensive network-bound waves entirely — a human analyst would not keep
+        # digging once a domain is an obvious brand look-alike or lure. This is
+        # the cost/latency gate the deeper (headless) stages will build on.
+        if self.fast_path_enabled and self._url_only_verdict_is_decisive(detected_signals):
             analysis_trace.append(
                 self._build_trace_stage(
-                    stage=stage,
-                    source=source,
-                    signals=result.signals,
-                    warnings=result.warnings,
+                    stage="fast_path_short_circuit",
+                    source="fast-path-orchestrator",
+                    signals=(),
+                    warnings=(),
                 )
             )
-
-        detected_signals.extend(html_result.signals)
-        analysis_warnings.extend(html_result.warnings)
-        analysis_trace.append(
-            self._build_trace_stage(
-                stage="html_content",
-                source=self.html_credential_signal_analyzer.source,
-                signals=html_result.signals,
-                warnings=html_result.warnings,
+        else:
+            network_signals, network_warnings, network_stages = self._run_network_analysis(
+                verification, normalized_input
             )
-        )
+            detected_signals.extend(network_signals)
+            analysis_warnings.extend(network_warnings)
+            analysis_trace.extend(network_stages)
+
         trusted_signals = [
             AnalysisSignal.create(
                 signal_type=signal.signal_type,
@@ -316,6 +245,126 @@ class CreateURLVerificationUseCase:
         verification.redact_sensitive_input()
         saved = self.repository.save(verification)
         return VerificationMapper.to_dto(saved, trace=trace)
+
+    def _url_only_verdict_is_decisive(self, url_signals: list[AnalysisSignal]) -> bool:
+        """True when the URL-only signals already justify a malicious verdict.
+
+        The URL analyzer runs no network I/O, so if its evidence alone reaches a
+        HIGH/CRITICAL risk level the expensive network waves cannot change the
+        outcome and are skipped. Borderline results (MEDIUM or below) still get
+        the full pipeline, protecting recall.
+        """
+        if not url_signals:
+            return False
+        preliminary = self.scoring_service.calculate(
+            list(url_signals), "fast-path-preliminary"
+        )
+        return preliminary.risk_level in {RiskLevel.HIGH, RiskLevel.CRITICAL}
+
+    def _run_network_analysis(
+        self, verification: Verification, normalized_input: NormalizedUrl
+    ) -> tuple[list[AnalysisSignal], list[str], list[AnalysisTraceStage]]:
+        """Run the network-bound analysis waves and return their signals,
+        warnings and trace stages in the original deterministic order."""
+        # Wave 1: analyzers that depend only on the input URL run concurrently.
+        # Each performs blocking network I/O, so overlapping them turns the total
+        # wait from a sum of latencies into a maximum.
+        wave_one = self._run_stage_group(
+            {
+                "domain_recency": lambda: self.domain_recency_signal_analyzer.analyze_with_context(
+                    normalized_input
+                ),
+                "redirect": lambda: self.redirect_signal_analyzer.analyze_with_context(
+                    normalized_input
+                ),
+                "transport": lambda: self.transport_security_signal_analyzer.analyze_with_context(
+                    normalized_input
+                ),
+                "html": lambda: self._analyze_html_content(verification),
+            }
+        )
+        domain_recency_result = wave_one["domain_recency"]
+        redirect_result = wave_one["redirect"]
+        transport_result = wave_one["transport"]
+        html_result = wave_one["html"]
+
+        redirect_resolution = redirect_result.redirect_resolution
+
+        # Wave 2: analyzers that additionally need the resolved redirect
+        # destination. They only depend on wave 1's redirect result, so they run
+        # concurrently with each other.
+        wave_two = self._run_stage_group(
+            {
+                "reputation": lambda: self.reputation_signal_analyzer.analyze_with_context(
+                    normalized_input, redirect_resolution=redirect_resolution
+                ),
+                "infrastructure": lambda: self.infrastructure_signal_analyzer.analyze_with_context(
+                    normalized_input, redirect_resolution=redirect_resolution
+                ),
+                "resolved_destination": lambda: self.resolved_destination_signal_analyzer.analyze_with_context(
+                    normalized_input, redirect_resolution=redirect_resolution
+                ),
+            }
+        )
+        reputation_result = wave_two["reputation"]
+        infrastructure_result = wave_two["infrastructure"]
+        resolved_destination_result = wave_two["resolved_destination"]
+
+        signals: list[AnalysisSignal] = []
+        warnings: list[str] = []
+        stages: list[AnalysisTraceStage] = []
+        # Assemble in the original, deterministic order so the scored result is
+        # byte-for-byte identical regardless of completion timing.
+        for stage, source, result in (
+            (
+                "domain_recency",
+                self.domain_recency_signal_analyzer.source,
+                domain_recency_result,
+            ),
+            (
+                "redirect_resolution",
+                self.redirect_signal_analyzer.source,
+                redirect_result,
+            ),
+            ("reputation", self.reputation_signal_analyzer.source, reputation_result),
+            (
+                "infrastructure",
+                self.infrastructure_signal_analyzer.source,
+                infrastructure_result,
+            ),
+            (
+                "resolved_destination",
+                "resolved-destination-analysis",
+                resolved_destination_result,
+            ),
+            (
+                "transport_security",
+                self.transport_security_signal_analyzer.source,
+                transport_result,
+            ),
+        ):
+            signals.extend(result.signals)
+            warnings.extend(result.warnings)
+            stages.append(
+                self._build_trace_stage(
+                    stage=stage,
+                    source=source,
+                    signals=result.signals,
+                    warnings=result.warnings,
+                )
+            )
+
+        signals.extend(html_result.signals)
+        warnings.extend(html_result.warnings)
+        stages.append(
+            self._build_trace_stage(
+                stage="html_content",
+                source=self.html_credential_signal_analyzer.source,
+                signals=html_result.signals,
+                warnings=html_result.warnings,
+            )
+        )
+        return signals, warnings, stages
 
     def _run_stage_group(
         self,
