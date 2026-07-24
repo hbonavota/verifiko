@@ -247,7 +247,7 @@ class CreateURLVerificationUseCase:
         # an isolated headless browser and fold the behavioral evidence into the
         # signal set *before* scoring, so the verdict accounts for what the page
         # does, not just how it looks statically.
-        behavioral_signals, detonation_stage = self._run_detonation(
+        behavioral_signals, detonation_stage, screenshot_ref = self._run_detonation(
             command, verification, detected_signals
         )
         detected_signals.extend(behavioral_signals)
@@ -270,7 +270,7 @@ class CreateURLVerificationUseCase:
 
         verification.redact_sensitive_input()
         saved = self.repository.save(verification)
-        return VerificationMapper.to_dto(saved, trace=trace)
+        return VerificationMapper.to_dto(saved, trace=trace, screenshot_ref=screenshot_ref)
 
     def _url_only_verdict_is_decisive(self, url_signals: list[AnalysisSignal]) -> bool:
         """True when the URL-only signals already justify a malicious verdict.
@@ -292,10 +292,11 @@ class CreateURLVerificationUseCase:
         command: CreateVerificationCommand,
         verification: Verification,
         static_signals: list[AnalysisSignal],
-    ) -> tuple[list[AnalysisSignal], AnalysisTraceStage | None]:
+    ) -> tuple[list[AnalysisSignal], AnalysisTraceStage | None, str | None]:
         """Detonate the URL when this run has opted into deep analysis and the
-        static verdict is not already decided, then return the behavioral signals
-        and a trace stage describing what happened.
+        static verdict is not already decided, then return the behavioral signals,
+        a trace stage describing what happened, and the captured screenshot
+        reference (if any).
 
         Detonation is best-effort: any failure degrades gracefully to a recorded
         trace stage and the static verdict stands — it can never fail the scan or
@@ -306,7 +307,7 @@ class CreateURLVerificationUseCase:
             and command.deep_analysis
             and self.headless_detonation is not None
         ):
-            return [], None
+            return [], None, None
 
         preliminary = self.scoring_service.calculate(
             list(static_signals), "detonation-preliminary"
@@ -314,7 +315,7 @@ class CreateURLVerificationUseCase:
         if not self.detonation_policy.should_detonate(
             preliminary.risk_level, deep_scan_requested=True
         ):
-            return [], None
+            return [], None, None
 
         try:
             result = self.headless_detonation.detonate(
@@ -325,19 +326,27 @@ class CreateURLVerificationUseCase:
                 "Headless detonation failed; continuing with the static verdict.",
                 exc_info=True,
             )
-            return [], self._build_trace_stage(
-                stage="behavioral_detonation",
-                source=self.behavioral_signal_analyzer.source,
-                signals=(),
-                warnings=(resolve_message("warning.detonation_unavailable"),),
+            return (
+                [],
+                self._build_trace_stage(
+                    stage="behavioral_detonation",
+                    source=self.behavioral_signal_analyzer.source,
+                    signals=(),
+                    warnings=(resolve_message("warning.detonation_unavailable"),),
+                ),
+                None,
             )
 
         behavioral_signals = self.behavioral_signal_analyzer.analyze(result)
-        return behavioral_signals, self._build_trace_stage(
-            stage="behavioral_detonation",
-            source=self.behavioral_signal_analyzer.source,
-            signals=tuple(behavioral_signals),
-            warnings=(),
+        return (
+            behavioral_signals,
+            self._build_trace_stage(
+                stage="behavioral_detonation",
+                source=self.behavioral_signal_analyzer.source,
+                signals=tuple(behavioral_signals),
+                warnings=(),
+            ),
+            result.screenshot_ref,
         )
 
     def _run_network_analysis(

@@ -19,3 +19,12 @@ class ScreenshotStorePort(ABC):
     @abstractmethod
     def store(self, image_bytes: bytes, *, content_type: str = "image/png") -> str:
         raise NotImplementedError
+
+    @abstractmethod
+    def presigned_url(self, ref: str, *, expires_in: int = 3600) -> str | None:
+        """Return a time-limited URL that grants read access to ``ref``.
+
+        Generated on demand at read time and never persisted; returns ``None``
+        when no URL can be produced (e.g. the no-op store).
+        """
+        raise NotImplementedError

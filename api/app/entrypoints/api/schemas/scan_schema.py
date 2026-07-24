@@ -61,3 +61,6 @@ class ScanResponse(BaseModel):
     result_verification_id: str | None = None
     result: VerificationResponse | None = None
     error: str | None = None
+    # Presigned, time-limited URL to the detonation screenshot for this scan,
+    # when one was captured and screenshot storage is configured.
+    screenshot_url: str | None = None

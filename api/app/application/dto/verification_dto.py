@@ -119,3 +119,7 @@ class VerificationDTO:
     updated_at: str
     completed_at: str | None
     calculation_version: str
+    # Transient detonation metadata (the R2 object key of a captured screenshot).
+    # Scan-scoped and never persisted on the ``verifications`` table; it rides the
+    # DTO out to the scan job. ``None`` on the sync path, which never detonates.
+    screenshot_ref: str | None = None

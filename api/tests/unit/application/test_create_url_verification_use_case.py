@@ -2092,3 +2092,28 @@ def test_benign_detonation_result_adds_no_behavioral_signals() -> None:
         }
         for signal in dto.signals
     )
+
+
+def test_detonation_screenshot_ref_flows_into_the_dto() -> None:
+    detonation = RecordingDetonation(
+        result=DetonationResult(
+            requested_url="https://client-portal.io/",
+            final_url="https://client-portal.io/",
+            screenshot_ref="screenshots/shot.png",
+        )
+    )
+    use_case = _build_use_case(headless_detonation=detonation, detonation_enabled=True)
+
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://client-portal.io/", deep_analysis=True)
+    )
+
+    assert dto.screenshot_ref == "screenshots/shot.png"
+
+
+def test_sync_path_leaves_screenshot_ref_none() -> None:
+    use_case = _build_use_case()
+
+    dto = use_case.execute(CreateVerificationCommand(url="https://client-portal.io/"))
+
+    assert dto.screenshot_ref is None

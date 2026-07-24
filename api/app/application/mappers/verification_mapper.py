@@ -24,6 +24,7 @@ class VerificationMapper:
     def to_dto(
         verification: Verification,
         trace: AnalysisTrace | None = None,
+        screenshot_ref: str | None = None,
     ) -> VerificationDTO:
         signal_dtos = tuple(
             AnalysisSignalDTO(
@@ -167,6 +168,7 @@ class VerificationMapper:
             updated_at=verification.updated_at.isoformat(),
             completed_at=verification.completed_at.isoformat() if verification.completed_at else None,
             calculation_version=verification.calculation_version,
+            screenshot_ref=screenshot_ref,
         )
 
 

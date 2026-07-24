@@ -77,6 +77,7 @@ def _encode(job: VerificationJob) -> dict:
         "result_verification_id": job.result_verification_id,
         "error_message": job.error_message,
         "webhook_url": job.webhook_url,
+        "screenshot_ref": job.screenshot_ref,
     }
 
 
@@ -91,6 +92,7 @@ def _decode(payload: dict) -> VerificationJob:
         result_verification_id=payload.get("result_verification_id"),
         error_message=payload.get("error_message"),
         webhook_url=payload.get("webhook_url"),
+        screenshot_ref=payload.get("screenshot_ref"),
     )
 
 

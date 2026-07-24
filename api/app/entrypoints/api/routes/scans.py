@@ -9,6 +9,7 @@ from app.application.exceptions.application_exception import (
 from app.application.queries.get_owned_verification_query import GetOwnedVerificationQuery
 from app.application.services.message_resolver import resolve_message
 from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
+from app.application.ports.screenshot_store import ScreenshotStorePort
 from app.application.use_cases.get_verification_scan import GetVerificationScanUseCase
 from app.application.use_cases.submit_verification_scan import SubmitVerificationScanUseCase
 from app.domain.entities.user import User
@@ -17,6 +18,7 @@ from app.entrypoints.api.dependencies.auth import get_current_user
 from app.entrypoints.api.dependencies.container import (
     get_get_owned_verification_result_use_case,
     get_get_verification_scan_use_case,
+    get_screenshot_store,
     get_submit_verification_scan_use_case,
 )
 from app.entrypoints.api.locale import select_response_locale
@@ -69,6 +71,7 @@ def get_scan(
     verification_use_case: GetOwnedVerificationResultUseCase = Depends(
         get_get_owned_verification_result_use_case
     ),
+    screenshot_store: ScreenshotStorePort = Depends(get_screenshot_store),
 ) -> ScanResponse:
     locale = select_response_locale(accept_language)
     try:
@@ -79,6 +82,14 @@ def get_scan(
             detail=resolve_message("error.verification_scan_not_found", language=locale),
         ) from exc
 
+    # Mint a short-lived presigned URL from the durable key at read time; it is
+    # never stored. The no-op store (screenshots disabled) yields None.
+    screenshot_url = (
+        screenshot_store.presigned_url(job.screenshot_ref)
+        if job.screenshot_ref
+        else None
+    )
+
     result = None
     if job.result_verification_id is not None:
         try:
@@ -88,7 +99,9 @@ def get_scan(
                     owner_user_id=str(current_user.id),
                 )
             )
-            result = VerificationPresenter.to_response(dto, locale=locale)
+            result = VerificationPresenter.to_response(
+                dto, locale=locale, screenshot_url=screenshot_url
+            )
         except VerificationNotFoundError:
             result = None
 
@@ -101,6 +114,7 @@ def get_scan(
         result_verification_id=job.result_verification_id,
         result=result,
         error=job.error_message,
+        screenshot_url=screenshot_url,
     )
 
 

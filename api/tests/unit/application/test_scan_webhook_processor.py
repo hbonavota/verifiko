@@ -24,7 +24,7 @@ class RecordingNotifier(ScanWebhookNotifierPort):
 
 class FakeCreateUseCase:
     def execute(self, command):
-        return SimpleNamespace(id="ver-1")
+        return SimpleNamespace(id="ver-1", screenshot_ref=None)
 
 
 class NoDispatch(VerificationJobDispatcher):

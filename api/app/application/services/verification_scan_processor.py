@@ -56,6 +56,10 @@ class VerificationScanProcessor:
                 self.current_time_provider(),
             )
         else:
+            # A screenshot is a scan-scoped artifact: carry the detonation's
+            # opaque reference onto the job so the result route can mint a
+            # presigned URL for it later.
+            job.screenshot_ref = dto.screenshot_ref
             job.mark_completed(dto.id, self.current_time_provider())
 
         self.job_store.save(job)

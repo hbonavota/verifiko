@@ -27,9 +27,15 @@ class RecordingDispatcher(VerificationJobDispatcher):
 
 
 class FakeCreateUseCase:
-    def __init__(self, result_id: str = "ver-1", error: Exception | None = None) -> None:
+    def __init__(
+        self,
+        result_id: str = "ver-1",
+        error: Exception | None = None,
+        screenshot_ref: str | None = None,
+    ) -> None:
         self.result_id = result_id
         self.error = error
+        self.screenshot_ref = screenshot_ref
         self.calls: list[str] = []
         self.commands: list[object] = []
 
@@ -38,7 +44,7 @@ class FakeCreateUseCase:
         self.commands.append(command)
         if self.error is not None:
             raise self.error
-        return SimpleNamespace(id=self.result_id)
+        return SimpleNamespace(id=self.result_id, screenshot_ref=self.screenshot_ref)
 
 
 def test_submit_queues_saves_and_dispatches() -> None:
@@ -104,6 +110,25 @@ def test_processor_completes_job_with_result_id() -> None:
     assert done is not None
     assert done.status is VerificationJobStatus.COMPLETED
     assert done.result_verification_id == "ver-99"
+
+
+def test_processor_persists_screenshot_ref_on_the_job() -> None:
+    store = InMemoryVerificationJobStore()
+    _queued_job(store)
+    processor = VerificationScanProcessor(
+        job_store=store,
+        create_use_case=FakeCreateUseCase(
+            result_id="ver-1", screenshot_ref="screenshots/abc.png"
+        ),
+        current_time_provider=_NOW,
+    )
+
+    processor.process("scan-1")
+
+    done = store.get("scan-1")
+    assert done is not None
+    assert done.status is VerificationJobStatus.COMPLETED
+    assert done.screenshot_ref == "screenshots/abc.png"
 
 
 def test_processor_opts_the_scan_into_deep_analysis() -> None:

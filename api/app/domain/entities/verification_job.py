@@ -22,6 +22,8 @@ class VerificationJob:
     result_verification_id: str | None = None
     error_message: str | None = None
     webhook_url: str | None = None
+    # R2 object key of the detonation screenshot for this scan, when captured.
+    screenshot_ref: str | None = None
 
     @staticmethod
     def queue(
