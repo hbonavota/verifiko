@@ -85,6 +85,25 @@ class RedisAuthenticatedUtcDayQuotaLimiter:
         _reset_matching_keys(self.redis_client, f"{self.key_prefix}:*")
 
 
+# Atomic check-then-increment evaluated server-side in a single Redis command.
+# Returns {used, allowed} where allowed is 1 when the request was counted and 0
+# when the caller was already at the daily limit (in which case the counter is
+# NOT incremented, preserving the previous WATCH/MULTI semantics). One EVAL
+# replaces the ~5-command optimistic-lock loop this used to run per request.
+_QUOTA_CONSUME_SCRIPT = """
+local limit = tonumber(ARGV[1])
+local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+if current >= limit then
+  return {current, 0}
+end
+current = redis.call('INCR', KEYS[1])
+if current == 1 then
+  redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+end
+return {current, 1}
+"""
+
+
 def _consume_if_available(
     *,
     redis_client: Any,
@@ -92,24 +111,16 @@ def _consume_if_available(
     daily_limit: int,
     reset_in_seconds: int,
 ) -> tuple[int, bool]:
-    watch_error = _redis_watch_error_type()
-    while True:
-        with redis_client.pipeline() as pipe:
-            try:
-                pipe.watch(redis_key)
-                current = _coerce_count(pipe.get(redis_key))
-                if current >= daily_limit:
-                    pipe.unwatch()
-                    return current, False
-
-                pipe.multi()
-                pipe.incr(redis_key)
-                if current == 0:
-                    pipe.expire(redis_key, reset_in_seconds)
-                results = pipe.execute()
-                return _coerce_count(results[0]), True
-            except watch_error:
-                continue
+    result = redis_client.eval(
+        _QUOTA_CONSUME_SCRIPT,
+        1,
+        redis_key,
+        daily_limit,
+        reset_in_seconds,
+    )
+    used = _coerce_count(result[0])
+    allowed = bool(_coerce_count(result[1]))
+    return used, allowed
 
 
 def _used_today(redis_client: Any, redis_key: str) -> int:
@@ -168,11 +179,3 @@ def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
-
-
-def _redis_watch_error_type() -> type[Exception]:
-    try:
-        from redis.exceptions import WatchError
-    except Exception:  # pragma: no cover - redis is optional in the local test env
-        return RuntimeError
-    return WatchError
