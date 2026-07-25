@@ -399,6 +399,25 @@ def test_verification_api_rate_limits_anonymous_create_requests(client: TestClie
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
 
 
+def test_verification_api_decrements_anonymous_quota_status_remaining(client: TestClient) -> None:
+    limiter = get_create_verification_rate_limiter()
+    limiter.reset()
+    limiter.daily_limit = 5
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+
+    before = client.get("/api/verifications/quota-status").json()
+    posted = client.post("/api/verifications", json={"url": "https://example.org"})
+    after = client.get("/api/verifications/quota-status").json()
+
+    assert posted.status_code == 201
+    assert before["used_today"] == 0
+    assert after["used_today"] == 1
+    assert after["remaining_today"] == before["remaining_today"] - 1
+
+    limiter.reset()
+    limiter.daily_limit = get_settings().anonymous_daily_verification_limit
+
+
 def test_verification_api_resets_anonymous_daily_limit_at_utc_midnight(client: TestClient) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
@@ -633,10 +652,12 @@ def test_verification_api_quota_status_reports_anonymous_blocked_when_limit_is_e
     limiter.reset()
 
 
-def test_verification_api_uses_redis_backed_rate_limiter_when_configured(
+def test_verification_api_uses_sqlalchemy_backed_daily_quota_even_with_redis(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # The daily quota now lives in Postgres regardless of Redis: even with Redis
+    # configured, the daily limiter is the SQLAlchemy one (only burst uses Redis).
     fake_redis = FakeRedisClient()
     monkeypatch.setenv("REDIS_URL", "redis://fake")
     get_settings.cache_clear()
@@ -652,7 +673,7 @@ def test_verification_api_uses_redis_backed_rate_limiter_when_configured(
     first = client.post("/api/verifications", json={"url": "https://example.org"})
     second = client.post("/api/verifications", json={"url": "https://example.net"})
 
-    assert limiter.__class__.__name__ == "RedisUtcDayQuotaLimiter"
+    assert limiter.__class__.__name__ == "SqlAlchemyUtcDayQuotaLimiter"
     assert first.status_code == 201
     assert first.headers["x-ratelimit-limit"] == "1"
     assert first.headers["x-ratelimit-remaining"] == "0"
@@ -663,6 +684,7 @@ def test_verification_api_uses_redis_backed_rate_limiter_when_configured(
     assert second.headers["x-ratelimit-remaining"] == "0"
 
     limiter.reset()
+    limiter.daily_limit = get_settings().anonymous_daily_verification_limit
 
 
 def test_verification_api_uses_redis_backed_burst_limiter_when_configured(

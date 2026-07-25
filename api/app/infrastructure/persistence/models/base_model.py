@@ -1,4 +1,15 @@
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    PrimaryKeyConstraint,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -105,6 +116,25 @@ class VerificationJobModel(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     screenshot_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class DailyQuotaCounterModel(Base):
+    """Per-identity, per-UTC-day verification counter.
+
+    Durable, shared daily quota state kept in the primary database instead of
+    Redis: the count survives restarts, is consistent across serverless
+    invocations, and is incremented with an atomic conditional UPSERT so the
+    counter can never over- or under-count under concurrency. ``identity_key`` is
+    an anonymous client key or a user id; ``quota_day`` is the UTC calendar day.
+    """
+
+    __tablename__ = "daily_quota_counters"
+
+    identity_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    quota_day: Mapped[Date] = mapped_column(Date, nullable=False)
+    used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (PrimaryKeyConstraint("identity_key", "quota_day"),)
 
 
 class SignalModel(Base):

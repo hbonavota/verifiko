@@ -1,11 +1,15 @@
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime
 import logging
-import math
 from typing import Any, Callable
 
 from app.domain.entities.user import User
 from app.domain.services.user_quota_policy import UserQuotaPolicy
+from app.infrastructure.security.utc_day_quota_math import (
+    as_utc as _as_utc,
+    seconds_until_next_midnight as _seconds_until_next_midnight,
+    status_for_used as _status_for_used,
+)
 from app.infrastructure.security.utc_day_quota_status import UtcDayQuotaStatus
 
 logger = logging.getLogger(__name__)
@@ -135,32 +139,8 @@ def _used_today_or_zero(redis_client: Any, redis_key: str) -> int:
         return 0
 
 
-def _status_for_used(*, used_today: int, daily_limit: int, now: datetime) -> UtcDayQuotaStatus:
-    next_midnight = datetime.combine(
-        now.date() + timedelta(days=1),
-        time.min,
-        tzinfo=timezone.utc,
-    )
-    return UtcDayQuotaStatus(
-        daily_limit=daily_limit,
-        used_today=used_today,
-        remaining_today=max(0, daily_limit - used_today),
-        reset_at_utc=next_midnight,
-        reset_in_seconds=max(1, math.ceil((next_midnight - now).total_seconds())),
-    )
-
-
 def _redis_key(prefix: str, current_day: date, identifier: str) -> str:
     return f"{prefix}:{current_day.isoformat()}:{identifier}"
-
-
-def _seconds_until_next_midnight(now: datetime) -> int:
-    next_midnight = datetime.combine(
-        now.date() + timedelta(days=1),
-        time.min,
-        tzinfo=timezone.utc,
-    )
-    return max(1, math.ceil((next_midnight - now).total_seconds()))
 
 
 def _coerce_count(value: Any) -> int:
@@ -173,9 +153,3 @@ def _reset_matching_keys(redis_client: Any, pattern: str) -> None:
     keys = list(redis_client.scan_iter(match=pattern))
     if keys:
         redis_client.delete(*keys)
-
-
-def _as_utc(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
