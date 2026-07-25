@@ -16,6 +16,7 @@ import {
   copyVerificationSummary,
   shareVerification,
 } from "../lib/verificationActions";
+import { resultNote, scoreInterpretationCopy } from "../lib/coverageNote";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
@@ -40,27 +41,6 @@ function getVerificationAnalysisTrace(verification: VerificationSummary) {
   }
 
   return verification.riskAssessment.explanation?.analysisTrace ?? [];
-}
-
-function scoreInterpretationCopy(
-  score: number,
-  copy: {
-    highDanger: string;
-    strongCaution: string;
-    caution: string;
-    safe: string;
-  },
-) {
-  if (score <= 40) {
-    return copy.highDanger;
-  }
-  if (score <= 60) {
-    return copy.strongCaution;
-  }
-  if (score <= 80) {
-    return copy.caution;
-  }
-  return copy.safe;
 }
 
 type VerificationState =
@@ -241,6 +221,14 @@ export function VerificationDetailPage() {
     };
   });
   const clampedScore = Math.max(0, Math.min(100, Number(riskAssessment.score) || 0));
+  // User-facing note: friendly coverage caveat when checks were skipped, else the
+  // localized score interpretation — never the raw penalty-math summary.
+  const friendlyResultNote = resultNote({
+    score: clampedScore,
+    warnings,
+    scoreGuide: copy.detail.scoreGuide,
+    coverageNote: copy.coverageNote,
+  });
 
   const riskTone = toneForRiskLevel(riskAssessment.riskLevel);
   const emphasisTone =
@@ -370,7 +358,7 @@ export function VerificationDetailPage() {
               >
                 {formatVerdict(riskAssessment.verdict, language)}
               </p>
-              <p className="verification-assessment-card__posture">{riskAssessment.summary}</p>
+              <p className="verification-assessment-card__posture">{friendlyResultNote}</p>
               {contentVariationSignal ? (
                 <div className="notes-panel" aria-label={copy.antiCamouflage.badge}>
                   <Badge
@@ -712,7 +700,7 @@ export function VerificationDetailPage() {
             </div>
             <div className="verification-context-card__notes">
               <p className="verification-action-card__label">{copy.detail.assessmentNote}</p>
-              <p className="notes-panel__text">{riskAssessment.summary}</p>
+              <p className="notes-panel__text">{friendlyResultNote}</p>
               <div className="action-stack">
                 <Button to="/dashboard" variant="primary">
                   {copy.common.backToReview}

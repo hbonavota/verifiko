@@ -17,6 +17,7 @@ import {
   copyVerificationSummary,
   shareVerification,
 } from "../lib/verificationActions";
+import { resultNote } from "../lib/coverageNote";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { findContentVariationSignal } from "../lib/verificationSignals";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
@@ -135,6 +136,17 @@ export function DashboardPage() {
     ? findContentVariationSignal(activeVerification)
     : undefined;
   const activeWarnings = activeVerification ? getVerificationWarnings(activeVerification) : [];
+  // Friendly, localized note (coverage caveat or score interpretation) instead of
+  // the raw penalty-math summary.
+  const activeResultNote =
+    activeRiskAssessment !== undefined
+      ? resultNote({
+          score: activeRiskAssessment.score,
+          warnings: activeWarnings,
+          scoreGuide: copy.detail.scoreGuide,
+          coverageNote: copy.coverageNote,
+        })
+      : "";
   const activeAnalysisTrace = activeVerification ? getVerificationAnalysisTrace(activeVerification) : [];
   const showOwnedLoading = authReady && !!currentUser && isHistoryLoading;
   const workspaceOwner = currentUser ? firstName(currentUser.display_name || currentUser.email) : null;
@@ -368,7 +380,7 @@ export function DashboardPage() {
                 >
                   {formatVerdict(activeRiskAssessment.verdict, language)}
                 </p>
-                <p className="dashboard-card__posture">{activeRiskAssessment.summary}</p>
+                <p className="dashboard-card__posture">{activeResultNote}</p>
                 {activeContentVariationSignal ? (
                   <div className="notes-panel" aria-label={copy.antiCamouflage.badge}>
                     <Badge
@@ -634,7 +646,14 @@ export function DashboardPage() {
                         )}
                       </p>
                     </div>
-                    <p className="activity-feed__detail">{verification.riskAssessment.summary}</p>
+                    <p className="activity-feed__detail">
+                      {resultNote({
+                        score: verification.riskAssessment.score,
+                        warnings: getVerificationWarnings(verification),
+                        scoreGuide: copy.detail.scoreGuide,
+                        coverageNote: copy.coverageNote,
+                      })}
+                    </p>
                     <div className="activity-feed__footer">
                       <div className="activity-feed__actions">
                         <Button to={`/verifications/${verification.id}`} variant="secondary">
@@ -703,7 +722,7 @@ export function DashboardPage() {
           >
             {activeVerification ? (
               <div className="notes-panel">
-                <p className="notes-panel__text">{activeRiskAssessment.summary}</p>
+                <p className="notes-panel__text">{activeResultNote}</p>
                 <div className="dashboard-action-stack">
                   <Button to={`/verifications/${activeVerification.id}`} variant="primary">
                     {copy.dashboard.openSavedResult}

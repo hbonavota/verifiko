@@ -13,6 +13,7 @@ import { useAuth } from "../lib/auth";
 import { listMyVerifications } from "../lib/api";
 import { formatRiskLevel, formatVerdict } from "../lib/formatVerdict";
 import { useI18n } from "../lib/i18n";
+import { resultNote } from "../lib/coverageNote";
 import { adaptApiVerification } from "../lib/verificationAdapter";
 import { toneForRiskLevel } from "../lib/risk";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
@@ -238,7 +239,17 @@ export function HomePage() {
                     >
                       {formatVerdict(latestRiskAssessment.verdict, language)}
                     </p>
-                    <p className="analysis-result-card__copy">{latestRiskAssessment.summary}</p>
+                    <p className="analysis-result-card__copy">
+                      {resultNote({
+                        score: latestRiskAssessment.score,
+                        warnings: [
+                          ...(latestRiskAssessment.analysisWarnings ?? []),
+                          ...(latestRiskAssessment.explanation?.coverageWarnings ?? []),
+                        ],
+                        scoreGuide: copy.detail.scoreGuide,
+                        coverageNote: copy.coverageNote,
+                      })}
+                    </p>
                     <div className="analysis-result-card__actions">
                       <Button
                         to={`/verifications/${latestVerification.id}`}
