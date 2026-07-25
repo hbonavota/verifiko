@@ -38,6 +38,7 @@ export function HomePage() {
   const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [analysisState, setAnalysisState] = useState<"idle" | "submitting" | "error">("idle");
+  const [deepAnalysisActive, setDeepAnalysisActive] = useState(false);
   const resultCardRef = useRef<HTMLDivElement | null>(null);
   const hasTrackedAnonymousSupportRef = useRef(false);
 
@@ -164,7 +165,12 @@ export function HomePage() {
               className="analysis-form--hero"
               hint=""
               inputClassName="analysis-form__input-control"
-              onStateChange={setAnalysisState}
+              onStateChange={(state, meta) => {
+                setAnalysisState(state);
+                if (state === "submitting") {
+                  setDeepAnalysisActive(Boolean(meta?.deep));
+                }
+              }}
               showQuotaIndicator={false}
               showProPanel={false}
             />
@@ -173,10 +179,20 @@ export function HomePage() {
 
         <div ref={resultCardRef} className="analysis-hero__result-shell">
           <Card
-            eyebrow={isLoadingAnalysis ? copy.home.verifying : latestVerification ? copy.home.latestResult : copy.home.result}
+            eyebrow={
+              isLoadingAnalysis
+                ? deepAnalysisActive
+                  ? copy.home.deepVerifying
+                  : copy.home.verifying
+                : latestVerification
+                  ? copy.home.latestResult
+                  : copy.home.result
+            }
             title={
               isLoadingAnalysis
-                ? copy.home.verificationInProgress
+                ? deepAnalysisActive
+                  ? copy.home.deepInProgress
+                  : copy.home.verificationInProgress
                 : latestVerification
                   ? copy.home.verificationResult
                   : copy.home.readyToVerify
@@ -193,11 +209,20 @@ export function HomePage() {
           >
             {isLoadingAnalysis ? (
               <div className="analysis-result-card__hero">
-                <ScoreRing label={copy.home.verifying} size="hero" state="loading" valueLabel="..." />
+                <ScoreRing
+                  label={deepAnalysisActive ? copy.home.deepVerifying : copy.home.verifying}
+                  size="hero"
+                  state="loading"
+                  valueLabel="…"
+                />
                 <div className="analysis-result-card__summary-block">
-                  <p className="analysis-result-card__headline">{copy.home.verifyingTarget}</p>
-                  <p className="analysis-result-card__copy">{copy.home.collectingSignals}</p>
-                  <VerificationProgress />
+                  <p className="analysis-result-card__headline">
+                    {deepAnalysisActive ? copy.home.deepVerifyingTarget : copy.home.verifyingTarget}
+                  </p>
+                  <p className="analysis-result-card__copy">
+                    {deepAnalysisActive ? copy.home.deepCollectingSignals : copy.home.collectingSignals}
+                  </p>
+                  <VerificationProgress deep={deepAnalysisActive} />
                 </div>
               </div>
             ) : isLoadingOwnedResult ? (
