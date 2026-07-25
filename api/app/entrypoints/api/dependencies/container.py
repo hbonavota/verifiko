@@ -7,9 +7,6 @@ from app.application.services.quota_status_service import QuotaStatusService
 from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
 from app.domain.services.user_quota_policy import UserQuotaPolicy
 from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
-from app.infrastructure.security.authenticated_utc_day_quota_limiter import (
-    AuthenticatedUtcDayQuotaLimiter,
-)
 from app.application.services.infrastructure_signal_analyzer import (
     InfrastructureSignalAnalyzer,
 )
@@ -130,12 +127,11 @@ from app.infrastructure.security.redis_client import build_redis_client
 from app.infrastructure.security.redis_fixed_window_rate_limiter import (
     RedisFixedWindowRateLimiter,
 )
-from app.infrastructure.security.redis_utc_day_quota_limiter import (
-    RedisAuthenticatedUtcDayQuotaLimiter,
-    RedisUtcDayQuotaLimiter,
-)
 from app.infrastructure.security.signed_auth_token_service import SignedAuthTokenService
-from app.infrastructure.security.utc_day_quota_limiter import UtcDayQuotaLimiter
+from app.infrastructure.security.sqlalchemy_utc_day_quota_limiter import (
+    SqlAlchemyAuthenticatedUtcDayQuotaLimiter,
+    SqlAlchemyUtcDayQuotaLimiter,
+)
 from app.infrastructure.time.system_time_provider import SystemTimeProvider
 
 
@@ -318,17 +314,13 @@ def get_transport_security_signal_analyzer() -> TransportSecuritySignalAnalyzer:
 
 
 @lru_cache(maxsize=1)
-def get_create_verification_rate_limiter() -> UtcDayQuotaLimiter:
+def get_create_verification_rate_limiter() -> SqlAlchemyUtcDayQuotaLimiter:
+    # The daily quota lives in Postgres: durable, race-safe (atomic conditional
+    # UPSERT), and off the Redis critical path. The Redis limiter classes remain
+    # importable for other deployment shapes but are no longer wired here.
     settings = get_settings()
-    redis_client = get_rate_limit_redis_client()
-    if redis_client is not None:
-        return RedisUtcDayQuotaLimiter(
-            redis_client=redis_client,
-            daily_limit=settings.anonymous_daily_verification_limit,
-            current_time_provider=get_time_provider().now,
-            key_prefix=f"{settings.rate_limit_key_prefix}:anonymous",
-        )
-    return UtcDayQuotaLimiter(
+    return SqlAlchemyUtcDayQuotaLimiter(
+        session_factory=get_session_factory(),
         daily_limit=settings.anonymous_daily_verification_limit,
         current_time_provider=get_time_provider().now,
     )
@@ -361,17 +353,10 @@ def get_user_quota_policy() -> UserQuotaPolicy:
 
 
 @lru_cache(maxsize=1)
-def get_authenticated_verification_rate_limiter() -> AuthenticatedUtcDayQuotaLimiter:
-    settings = get_settings()
-    redis_client = get_rate_limit_redis_client()
-    if redis_client is not None:
-        return RedisAuthenticatedUtcDayQuotaLimiter(
-            redis_client=redis_client,
-            quota_policy=get_user_quota_policy(),
-            current_time_provider=get_time_provider().now,
-            key_prefix=f"{settings.rate_limit_key_prefix}:user",
-        )
-    return AuthenticatedUtcDayQuotaLimiter(
+def get_authenticated_verification_rate_limiter() -> SqlAlchemyAuthenticatedUtcDayQuotaLimiter:
+    # Postgres-backed per-user daily quota (see the anonymous limiter above).
+    return SqlAlchemyAuthenticatedUtcDayQuotaLimiter(
+        session_factory=get_session_factory(),
         quota_policy=get_user_quota_policy(),
         current_time_provider=get_time_provider().now,
     )
