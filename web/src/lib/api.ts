@@ -127,6 +127,96 @@ export function createVerification(input: CreateVerificationInput): Promise<ApiV
   });
 }
 
+export interface ApiScanAccepted {
+  scan_id: string;
+  status: string;
+  url: string;
+}
+
+export interface ApiScanResponse {
+  scan_id: string;
+  status: string;
+  url: string;
+  created_at: string;
+  updated_at: string;
+  result_verification_id: string | null;
+  result: ApiVerification | null;
+  error: string | null;
+  screenshot_url: string | null;
+}
+
+/** Submit a URL for asynchronous deep analysis (detonation). Requires auth. */
+export function submitScan(input: CreateVerificationInput): Promise<ApiScanAccepted> {
+  return readJson<ApiScanAccepted>("/api/v1/scans", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/** Poll a single scan by id. */
+export function getScan(scanId: string): Promise<ApiScanResponse> {
+  return readJson<ApiScanResponse>(`/api/v1/scans/${encodeURIComponent(scanId)}`);
+}
+
+interface RunDeepScanOptions {
+  onStatus?: (status: string, attempt: number) => void;
+  intervalMs?: number;
+  maxAttempts?: number;
+  signal?: AbortSignal;
+}
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    function onAbort() {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/**
+ * Submit a deep scan and poll until it completes, returning the resulting
+ * verification (which carries `screenshot_url` and behavioral signals). Throws
+ * ApiRequestError on failure or timeout.
+ */
+export async function runDeepScan(
+  input: CreateVerificationInput,
+  options: RunDeepScanOptions = {},
+): Promise<ApiVerification> {
+  const { onStatus, intervalMs = 3000, maxAttempts = 20, signal } = options;
+  const accepted = await submitScan(input);
+  onStatus?.(accepted.status, 0);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    await delay(intervalMs, signal);
+    const scan = await getScan(accepted.scan_id);
+    onStatus?.(scan.status, attempt);
+
+    if (scan.status === "completed") {
+      if (!scan.result) {
+        throw new ApiRequestError("Scan completed without a result.", 502);
+      }
+      // Ensure the presigned screenshot URL is present on the result even if the
+      // presenter did not inline it.
+      return { ...scan.result, screenshot_url: scan.result.screenshot_url ?? scan.screenshot_url };
+    }
+    if (scan.status === "failed") {
+      throw new ApiRequestError(scan.error ?? "Deep scan failed.", 502);
+    }
+  }
+
+  throw new ApiRequestError("Deep scan timed out.", 504);
+}
+
 export function authenticateWithGoogle(idToken: string): Promise<ApiAuthSession> {
   return readJson<ApiAuthSession>("/api/auth/google", {
     method: "POST",

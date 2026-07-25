@@ -5,7 +5,7 @@ import { GoogleSignInButton } from "../auth/GoogleSignInButton";
 import { EmailAuthModal } from "../auth/EmailAuthModal";
 import { useAuth } from "../../lib/auth";
 import type { ApiQuotaStatus, ApiVerification } from "../../types/verification";
-import { ApiRequestError, createVerification } from "../../lib/api";
+import { ApiRequestError, createVerification, runDeepScan } from "../../lib/api";
 import {
   trackAuthEntryClicked,
   trackAnalysisInputStarted,
@@ -90,6 +90,8 @@ export function AnalyzeUrlForm({
   const [quotaExceededRetryAfter, setQuotaExceededRetryAfter] = useState<number | null>(null);
   const [quotaExceededPlan, setQuotaExceededPlan] = useState<ApiQuotaStatus["plan"] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deepScan, setDeepScan] = useState(false);
+  const [isDeepScanning, setIsDeepScanning] = useState(false);
   const [isQuotaRetrying, setIsQuotaRetrying] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
@@ -165,12 +167,92 @@ export function AnalyzeUrlForm({
       return;
     }
 
+    if (deepScan && isAuthenticated) {
+      await submitDeepScan(trimmedTarget, inputType);
+      return;
+    }
+
     if (!currentUser && quotaStatus?.plan === "ANONYMOUS" && quotaStatus.blocked) {
       openAnonymousQuotaAuthModal(quotaStatus.reset_in_seconds ?? null);
       return;
     }
 
     await submitVerification(trimmedTarget, inputType);
+  }
+
+  async function submitDeepScan(target: string, submissionInputType: "manual" | "paste") {
+    setIsSubmitting(true);
+    setIsDeepScanning(true);
+    setSubmitError(null);
+    setQuotaExceededRetryAfter(null);
+    setQuotaExceededPlan(null);
+    onStateChange?.("submitting");
+    trackAnalysisStarted({
+      sourcePath: location.pathname,
+      language,
+      isAuthenticated,
+      plan: analyticsPlan,
+      inputType: submissionInputType,
+      hasProtocol: /^https?:\/\//i.test(target),
+    });
+
+    try {
+      const verification = await runDeepScan({ url: target });
+
+      if (verification.status === "completed") {
+        trackAnalysisCompleted({
+          sourcePath: location.pathname,
+          language,
+          isAuthenticated,
+          plan: analyticsPlan,
+          riskLevel: verification.risk_assessment.risk_level,
+          verdict: verification.risk_assessment.verdict,
+          signalCount: verification.signals.length,
+          warningCount: getVerificationWarningCount(verification),
+          hasFetchDegradation: detectDegradedCoverage(verification),
+        });
+      } else if (verification.status === "failed") {
+        trackAnalysisFailed({
+          sourcePath: location.pathname,
+          language,
+          isAuthenticated,
+          plan: analyticsPlan,
+          errorType: "analysis_failed",
+        });
+      }
+
+      void refreshQuotaStatus();
+
+      navigate(`/verifications/${verification.id}`, {
+        state: {
+          verification,
+        },
+      });
+    } catch (error) {
+      trackAnalysisFailed({
+        sourcePath: location.pathname,
+        language,
+        isAuthenticated,
+        plan: analyticsPlan,
+        errorType: categorizeAnalysisError(error),
+      });
+      if (error instanceof ApiRequestError && error.status === 429) {
+        await refreshQuotaStatus();
+        setSubmitError(error.message);
+        setQuotaExceededRetryAfter(error.retryAfterSeconds);
+        setQuotaExceededPlan(quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS"));
+      } else {
+        setSubmitError(
+          error instanceof Error ? error.message : copy.analyzeForm.errors.verificationFailed,
+        );
+        setQuotaExceededRetryAfter(null);
+        setQuotaExceededPlan(null);
+      }
+      onStateChange?.("error");
+    } finally {
+      setIsSubmitting(false);
+      setIsDeepScanning(false);
+    }
   }
 
   async function submitVerification(
@@ -394,8 +476,36 @@ export function AnalyzeUrlForm({
           type="submit"
           variant="primary"
         >
-          {isSubmitting ? resolvedSubmittingLabel : resolvedButtonLabel}
+          {isSubmitting
+            ? isDeepScanning
+              ? copy.analyzeForm.deepScan.progressLabel
+              : resolvedSubmittingLabel
+            : resolvedButtonLabel}
         </Button>
+        <label
+          className={
+            isAuthenticated
+              ? "analysis-form__deep-toggle"
+              : "analysis-form__deep-toggle analysis-form__deep-toggle--disabled"
+          }
+        >
+          <input
+            type="checkbox"
+            checked={deepScan && isAuthenticated}
+            disabled={isSubmitting || !isAuthenticated}
+            onChange={(event) => setDeepScan(event.target.checked)}
+          />
+          <span className="analysis-form__deep-toggle-text">
+            <span className="analysis-form__deep-toggle-label">
+              {copy.analyzeForm.deepScan.label}
+            </span>
+            <span className="analysis-form__deep-toggle-hint">
+              {isAuthenticated
+                ? copy.analyzeForm.deepScan.hint
+                : copy.analyzeForm.deepScan.authHint}
+            </span>
+          </span>
+        </label>
       </form>
       {!showQuotaPanel && showQuotaIndicator && quotaIndicator ? (
         <section className="analysis-form__quota-indicator" aria-live="polite">
