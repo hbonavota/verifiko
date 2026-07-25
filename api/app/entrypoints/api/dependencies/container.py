@@ -1,6 +1,6 @@
 import logging
 from functools import lru_cache
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from app.application.ports.auth_token_service import AuthTokenServicePort
 from app.application.ports.google_identity_verifier import GoogleIdentityVerifierPort
@@ -537,8 +537,17 @@ def get_headless_detonation() -> HeadlessDetonationPort:
     # with a 404 (and the request is never even counted). Strip defensively.
     endpoint = settings.browserless_endpoint.strip()
     if settings.detonation_enabled and endpoint:
-        # Host only — never the token — so logs stay safe to share.
-        logger.info("Headless detonation enabled; endpoint host=%s", urlsplit(endpoint).hostname)
+        # Log host, path and token *length* — never the token itself — so a
+        # misconfigured endpoint (wrong path, or a truncated/missing token) is
+        # diagnosable from logs without leaking the secret.
+        _parts = urlsplit(endpoint)
+        _token = parse_qs(_parts.query).get("token", [""])[0]
+        logger.info(
+            "Headless detonation enabled; endpoint host=%s path=%s token_len=%d",
+            _parts.hostname,
+            _parts.path,
+            len(_token),
+        )
         return BrowserlessDetonationClient(
             endpoint=endpoint,
             http_poster=build_urllib_detonation_poster(
