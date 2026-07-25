@@ -51,6 +51,27 @@ function PasteIcon() {
   );
 }
 
+function ScanIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M4 8V6.5A2.5 2.5 0 0 1 6.5 4H8M16 4h1.5A2.5 2.5 0 0 1 20 6.5V8M20 16v1.5a2.5 2.5 0 0 1-2.5 2.5H16M8 20H6.5A2.5 2.5 0 0 1 4 17.5V16"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M12 5.5v2M12 16.5v2M5.5 12h2M16.5 12h2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 interface AnalyzeUrlFormProps {
   buttonLabel?: string;
   buttonClassName?: string;
@@ -59,7 +80,7 @@ interface AnalyzeUrlFormProps {
   hint?: string;
   inputClassName?: string;
   inputLabel?: string;
-  onStateChange?: (state: "idle" | "submitting" | "error") => void;
+  onStateChange?: (state: "idle" | "submitting" | "error", meta?: { deep?: boolean }) => void;
   placeholder?: string;
   showQuotaIndicator?: boolean;
   showProPanel?: boolean;
@@ -186,7 +207,7 @@ export function AnalyzeUrlForm({
     setSubmitError(null);
     setQuotaExceededRetryAfter(null);
     setQuotaExceededPlan(null);
-    onStateChange?.("submitting");
+    onStateChange?.("submitting", { deep: true });
     trackAnalysisStarted({
       sourcePath: location.pathname,
       language,
@@ -483,27 +504,37 @@ export function AnalyzeUrlForm({
             : resolvedButtonLabel}
         </Button>
         <label
-          className={
-            isAuthenticated
-              ? "analysis-form__deep-toggle"
-              : "analysis-form__deep-toggle analysis-form__deep-toggle--disabled"
-          }
+          className={[
+            "deep-toggle",
+            deepScan && isAuthenticated ? "deep-toggle--on" : "",
+            isAuthenticated ? "" : "deep-toggle--disabled",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         >
           <input
+            className="deep-toggle__input"
             type="checkbox"
             checked={deepScan && isAuthenticated}
             disabled={isSubmitting || !isAuthenticated}
             onChange={(event) => setDeepScan(event.target.checked)}
           />
-          <span className="analysis-form__deep-toggle-text">
-            <span className="analysis-form__deep-toggle-label">
+          <span className="deep-toggle__icon" aria-hidden="true">
+            <ScanIcon />
+          </span>
+          <span className="deep-toggle__text">
+            <span className="deep-toggle__label">
               {copy.analyzeForm.deepScan.label}
+              <span className="deep-toggle__badge">{copy.analyzeForm.deepScan.badge}</span>
             </span>
-            <span className="analysis-form__deep-toggle-hint">
+            <span className="deep-toggle__hint">
               {isAuthenticated
                 ? copy.analyzeForm.deepScan.hint
                 : copy.analyzeForm.deepScan.authHint}
             </span>
+          </span>
+          <span className="deep-toggle__switch" aria-hidden="true">
+            <span className="deep-toggle__thumb" />
           </span>
         </label>
       </form>
