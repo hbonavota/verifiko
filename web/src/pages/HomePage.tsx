@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 
 import { AnalyzeUrlForm } from "../components/analysis/AnalyzeUrlForm";
 import { ScoreRing } from "../components/analysis/ScoreRing";
+import { VerificationProgress } from "../components/analysis/VerificationProgress";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -195,11 +196,7 @@ export function HomePage() {
                 <div className="analysis-result-card__summary-block">
                   <p className="analysis-result-card__headline">{copy.home.verifyingTarget}</p>
                   <p className="analysis-result-card__copy">{copy.home.collectingSignals}</p>
-                  <div className="analysis-result-card__loading-stack" aria-hidden="true">
-                    <span className="analysis-result-card__loading-line analysis-result-card__loading-line--strong" />
-                    <span className="analysis-result-card__loading-line" />
-                    <span className="analysis-result-card__loading-line analysis-result-card__loading-line--short" />
-                  </div>
+                  <VerificationProgress />
                 </div>
               </div>
             ) : isLoadingOwnedResult ? (
