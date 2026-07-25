@@ -115,7 +115,10 @@ class BrowserlessDetonationClient(HeadlessDetonationPort):
                 "context": {"url": url, "captureScreenshot": self.capture_screenshot},
             }
         ).encode("utf-8")
-        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        # NOTE: Browserless's Cloudflare edge 404s a POST to /function when the
+        # request carries `Accept: application/json` (reproducible), so we send
+        # `*/*`. The endpoint still returns JSON, which we parse regardless.
+        headers = {"Content-Type": "application/json", "Accept": "*/*"}
         status, body = self.http_poster(self.endpoint, headers, payload)
         if not 200 <= status < 300:
             raise HeadlessDetonationError(

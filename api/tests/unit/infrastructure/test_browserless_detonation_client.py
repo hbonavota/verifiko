@@ -78,6 +78,19 @@ def test_parses_browserless_response_into_detonation_result() -> None:
     assert "code" in sent
 
 
+def test_request_does_not_send_accept_application_json() -> None:
+    # Browserless's Cloudflare edge 404s a POST to /function that carries
+    # `Accept: application/json`; the client must send `*/*` instead.
+    poster = _RecordingPoster(200, _result_body())
+    client = BrowserlessDetonationClient(endpoint="https://bl.test/function?token=x", http_poster=poster)
+
+    client.detonate("https://scan.example/login")
+
+    headers = poster.calls[0]["headers"]
+    assert headers["Content-Type"] == "application/json"
+    assert headers["Accept"] == "*/*"
+
+
 def test_accepts_unwrapped_result_object() -> None:
     # Some deployments return the object directly, without a "data" envelope.
     raw = json.loads(_result_body())["data"]
