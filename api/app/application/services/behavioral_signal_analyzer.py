@@ -11,6 +11,37 @@ from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CAT
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
+# eTLD+1 of legitimate identity providers (IdP) and payment service providers
+# (PSP). A rendered login/checkout form posting credentials to one of these is
+# expected, federated behaviour — not exfiltration. Only phishing posts to an
+# attacker-controlled domain that is NOT in this set, so excluding these hosts
+# from the offsite calculation removes the main false-positive class before
+# detonation is enabled in production.
+_TRUSTED_FORM_ACTION_DOMAINS: frozenset[str] = frozenset(
+    {
+        # Identity providers / SSO
+        "auth0.com",
+        "okta.com",
+        "microsoftonline.com",
+        "live.com",
+        "google.com",
+        "amazoncognito.com",
+        "onelogin.com",
+        "pingidentity.com",
+        "apple.com",
+        "facebook.com",
+        "github.com",
+        "salesforce.com",
+        # Payment service providers
+        "stripe.com",
+        "paypal.com",
+        "checkout.com",
+        "adyen.com",
+        "braintreegateway.com",
+        "squareup.com",
+    }
+)
+
 
 @dataclass(slots=True)
 class BehavioralSignalAnalyzer:
@@ -51,7 +82,10 @@ class BehavioralSignalAnalyzer:
                     form.action_host
                     for form in password_forms
                     if form.action_host
-                    and _registered_domain_of_host(form.action_host) not in (None, page_domain)
+                    and _registered_domain_of_host(form.action_host)
+                    not in (None, page_domain)
+                    and _registered_domain_of_host(form.action_host)
+                    not in _TRUSTED_FORM_ACTION_DOMAINS
                 }
             )
             if offsite_hosts:
