@@ -1,4 +1,6 @@
+import logging
 from functools import lru_cache
+from urllib.parse import urlsplit
 
 from app.application.ports.auth_token_service import AuthTokenServicePort
 from app.application.ports.google_identity_verifier import GoogleIdentityVerifierPort
@@ -133,6 +135,8 @@ from app.infrastructure.security.sqlalchemy_utc_day_quota_limiter import (
     SqlAlchemyUtcDayQuotaLimiter,
 )
 from app.infrastructure.time.system_time_provider import SystemTimeProvider
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -498,20 +502,26 @@ def get_screenshot_store() -> ScreenshotStorePort:
     # Only build the real R2 store when storage is enabled and a bucket +
     # credentials are configured; otherwise the no-op store keeps screenshots off.
     settings = get_settings()
+    # Credentials are pasted into a dashboard by hand; a stray space or trailing
+    # newline would silently break request signing. Strip defensively.
+    r2_bucket = settings.r2_bucket.strip()
+    r2_account_id = settings.r2_account_id.strip()
+    r2_access_key_id = settings.r2_access_key_id.strip()
+    r2_secret_access_key = settings.r2_secret_access_key.strip()
     if (
         settings.screenshot_storage_enabled
-        and settings.r2_bucket
-        and settings.r2_account_id
-        and settings.r2_access_key_id
-        and settings.r2_secret_access_key
+        and r2_bucket
+        and r2_account_id
+        and r2_access_key_id
+        and r2_secret_access_key
     ):
         return R2ScreenshotStore(
             s3_client=build_r2_s3_client(
-                account_id=settings.r2_account_id,
-                access_key_id=settings.r2_access_key_id,
-                secret_access_key=settings.r2_secret_access_key,
+                account_id=r2_account_id,
+                access_key_id=r2_access_key_id,
+                secret_access_key=r2_secret_access_key,
             ),
-            bucket=settings.r2_bucket,
+            bucket=r2_bucket,
         )
     return NullScreenshotStore()
 
@@ -522,9 +532,15 @@ def get_headless_detonation() -> HeadlessDetonationPort:
     # endpoint (which carries the token) is configured. Otherwise fall back to the
     # no-op backend so an accidental call can never fabricate risk.
     settings = get_settings()
-    if settings.detonation_enabled and settings.browserless_endpoint:
+    # The endpoint URL carries the token and is pasted into a dashboard by hand;
+    # a trailing space or newline yields a malformed URL that Browserless rejects
+    # with a 404 (and the request is never even counted). Strip defensively.
+    endpoint = settings.browserless_endpoint.strip()
+    if settings.detonation_enabled and endpoint:
+        # Host only — never the token — so logs stay safe to share.
+        logger.info("Headless detonation enabled; endpoint host=%s", urlsplit(endpoint).hostname)
         return BrowserlessDetonationClient(
-            endpoint=settings.browserless_endpoint,
+            endpoint=endpoint,
             http_poster=build_urllib_detonation_poster(
                 settings.detonation_timeout_seconds
             ),
