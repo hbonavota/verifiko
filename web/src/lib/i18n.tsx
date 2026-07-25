@@ -69,6 +69,17 @@ const translations = {
       lead: "This site appears to show different content depending on who is visiting.",
       support: "This can be a sign of evasion or cloaking.",
     },
+    coverageNote: {
+      body: "We couldn't finish some checks ({areas}). The verdict is based on the ones that did complete.",
+      areas: {
+        domain: "domain registration",
+        redirects: "redirects",
+        reputation: "reputation",
+        infrastructure: "infrastructure",
+        security: "security (TLS)",
+        content: "page content",
+      },
+    },
     common: {
       result: "Result",
       signals: "Signals",
@@ -677,6 +688,17 @@ const translations = {
       badge: "Señal de evasión detectada",
       lead: "Este sitio parece mostrar contenido distinto según quién lo visite.",
       support: "Esto puede ser una señal de evasión o camuflaje.",
+    },
+    coverageNote: {
+      body: "No pudimos completar algunas comprobaciones ({areas}). El veredicto se basa en las que sí se completaron.",
+      areas: {
+        domain: "registro del dominio",
+        redirects: "redirecciones",
+        reputation: "reputación",
+        infrastructure: "infraestructura",
+        security: "seguridad (TLS)",
+        content: "contenido de la página",
+      },
     },
     common: {
       result: "Resultado",

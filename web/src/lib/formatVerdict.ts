@@ -7,7 +7,11 @@ export function formatVerdict(verdict: string, language: Language = "en") {
     return language === "es" ? "Seguro" : "Safe";
   }
 
-  if (normalizedVerdict === "CAUTION" || normalizedVerdict === "SUSPICIOUS" || normalizedVerdict === "NEEDS REVIEW") {
+  if (normalizedVerdict === "CAUTION") {
+    return language === "es" ? "Precaución" : "Caution";
+  }
+
+  if (normalizedVerdict === "SUSPICIOUS" || normalizedVerdict === "NEEDS REVIEW") {
     return language === "es" ? "Sospechoso" : "Suspicious";
   }
 
