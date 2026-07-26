@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { AnalyzeUrlForm } from "../components/analysis/AnalyzeUrlForm";
 import { ScoreRing } from "../components/analysis/ScoreRing";
+import { ActionIcon } from "../components/ui/ActionIcon";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -680,35 +681,59 @@ export function DashboardPage() {
                         <Button to={`/verifications/${verification.id}`} variant="secondary">
                           {copy.dashboard.openAction}
                         </Button>
-                        <Button
-                          onClick={() => void handleCopyLink(verification.id)}
-                          variant="ghost"
-                        >
-                          {copiedVerificationId === verification.id
-                            ? copy.dashboard.copiedAction
-                            : copy.dashboard.copyLinkAction}
-                        </Button>
-                        <Button
-                          onClick={() => void handleExportSummary(verification)}
-                          variant="ghost"
-                        >
-                          {copy.dashboard.exportTextAction}
-                        </Button>
-                        <Button
-                          disabled={rerunningVerificationId === verification.id}
-                          onClick={() => void handleRerunVerification(verification)}
-                          variant="ghost"
-                        >
-                          {rerunningVerificationId === verification.id
-                            ? copy.dashboard.rerunningAction
-                            : copy.dashboard.rerunAction}
-                        </Button>
-                        <Button
-                          onClick={() => void handleShareVerification(verification.id)}
-                          variant="ghost"
-                        >
-                          {copy.dashboard.shareAction}
-                        </Button>
+                        <div className="activity-feed__icon-actions">
+                          <button
+                            type="button"
+                            className="icon-action"
+                            onClick={() => void handleCopyLink(verification.id)}
+                            aria-label={copy.dashboard.copyLinkAction}
+                            title={copy.dashboard.copyLinkAction}
+                          >
+                            <ActionIcon name="copy" />
+                            <span className="icon-action__label">
+                              {copiedVerificationId === verification.id
+                                ? copy.dashboard.copiedAction
+                                : copy.dashboard.copyLinkAction}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-action"
+                            onClick={() => void handleExportSummary(verification)}
+                            aria-label={copy.dashboard.exportTextAction}
+                            title={copy.dashboard.exportTextAction}
+                          >
+                            <ActionIcon name="download" />
+                            <span className="icon-action__label">
+                              {copy.dashboard.exportTextAction}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-action"
+                            disabled={rerunningVerificationId === verification.id}
+                            onClick={() => void handleRerunVerification(verification)}
+                            aria-label={copy.dashboard.rerunAction}
+                            title={copy.dashboard.rerunAction}
+                          >
+                            <ActionIcon name="refresh" />
+                            <span className="icon-action__label">
+                              {rerunningVerificationId === verification.id
+                                ? copy.dashboard.rerunningAction
+                                : copy.dashboard.rerunAction}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-action"
+                            onClick={() => void handleShareVerification(verification.id)}
+                            aria-label={copy.dashboard.shareAction}
+                            title={copy.dashboard.shareAction}
+                          >
+                            <ActionIcon name="share" />
+                            <span className="icon-action__label">{copy.dashboard.shareAction}</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </article>
