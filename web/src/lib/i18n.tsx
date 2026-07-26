@@ -21,9 +21,13 @@ const translations = {
     navigation: {
       verify: "Verify",
       review: "Review",
+      history: "History",
+      info: "How it works",
       status: "Status",
       login: "Login",
       primaryLabel: "Primary",
+      openMenu: "Open menu",
+      closeMenu: "Close menu",
     },
     topbar: {
       eyebrow: "Verification",
@@ -343,6 +347,25 @@ const translations = {
       eyebrow: "Review",
       title: "Review results",
       description: "Open a result or verify another link.",
+      howItWorks: {
+        eyebrow: "How it works",
+        title: "Check any link before you trust it",
+        lead: "Verifiko inspects a link the way an analyst would — without you ever opening it.",
+        steps: [
+          {
+            title: "Paste the link",
+            copy: "Drop in any suspicious link from an email, an SMS or an ad.",
+          },
+          {
+            title: "We analyze it in seconds",
+            copy: "We check the domain, reputation, certificate and content — you never visit the site.",
+          },
+          {
+            title: "Get a clear verdict",
+            copy: "You get a trust score, and with deep analysis, a real screenshot of the page.",
+          },
+        ],
+      },
       newVerification: "New verification",
       verifyAnotherLink: "Verify another link",
       latestResult: "Latest result",
@@ -661,9 +684,13 @@ const translations = {
     navigation: {
       verify: "Verificar",
       review: "Revisar",
+      history: "Historial",
+      info: "Cómo funciona",
       status: "Estado",
       login: "Iniciar sesión",
       primaryLabel: "Principal",
+      openMenu: "Abrir menú",
+      closeMenu: "Cerrar menú",
     },
     topbar: {
       eyebrow: "Verificación",
@@ -985,6 +1012,25 @@ const translations = {
       eyebrow: "Revisión",
       title: "Revisar resultados",
       description: "Abre un resultado o verifica otro enlace.",
+      howItWorks: {
+        eyebrow: "Cómo funciona",
+        title: "Verificá cualquier enlace antes de confiar",
+        lead: "Verifiko revisa un enlace como lo haría un analista — sin que vos tengas que abrirlo.",
+        steps: [
+          {
+            title: "Pegá el enlace",
+            copy: "Poné cualquier enlace sospechoso de un email, un SMS o una promo.",
+          },
+          {
+            title: "Lo analizamos en segundos",
+            copy: "Revisamos dominio, reputación, certificado y contenido — vos nunca entrás al sitio.",
+          },
+          {
+            title: "Recibí un veredicto claro",
+            copy: "Te damos un puntaje de confianza y, con análisis profundo, una captura real de la página.",
+          },
+        ],
+      },
       newVerification: "Nueva verificación",
       verifyAnotherLink: "Verificar otro enlace",
       latestResult: "Último resultado",

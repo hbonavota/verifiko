@@ -129,6 +129,31 @@
   display: none;
 }
 
+.sidebar__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sidebar__menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.sidebar__menu-toggle:hover {
+  background: var(--color-surface-strong);
+  border-color: rgba(0, 191, 255, 0.4);
+}
+
 .sidebar-account,
 .sidebar-account__identity,
 .sidebar-account__copy,
@@ -690,5 +715,33 @@
   .site-footer__text {
     font-size: 0.82rem;
     text-align: center;
+  }
+}
+
+/* Collapse the primary nav behind a hamburger on narrow viewports. */
+@media (max-width: 1120px) {
+  .sidebar__menu-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar-nav {
+    display: none;
+    grid-auto-flow: row;
+    grid-auto-columns: initial;
+    overflow: visible;
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .sidebar-nav--open {
+    display: grid;
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+  }
+
+  .sidebar-nav--open .sidebar-nav__link,
+  .sidebar-nav--open .sidebar-nav__button {
+    width: 100%;
+    justify-content: flex-start;
   }
 }

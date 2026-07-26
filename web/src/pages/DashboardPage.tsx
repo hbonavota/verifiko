@@ -312,6 +312,27 @@ export function DashboardPage() {
         </section>
       ) : null}
 
+      {!currentUser ? (
+        <section className="how-it-works" aria-label={copy.dashboard.howItWorks.title}>
+          <p className="how-it-works__eyebrow">{copy.dashboard.howItWorks.eyebrow}</p>
+          <h2 className="how-it-works__title">{copy.dashboard.howItWorks.title}</h2>
+          <p className="how-it-works__lead">{copy.dashboard.howItWorks.lead}</p>
+          <div className="how-it-works__steps">
+            {copy.dashboard.howItWorks.steps.map((step, index) => (
+              <article key={step.title} className="how-it-works__step">
+                <span className="how-it-works__step-num" aria-hidden="true">
+                  {index + 1}
+                </span>
+                <div>
+                  <p className="how-it-works__step-title">{step.title}</p>
+                  <p className="how-it-works__step-copy">{step.copy}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <Card
         eyebrow={copy.dashboard.newVerification}
         title={copy.dashboard.verifyAnotherLink}
