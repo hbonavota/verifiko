@@ -441,7 +441,7 @@ export function DashboardPage() {
             </div>
             <p className="metric-card__detail">{copy.dashboard.emptySignedInCopy}</p>
             <div className="dashboard-assessment-card__actions">
-              <Button to="/#analyze-url" variant="primary">
+              <Button to="/app#analyze-url" variant="primary">
                 {copy.dashboard.emptySignedInAction}
               </Button>
             </div>

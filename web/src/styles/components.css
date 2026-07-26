@@ -2220,6 +2220,29 @@
 .score-ring--success.score-ring--hero::after {
   opacity: 1;
   background: radial-gradient(circle, rgba(25, 195, 125, 0.18), transparent 68%);
+  /* A one-time celebratory glow — only for a safe verdict, never for risk. */
+  animation: score-ring-celebrate 1.15s ease-out 1;
+}
+
+@keyframes score-ring-celebrate {
+  0% {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+  45% {
+    transform: scale(1.14);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .score-ring--success.score-ring--hero::after {
+    animation: none;
+  }
 }
 
 .score-ring--warning-strong .score-ring__progress {
