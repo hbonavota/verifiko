@@ -706,10 +706,10 @@ const translations = {
     },
     landing: {
       eyebrow: "Seguridad de enlaces, en segundos",
-      title: "Sabé si un enlace es seguro antes de hacer clic",
-      lead: "Pegá cualquier enlace y Verifiko revisa el dominio, la reputación, el certificado y el contenido. Con análisis profundo abre la página en un entorno seguro y te muestra una captura — nunca tenés que entrar.",
+      title: "Sabe si un enlace es seguro antes de hacer clic",
+      lead: "Pega cualquier enlace y Verifiko revisa el dominio, la reputación, el certificado y el contenido. Con análisis profundo abre la página en un entorno seguro y te muestra una captura — nunca tienes que entrar.",
       start: "Empezar ahora",
-      ctaNote: "Gratis · no necesitás registrarte para probar",
+      ctaNote: "Gratis · no necesitas registrarte para probar",
       emailCta: "Iniciar sesión con email",
     },
     topbar: {
@@ -840,8 +840,8 @@ const translations = {
       deepScan: {
         label: "Análisis profundo",
         badge: "Más seguro",
-        hint: "Abrimos la web por vos en un entorno aislado y te mostramos una captura — sin que tengas que entrar. Protección extra (~15–20s).",
-        authHint: "Iniciá sesión para desbloquear el análisis profundo — tocá para continuar.",
+        hint: "Abrimos la web por ti en un entorno aislado y te mostramos una captura — sin que tengas que entrar. Protección extra (~15–20s).",
+        authHint: "Inicia sesión para desbloquear el análisis profundo — toca para continuar.",
         progressLabel: "Analizando en profundidad…",
       },
       pasteAriaLabel: "Pegar un enlace desde el portapapeles",
@@ -852,8 +852,8 @@ const translations = {
         clipboardEmpty: "El portapapeles no contiene un enlace para verificar.",
         clipboardBlocked: "El acceso al portapapeles fue bloqueado.",
         enterUrl: "Introduce una URL para verificar.",
-        invalidUrl: "Eso no parece un enlace válido. Pegá una URL completa (ej.: ejemplo.com).",
-        analysisFailed: "No pudimos terminar de analizar ese enlace — puede estar inaccesible. Probá de nuevo o revisá la URL.",
+        invalidUrl: "Eso no parece un enlace válido. Pega una URL completa (ej.: ejemplo.com).",
+        analysisFailed: "No pudimos terminar de analizar ese enlace — puede estar inaccesible. Prueba de nuevo o revisa la URL.",
         verificationFailed: "La verificación falló.",
       },
       quota: {
@@ -1037,19 +1037,19 @@ const translations = {
       description: "Abre un resultado o verifica otro enlace.",
       howItWorks: {
         eyebrow: "Cómo funciona",
-        title: "Verificá cualquier enlace antes de confiar",
-        lead: "Verifiko revisa un enlace como lo haría un analista — sin que vos tengas que abrirlo.",
+        title: "Verifica cualquier enlace antes de confiar",
+        lead: "Verifiko revisa un enlace como lo haría un analista — sin que tengas que abrirlo.",
         steps: [
           {
-            title: "Pegá el enlace",
-            copy: "Poné cualquier enlace sospechoso de un email, un SMS o una promo.",
+            title: "Pega el enlace",
+            copy: "Pon cualquier enlace sospechoso de un email, un SMS o una promo.",
           },
           {
             title: "Lo analizamos en segundos",
-            copy: "Revisamos dominio, reputación, certificado y contenido — vos nunca entrás al sitio.",
+            copy: "Revisamos dominio, reputación, certificado y contenido — tú nunca entras al sitio.",
           },
           {
-            title: "Recibí un veredicto claro",
+            title: "Recibe un veredicto claro",
             copy: "Te damos un puntaje de confianza y, con análisis profundo, una captura real de la página.",
           },
         ],
@@ -1167,7 +1167,7 @@ const translations = {
       screenshot: {
         eyebrow: "Vista previa",
         title: "Captura del sitio",
-        description: "Lo que la página mostró cuando la abrimos por vos en un navegador aislado y seguro.",
+        description: "Lo que la página mostró cuando la abrimos por ti en un navegador aislado y seguro.",
         caption: "Capturada sin que tengas que entrar al sitio",
         alt: "Captura tomada al abrir la página analizada",
         viewAction: "Ver captura",

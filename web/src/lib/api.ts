@@ -196,11 +196,11 @@ export async function runDeepScan(
   const language = getStoredLanguage();
   const failedMessage =
     language === "es"
-      ? "No pudimos completar el análisis profundo. Probá de nuevo."
+      ? "No pudimos completar el análisis profundo. Prueba de nuevo."
       : "We couldn't complete the deep analysis. Please try again.";
   const timeoutMessage =
     language === "es"
-      ? "El análisis profundo está tardando más de lo normal. Probá de nuevo en un momento."
+      ? "El análisis profundo está tardando más de lo normal. Prueba de nuevo en un momento."
       : "The deep analysis is taking longer than usual. Please try again shortly.";
 
   const accepted = await submitScan(input);
