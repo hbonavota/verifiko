@@ -56,6 +56,12 @@ _SCAN_CACHES = (
     "get_verification_scan_processor",
     "get_verification_scan_dispatcher",
     "get_scan_webhook_notifier",
+    # Submitting a scan now consumes the daily/burst quota, so these limiters must
+    # be rebuilt per test (fresh DB-backed counter + empty in-memory burst window)
+    # to keep tests isolated.
+    "get_authenticated_verification_rate_limiter",
+    "get_create_verification_burst_rate_limiter",
+    "get_user_quota_policy",
 )
 
 
@@ -156,6 +162,22 @@ def test_submit_returns_202_and_poll_reaches_completed(client: TestClient) -> No
     assert result["result_verification_id"]
     assert result["result"] is not None
     assert result["result"]["risk_assessment"]["risk_level"]
+
+
+def test_scan_consumes_daily_quota(client: TestClient) -> None:
+    # A deep scan must draw from the same daily quota as a fast verification;
+    # otherwise the counter never moves for signed-in users.
+    headers = _register(client)
+
+    first = client.post("/api/v1/scans", json={"url": "https://example.org"}, headers=headers)
+    assert first.status_code == 202
+    remaining_after_first = int(first.headers["X-RateLimit-Remaining"])
+
+    second = client.post("/api/v1/scans", json={"url": "https://example.org"}, headers=headers)
+    assert second.status_code == 202
+    remaining_after_second = int(second.headers["X-RateLimit-Remaining"])
+
+    assert remaining_after_second == remaining_after_first - 1
 
 
 def test_batch_creates_multiple_scans(client: TestClient) -> None:

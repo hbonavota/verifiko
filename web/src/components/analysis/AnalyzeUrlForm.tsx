@@ -264,7 +264,9 @@ export function AnalyzeUrlForm({
         setQuotaExceededPlan(quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS"));
       } else {
         setSubmitError(
-          error instanceof Error ? error.message : copy.analyzeForm.errors.verificationFailed,
+          error instanceof ApiRequestError
+            ? error.message
+            : copy.analyzeForm.errors.verificationFailed,
         );
         setQuotaExceededRetryAfter(null);
         setQuotaExceededPlan(null);
@@ -356,7 +358,9 @@ export function AnalyzeUrlForm({
         setQuotaExceededPlan(quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS"));
       } else {
         setSubmitError(
-          error instanceof Error ? error.message : copy.analyzeForm.errors.verificationFailed,
+          error instanceof ApiRequestError
+            ? error.message
+            : copy.analyzeForm.errors.verificationFailed,
         );
         setQuotaExceededRetryAfter(null);
         setQuotaExceededPlan(null);
