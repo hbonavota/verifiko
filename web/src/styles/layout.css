@@ -347,14 +347,28 @@
 
 .topbar-account__actions {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  justify-content: center;
+  min-width: 9.5rem;
+}
+
+.topbar-account__actions > * {
+  white-space: nowrap;
 }
 
 .topbar-account__upgrade-button {
-  min-width: 10.5rem;
+  min-width: 0;
+}
+
+@media (max-width: 1120px) {
+  .topbar-account__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+  }
 }
 
 .topbar-auth {
