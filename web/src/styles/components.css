@@ -1166,10 +1166,15 @@
 
 .dashboard-main {
   gap: var(--space-4);
+  /* Grid items default to min-width:auto, so wide content (long URLs, action
+     rows) can push the column past its track and overflow the page. Pin to 0 so
+     both columns stay within the grid and their children truncate/wrap. */
+  min-width: 0;
 }
 
 .dashboard-rail {
   gap: var(--space-4);
+  min-width: 0;
 }
 
 .dashboard-summary-card {
