@@ -13,6 +13,31 @@ let googleIdentityScriptPromise: Promise<void> | null = null;
 let hasLoggedMissingClientId = false;
 let hasLoggedInitializationFailure = false;
 
+// google.accounts.id.initialize() must run only once for the whole app —
+// calling it per button (and on every re-render) triggers the GSI "initialized
+// multiple times" warning. Initialize once and route the credential to whichever
+// button is currently mounted via a shared handler.
+let googleIdentityInitialized = false;
+let activeGoogleCredentialHandler: ((credential: string) => void) | null = null;
+
+function ensureGoogleIdentityInitialized(): void {
+  if (googleIdentityInitialized || !window.google?.accounts?.id) {
+    return;
+  }
+  window.google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: (response) => {
+      if (response.credential) {
+        activeGoogleCredentialHandler?.(response.credential);
+      }
+    },
+    ux_mode: "popup",
+    auto_select: false,
+    cancel_on_tap_outside: true,
+  });
+  googleIdentityInitialized = true;
+}
+
 interface GoogleSignInButtonProps {
   className?: string;
   onSuccess?: () => void | Promise<void>;
@@ -61,29 +86,21 @@ export function GoogleSignInButton({
         return;
       }
 
+      // This button becomes the active credential target while it is mounted.
+      activeGoogleCredentialHandler = (credential) => {
+        void loginWithGoogleCredential(credential)
+          .then(async () => {
+            setRuntimeErrorMessage(null);
+            await onSuccess?.();
+          })
+          .catch((error) => {
+            setRuntimeErrorMessage(
+              error instanceof Error ? error.message : copy.topbar.authenticationFailed,
+            );
+          });
+      };
+      ensureGoogleIdentityInitialized();
       host.replaceChildren();
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: (response) => {
-          if (!response.credential) {
-            return;
-          }
-
-          void loginWithGoogleCredential(response.credential)
-            .then(async () => {
-              setRuntimeErrorMessage(null);
-              await onSuccess?.();
-            })
-            .catch((error) => {
-              setRuntimeErrorMessage(
-                error instanceof Error ? error.message : copy.topbar.authenticationFailed,
-              );
-            });
-        },
-        ux_mode: "popup",
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
       window.google.accounts.id.renderButton(host, {
         theme: variant === "quota" ? "filled_black" : "outline",
         size: variant === "quota" ? "large" : "medium",

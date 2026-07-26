@@ -79,6 +79,7 @@ export function DashboardPage() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [copiedVerificationId, setCopiedVerificationId] = useState<string | null>(null);
   const [rerunningVerificationId, setRerunningVerificationId] = useState<string | null>(null);
+  const [cardFeedback, setCardFeedback] = useState<{ id: string; text: string } | null>(null);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
 
   useDocumentMeta(
@@ -172,6 +173,14 @@ export function DashboardPage() {
     };
   }, [copiedVerificationId]);
 
+  useEffect(() => {
+    if (!cardFeedback) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => setCardFeedback(null), 2600);
+    return () => window.clearTimeout(timeoutId);
+  }, [cardFeedback]);
+
   const activeReasons =
     activeRiskAssessment && activeRiskAssessment.topSignals.length > 0
       ? activeRiskAssessment.topSignals.slice(0, 3)
@@ -237,17 +246,17 @@ export function DashboardPage() {
     });
 
     if (result === "copied") {
-      setWorkspaceMessage(copy.dashboard.shareFallbackCopied);
+      setCardFeedback({ id: verificationId, text: copy.dashboard.shareFallbackCopied });
       return;
     }
 
     if (result === "unavailable") {
-      setWorkspaceMessage(copy.dashboard.copyLinkUnavailable);
+      setCardFeedback({ id: verificationId, text: copy.dashboard.copyLinkUnavailable });
       return;
     }
 
     if (result === "shared") {
-      setWorkspaceMessage(null);
+      setCardFeedback({ id: verificationId, text: copy.dashboard.sharedAction });
     }
   }
 
@@ -268,9 +277,10 @@ export function DashboardPage() {
       },
     });
 
-    setWorkspaceMessage(
-      didCopy ? copy.dashboard.exportTextCopied : copy.dashboard.copyLinkUnavailable,
-    );
+    setCardFeedback({
+      id: verification.id,
+      text: didCopy ? copy.dashboard.exportTextCopied : copy.dashboard.copyLinkUnavailable,
+    });
   }
 
   return (
@@ -649,9 +659,6 @@ export function DashboardPage() {
                           label={formatRiskLevel(verification.riskAssessment.riskLevel, language)}
                           tone={toneForCount(verification.riskAssessment.riskLevel)}
                         />
-                        <p className="activity-feed__verdict">
-                          {formatVerdict(verification.riskAssessment.verdict, language)}
-                        </p>
                       </div>
                     </div>
                     <div className="activity-feed__meta">
@@ -734,6 +741,11 @@ export function DashboardPage() {
                             <span className="icon-action__label">{copy.dashboard.shareAction}</span>
                           </button>
                         </div>
+                        {cardFeedback?.id === verification.id ? (
+                          <p className="activity-feed__action-message" role="status">
+                            {cardFeedback.text}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </article>

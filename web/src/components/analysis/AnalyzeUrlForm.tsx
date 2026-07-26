@@ -199,6 +199,14 @@ export function AnalyzeUrlForm({
       return;
     }
 
+    if (!looksLikeUrl(trimmedTarget)) {
+      setSubmitError(copy.analyzeForm.errors.invalidUrl);
+      setQuotaExceededRetryAfter(null);
+      setQuotaExceededPlan(null);
+      onStateChange?.("error");
+      return;
+    }
+
     if (deepScan && isAuthenticated) {
       await submitDeepScan(trimmedTarget, inputType);
       return;
@@ -877,6 +885,19 @@ function resolveQuotaIndicatorCopy(
           : copy.analyzeForm.quotaIndicator.freeNote,
         valueCue: copy.analyzeForm.quotaIndicator.freeValueCue,
       };
+}
+
+function looksLikeUrl(value: string): boolean {
+  if (/\s/.test(value)) {
+    return false;
+  }
+  const candidate = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  try {
+    const url = new URL(candidate);
+    return url.hostname.includes(".");
+  } catch {
+    return false;
+  }
 }
 
 function formatRetryAfter(seconds: number, language: "en" | "es"): string {
