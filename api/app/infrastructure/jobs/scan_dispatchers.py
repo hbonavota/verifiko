@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from typing import Callable
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from app.application.ports.verification_job_dispatcher import VerificationJobDispatcher
 from app.application.services.verification_scan_processor import VerificationScanProcessor
 
 logger = logging.getLogger(__name__)
+
+# A poster returns (status_code, body) and raises on transport-level failure so
+# the dispatcher can log a delivery problem without crashing the request.
+QStashHttpPoster = Callable[[str, dict[str, str], bytes], tuple[int, str]]
 
 
 class SynchronousVerificationJobDispatcher(VerificationJobDispatcher):
@@ -44,3 +52,84 @@ class ThreadPoolVerificationJobDispatcher(VerificationJobDispatcher):
         exception = future.exception()
         if exception is not None:  # pragma: no cover - defensive; processor handles its own errors
             logger.exception("Scan job %s crashed in the worker", job_id, exc_info=exception)
+
+
+class QStashDeliveryError(Exception):
+    """Raised by the default poster on a transport-level failure."""
+
+
+class QStashVerificationJobDispatcher(VerificationJobDispatcher):
+    """Hands the job to Upstash QStash, which then invokes the internal worker
+    endpoint as its own HTTP request.
+
+    On serverless (Vercel) a background thread is not guaranteed to keep running
+    once the 202 response is sent, so a 10-30s detonation can be frozen midway.
+    Publishing to QStash instead makes the pipeline run in a *separate*
+    invocation (the internal ``/scans/process`` endpoint), with QStash providing
+    at-least-once delivery and retries. The dispatcher is a port, so the API and
+    use cases are unchanged.
+
+    Publishing is best-effort from the request's point of view: a publish failure
+    is logged and the job stays QUEUED rather than failing the user's submit. It
+    never blocks on the pipeline itself.
+    """
+
+    def __init__(
+        self,
+        *,
+        token: str,
+        publish_base_url: str,
+        callback_url: str,
+        http_poster: QStashHttpPoster,
+        max_retries: int = 3,
+    ) -> None:
+        self._token = token
+        # QStash publishes to ``{publish_base_url}{destination_url}``.
+        self._publish_url = publish_base_url.rstrip("/") + "/" + callback_url
+        self._max_retries = max_retries
+        self._http_poster = http_poster
+
+    def dispatch(self, job_id: str) -> None:
+        body = json.dumps({"job_id": job_id}).encode("utf-8")
+        headers = {
+            "Authorization": f"Bearer {self._token}",
+            "Content-Type": "application/json",
+            # QStash forwards this body to the destination and retries on a
+            # non-2xx response from the worker.
+            "Upstash-Retries": str(self._max_retries),
+        }
+        try:
+            status_code, response_body = self._http_poster(self._publish_url, headers, body)
+        except QStashDeliveryError:
+            logger.exception(
+                "Failed to publish scan job %s to QStash; it remains queued.", job_id
+            )
+            return
+        if not 200 <= status_code < 300:
+            logger.error(
+                "QStash rejected publish for scan job %s: status=%s body=%s",
+                job_id,
+                status_code,
+                response_body[:200],
+            )
+
+
+def build_urllib_qstash_poster(timeout_seconds: float = 5.0) -> QStashHttpPoster:
+    """A poster backed by urllib. Network errors surface as
+    ``QStashDeliveryError`` so the dispatcher can log a delivery problem."""
+
+    def _post(url: str, headers: dict[str, str], body: bytes) -> tuple[int, str]:
+        request = Request(url, data=body, headers=headers, method="POST")
+        try:
+            with urlopen(request, timeout=timeout_seconds) as response:
+                return response.status, response.read().decode("utf-8", "replace")
+        except HTTPError as exc:
+            try:
+                detail = exc.read().decode("utf-8", "replace")
+            except Exception:  # noqa: BLE001
+                detail = ""
+            return exc.code, detail
+        except (URLError, TimeoutError, OSError) as exc:
+            raise QStashDeliveryError(str(exc)) from exc
+
+    return _post

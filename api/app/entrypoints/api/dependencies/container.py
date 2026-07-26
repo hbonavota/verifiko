@@ -73,7 +73,15 @@ from app.infrastructure.email.resend_email_sender import (
     ResendEmailSender,
     build_urllib_email_poster,
 )
-from app.infrastructure.jobs.scan_dispatchers import ThreadPoolVerificationJobDispatcher
+from app.application.ports.verification_job_dispatcher import VerificationJobDispatcher
+from app.infrastructure.jobs.scan_dispatchers import (
+    QStashVerificationJobDispatcher,
+    ThreadPoolVerificationJobDispatcher,
+    build_urllib_qstash_poster,
+)
+from app.infrastructure.security.qstash_signature_verifier import (
+    QStashSignatureVerifier,
+)
 from app.infrastructure.webhooks.http_scan_webhook_notifier import (
     HttpScanWebhookNotifier,
     build_urllib_webhook_poster,
@@ -660,10 +668,34 @@ def get_verification_scan_processor() -> VerificationScanProcessor:
 
 
 @lru_cache(maxsize=1)
-def get_verification_scan_dispatcher() -> ThreadPoolVerificationJobDispatcher:
+def get_qstash_signature_verifier() -> QStashSignatureVerifier:
+    settings = get_settings()
+    return QStashSignatureVerifier(
+        current_signing_key=settings.qstash_current_signing_key,
+        next_signing_key=settings.qstash_next_signing_key,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_verification_scan_dispatcher() -> VerificationJobDispatcher:
+    # Default ("thread") keeps the in-process background worker — byte-for-byte
+    # unchanged. "qstash" swaps in the durable publisher so the pipeline runs in
+    # a separate invocation that survives on serverless. The submit use case only
+    # depends on the port, so nothing downstream changes.
+    settings = get_settings()
+    if settings.scan_dispatch_mode == "qstash":
+        return QStashVerificationJobDispatcher(
+            token=settings.qstash_token,
+            publish_base_url=settings.qstash_publish_base_url,
+            callback_url=settings.qstash_worker_callback_url,
+            http_poster=build_urllib_qstash_poster(
+                settings.qstash_publish_timeout_seconds
+            ),
+            max_retries=settings.qstash_max_retries,
+        )
     return ThreadPoolVerificationJobDispatcher(
         processor=get_verification_scan_processor(),
-        max_workers=get_settings().scan_worker_max_workers,
+        max_workers=settings.scan_worker_max_workers,
     )
 
 

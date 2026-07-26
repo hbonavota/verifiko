@@ -66,6 +66,26 @@ class Settings(BaseSettings):
     scan_webhook_signing_secret: str = "verifiko-dev-webhook-secret"
     scan_webhook_timeout_seconds: float = 5.0
     scan_webhook_max_attempts: int = 3
+    # Async scan worker durability. The default in-process ThreadPool dispatcher
+    # returns a 202 and finishes the pipeline on a background thread — fine for a
+    # long-lived process, but on serverless (Vercel) the instance is frozen once
+    # the response is sent, so a 10-30s detonation may never complete. Switching
+    # this to "qstash" publishes the job to Upstash QStash, which then calls the
+    # internal worker endpoint as its own invocation (with retries). "thread"
+    # keeps the byte-for-byte current behaviour and is the default.
+    scan_dispatch_mode: str = "thread"  # "thread" | "qstash"
+    # QStash publish credentials + destination. The callback URL must be the
+    # public URL of this API's internal worker route (e.g.
+    # https://api.verifiko.es/api/v1/scans/process).
+    qstash_token: str = ""
+    qstash_publish_base_url: str = "https://qstash.upstash.io/v2/publish/"
+    qstash_worker_callback_url: str = ""
+    qstash_publish_timeout_seconds: float = 5.0
+    qstash_max_retries: int = 3
+    # QStash signing keys used to verify the Upstash-Signature on inbound worker
+    # calls. Two keys support Upstash's rotation (current + next).
+    qstash_current_signing_key: str = ""
+    qstash_next_signing_key: str = ""
     resend_api_key: str = ""
     magic_link_from_email: str = "login@verifiko.es"
     magic_link_base_url: str = "https://www.verifiko.es"
