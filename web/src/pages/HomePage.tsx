@@ -18,7 +18,7 @@ import { adaptApiVerification } from "../lib/verificationAdapter";
 import { toneForRiskLevel } from "../lib/risk";
 import { useDocumentMeta } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
-import type { RiskLevel, VerificationSummary } from "../types/verification";
+import type { ApiVerification, RiskLevel, VerificationSummary } from "../types/verification";
 
 function cardToneForRiskLevel(riskLevel: RiskLevel) {
   const tone = toneForRiskLevel(riskLevel);
@@ -39,7 +39,7 @@ export function HomePage() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [analysisState, setAnalysisState] = useState<"idle" | "submitting" | "error">("idle");
   const [deepAnalysisActive, setDeepAnalysisActive] = useState(false);
-  const resultCardRef = useRef<HTMLDivElement | null>(null);
+  const [inlineResult, setInlineResult] = useState<VerificationSummary | null>(null);
   const hasTrackedAnonymousSupportRef = useRef(false);
 
   useEffect(() => {
@@ -87,29 +87,7 @@ export function HomePage() {
     };
   }, [authReady, currentUser, language]);
 
-  useEffect(() => {
-    if (analysisState !== "submitting") {
-      return;
-    }
-
-    if (!window.matchMedia("(max-width: 720px)").matches) {
-      return;
-    }
-
-    const frameId = window.requestAnimationFrame(() => {
-      resultCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [analysisState]);
-
-  const latestVerification = verifications[0] ?? null;
-  const latestSignals = latestVerification?.signals.slice(0, 2) ?? [];
-  const latestRiskAssessment = latestVerification?.riskAssessment;
   const isLoadingAnalysis = analysisState === "submitting";
-  const isLoadingOwnedResult = !isLoadingAnalysis && authReady && !!currentUser && isHistoryLoading;
   const showAnonymousSupport = authReady && !currentUser;
   const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
   const isAuthenticated = Boolean(currentUser);
@@ -146,9 +124,25 @@ export function HomePage() {
     }
   }, [analyticsPlan, isAuthenticated, language, location.pathname, showAnonymousSupport]);
 
+  function handleVerified(verification: ApiVerification) {
+    setInlineResult(adaptApiVerification(verification, language));
+    setAnalysisState("idle");
+  }
+
+  function handleVerifyAnother() {
+    setInlineResult(null);
+  }
+
+  // While a scan is running (or a fresh result is ready) the verify card morphs
+  // in place: the form is swapped for the live spinner and then the result, so
+  // the user watches it happen without navigating or scrolling to hunt for it.
+  const showActivityPanel = isLoadingAnalysis || inlineResult !== null;
+
   return (
     <PageShell>
-      <section className="analysis-hero">
+      <section
+        className={`analysis-hero${showActivityPanel ? " analysis-hero--active" : ""}`}
+      >
         <div className="analysis-hero__content" id="analyze-url">
           <SectionTitle
             eyebrow={copy.home.eyebrow}
@@ -156,232 +150,161 @@ export function HomePage() {
             description={copy.home.description}
           />
 
-          <Card className="analysis-hero__panel" tone="success">
-            <p className="hero-panel__eyebrow">{copy.home.startVerification}</p>
-
-            <AnalyzeUrlForm
-              buttonLabel={copy.analyzeForm.buttonLabel}
-              buttonClassName="analysis-form__button analysis-form__button--hero"
-              className="analysis-form--hero"
-              hint=""
-              inputClassName="analysis-form__input-control"
-              onStateChange={(state, meta) => {
-                setAnalysisState(state);
-                if (state === "submitting") {
-                  setDeepAnalysisActive(Boolean(meta?.deep));
+          {showActivityPanel ? (
+            <div className="analysis-hero__result-shell">
+              <Card
+                eyebrow={
+                  isLoadingAnalysis
+                    ? deepAnalysisActive
+                      ? copy.home.deepVerifying
+                      : copy.home.verifying
+                    : copy.home.latestResult
                 }
-              }}
-              showQuotaIndicator={false}
-              showProPanel={false}
-            />
-          </Card>
-        </div>
-
-        <div ref={resultCardRef} className="analysis-hero__result-shell">
-          <Card
-            eyebrow={
-              isLoadingAnalysis
-                ? deepAnalysisActive
-                  ? copy.home.deepVerifying
-                  : copy.home.verifying
-                : latestVerification
-                  ? copy.home.latestResult
-                  : copy.home.result
-            }
-            title={
-              isLoadingAnalysis
-                ? deepAnalysisActive
-                  ? copy.home.deepInProgress
-                  : copy.home.verificationInProgress
-                : latestVerification
-                  ? copy.home.verificationResult
-                  : copy.home.readyToVerify
-            }
-            description={undefined}
-            tone={
-              isLoadingAnalysis
-                ? "success"
-                : latestVerification
-                  ? cardToneForRiskLevel(latestRiskAssessment.riskLevel)
-                  : "default"
-            }
-            className="analysis-hero__result"
-          >
-            {isLoadingAnalysis ? (
-              <div className="analysis-result-card__hero">
-                <ScoreRing
-                  label={deepAnalysisActive ? copy.home.deepVerifying : copy.home.verifying}
-                  size="hero"
-                  state="loading"
-                  valueLabel="…"
-                />
-                <div className="analysis-result-card__summary-block">
-                  <p className="analysis-result-card__headline">
-                    {deepAnalysisActive ? copy.home.deepVerifyingTarget : copy.home.verifyingTarget}
-                  </p>
-                  <p className="analysis-result-card__copy">
-                    {deepAnalysisActive ? copy.home.deepCollectingSignals : copy.home.collectingSignals}
-                  </p>
-                  <VerificationProgress deep={deepAnalysisActive} />
-                </div>
-              </div>
-            ) : isLoadingOwnedResult ? (
-              <div className="analysis-result-card__hero analysis-result-card__hero--empty">
-                <ScoreRing label={copy.common.loadingResult} size="hero" state="loading" valueLabel="..." />
-                <div className="analysis-result-card__summary-block">
-                  <p className="analysis-result-card__headline">{copy.home.latestResult}</p>
-                  <p className="analysis-result-card__copy">{copy.home.loadingOwnedResult}</p>
-                </div>
-              </div>
-            ) : latestVerification ? (
-              <>
-                <div className="analysis-result-card__topline">
-                  <Badge
-                    label={formatRiskLevel(latestRiskAssessment.riskLevel, language)}
-                    tone={toneForRiskLevel(latestRiskAssessment.riskLevel)}
-                  />
-                </div>
-
-                <div className="analysis-result-card__hero">
-                  <ScoreRing
-                    label={copy.common.trustScore}
-                    riskLevel={latestRiskAssessment.riskLevel}
-                    score={latestRiskAssessment.score}
-                    size="hero"
-                  />
-
-                  <div className="analysis-result-card__summary-block">
-                    <p
-                      className="analysis-result-card__subject"
-                      title={latestVerification.originalInput}
-                    >
-                      {latestVerification.originalInput}
-                    </p>
-                    <p className="preview-card__label">{copy.common.result}</p>
-                    <p
-                      className="analysis-result-card__headline"
-                      title={`${copy.common.verificationResult}: ${formatVerdict(latestRiskAssessment.verdict, language)}`}
-                    >
-                      {formatVerdict(latestRiskAssessment.verdict, language)}
-                    </p>
-                    <p className="analysis-result-card__copy">
-                      {resultNote({
-                        score: latestRiskAssessment.score,
-                        warnings: [
-                          ...(latestRiskAssessment.analysisWarnings ?? []),
-                          ...(latestRiskAssessment.explanation?.coverageWarnings ?? []),
-                        ],
-                        scoreGuide: copy.detail.scoreGuide,
-                        coverageNote: copy.coverageNote,
-                      })}
-                    </p>
-                    <div className="analysis-result-card__actions">
-                      <Button
-                        to={`/verifications/${latestVerification.id}`}
-                        variant="primary"
-                        onClick={() => {
-                          trackResultActionClicked({
-                            sourcePath: location.pathname,
-                            language,
-                            isAuthenticated,
-                            plan: analyticsPlan,
-                            action: "view_result",
-                            resultState: "latest_result",
-                          });
-                        }}
-                      >
-                        {copy.common.viewResult}
-                      </Button>
-                      <Button
-                        to="/dashboard"
-                        variant="secondary"
-                        onClick={() => {
-                          trackResultActionClicked({
-                            sourcePath: location.pathname,
-                            language,
-                            isAuthenticated,
-                            plan: analyticsPlan,
-                            action: "review_signals",
-                            resultState: "latest_result",
-                          });
-                        }}
-                      >
-                        {copy.common.reviewSignals}
-                      </Button>
+                title={
+                  isLoadingAnalysis
+                    ? deepAnalysisActive
+                      ? copy.home.deepInProgress
+                      : copy.home.verificationInProgress
+                    : copy.home.verificationResult
+                }
+                description={undefined}
+                tone={
+                  isLoadingAnalysis
+                    ? "success"
+                    : inlineResult
+                      ? cardToneForRiskLevel(inlineResult.riskAssessment.riskLevel)
+                      : "default"
+                }
+                className="analysis-hero__result"
+              >
+                {isLoadingAnalysis ? (
+                  <div className="analysis-result-card__hero">
+                    <ScoreRing
+                      label={deepAnalysisActive ? copy.home.deepVerifying : copy.home.verifying}
+                      size="hero"
+                      state="loading"
+                      valueLabel="…"
+                    />
+                    <div className="analysis-result-card__summary-block">
+                      <p className="analysis-result-card__headline">
+                        {deepAnalysisActive
+                          ? copy.home.deepVerifyingTarget
+                          : copy.home.verifyingTarget}
+                      </p>
+                      <p className="analysis-result-card__copy">
+                        {deepAnalysisActive
+                          ? copy.home.deepCollectingSignals
+                          : copy.home.collectingSignals}
+                      </p>
+                      <VerificationProgress deep={deepAnalysisActive} />
                     </div>
                   </div>
-                </div>
+                ) : inlineResult ? (
+                  <>
+                    <div className="analysis-result-card__topline">
+                      <Badge
+                        label={formatRiskLevel(inlineResult.riskAssessment.riskLevel, language)}
+                        tone={toneForRiskLevel(inlineResult.riskAssessment.riskLevel)}
+                      />
+                    </div>
 
-                <div className="analysis-result-card__signals">
-                  <p className="preview-card__label">{copy.common.signals}</p>
-                  {latestSignals.map((signal) => (
-                    <article key={signal.id} className="preview-signal-list__item">
-                      <div className="preview-signal-list__topline">
-                        <p className="preview-signal-list__title">{signal.title}</p>
-                        <Badge
-                          label={formatRiskLevel(signal.severity, language)}
-                          tone={toneForRiskLevel(signal.severity)}
-                        />
+                    <div className="analysis-result-card__hero">
+                      <ScoreRing
+                        label={copy.common.trustScore}
+                        riskLevel={inlineResult.riskAssessment.riskLevel}
+                        score={inlineResult.riskAssessment.score}
+                        size="hero"
+                      />
+
+                      <div className="analysis-result-card__summary-block">
+                        <p
+                          className="analysis-result-card__subject"
+                          title={inlineResult.originalInput}
+                        >
+                          {inlineResult.originalInput}
+                        </p>
+                        <p className="preview-card__label">{copy.common.result}</p>
+                        <p className="analysis-result-card__headline">
+                          {formatVerdict(inlineResult.riskAssessment.verdict, language)}
+                        </p>
+                        <p className="analysis-result-card__copy">
+                          {resultNote({
+                            score: inlineResult.riskAssessment.score,
+                            warnings: [
+                              ...(inlineResult.riskAssessment.analysisWarnings ?? []),
+                              ...(inlineResult.riskAssessment.explanation?.coverageWarnings ?? []),
+                            ],
+                            scoreGuide: copy.detail.scoreGuide,
+                            coverageNote: copy.coverageNote,
+                          })}
+                        </p>
+                        <div className="analysis-result-card__actions">
+                          <Button
+                            to={`/verifications/${inlineResult.id}`}
+                            variant="primary"
+                            onClick={() => {
+                              trackResultActionClicked({
+                                sourcePath: location.pathname,
+                                language,
+                                isAuthenticated,
+                                plan: analyticsPlan,
+                                action: "view_result",
+                                resultState: "latest_result",
+                              });
+                            }}
+                          >
+                            {copy.common.viewResult}
+                          </Button>
+                          <Button variant="secondary" onClick={handleVerifyAnother}>
+                            {copy.common.verifyAnotherLink}
+                          </Button>
+                        </div>
                       </div>
-                      <p className="preview-signal-list__detail">{signal.description}</p>
-                    </article>
-                  ))}
-                </div>
-              </>
-            ) : currentUser ? (
-              <div className="analysis-result-card__hero analysis-result-card__hero--empty">
-                <ScoreRing label={copy.common.ready} size="hero" state="idle" valueLabel="--" />
-                <div className="analysis-result-card__summary-block">
-                  <p className="analysis-result-card__headline">{copy.home.signedInReadyTitle}</p>
-                  <p className="analysis-result-card__copy">{copy.home.signedInReadyCopy}</p>
-                  <div className="analysis-result-card__actions">
-                    <Button
-                      href="#analyze-url"
-                      variant="secondary"
-                      onClick={() => {
-                        trackResultActionClicked({
-                          sourcePath: location.pathname,
-                          language,
-                          isAuthenticated,
-                          plan: analyticsPlan,
-                          action: "verify_another_link",
-                          resultState: "signed_in_empty",
-                        });
-                      }}
-                    >
-                      {copy.common.verifyAnotherLink}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="analysis-result-card__hero analysis-result-card__hero--empty">
-                <ScoreRing label={copy.common.ready} size="hero" state="idle" valueLabel="--" />
-                <div className="analysis-result-card__summary-block">
-                  <p className="analysis-result-card__headline">{copy.home.noResultYet}</p>
-                  <p className="analysis-result-card__copy">{copy.home.emptyCopy}</p>
-                </div>
-              </div>
-            )}
-          </Card>
+                    </div>
+                  </>
+                ) : null}
+              </Card>
+            </div>
+          ) : (
+            <Card className="analysis-hero__panel" tone="success">
+              <p className="hero-panel__eyebrow">{copy.home.startVerification}</p>
 
-          {showAnonymousSupport ? (
-            <section aria-label={copy.home.authPromptTitle} className="analysis-flow-support">
-              <div className="analysis-flow-support__copy">
-                <p className="analysis-flow-support__eyebrow">{copy.home.authPromptTitle}</p>
-                {anonymousSupportTitle ? (
-                  <p className="analysis-flow-support__title">{anonymousSupportTitle}</p>
-                ) : null}
-                {anonymousSupportDescription ? (
-                  <p className="analysis-flow-support__description">{anonymousSupportDescription}</p>
-                ) : null}
-                {anonymousSupportMeta ? (
-                  <p className="analysis-flow-support__meta">{anonymousSupportMeta}</p>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
+              <AnalyzeUrlForm
+                buttonLabel={copy.analyzeForm.buttonLabel}
+                buttonClassName="analysis-form__button analysis-form__button--hero"
+                className="analysis-form--hero"
+                hint=""
+                inputClassName="analysis-form__input-control"
+                onStateChange={(state, meta) => {
+                  setAnalysisState(state);
+                  if (state === "submitting") {
+                    setDeepAnalysisActive(Boolean(meta?.deep));
+                  }
+                }}
+                onVerified={handleVerified}
+                showQuotaIndicator={false}
+                showProPanel={false}
+              />
+            </Card>
+          )}
         </div>
+
+        {showAnonymousSupport ? (
+          <section aria-label={copy.home.authPromptTitle} className="analysis-flow-support">
+            <div className="analysis-flow-support__copy">
+              <p className="analysis-flow-support__eyebrow">{copy.home.authPromptTitle}</p>
+              {anonymousSupportTitle ? (
+                <p className="analysis-flow-support__title">{anonymousSupportTitle}</p>
+              ) : null}
+              {anonymousSupportDescription ? (
+                <p className="analysis-flow-support__description">{anonymousSupportDescription}</p>
+              ) : null}
+              {anonymousSupportMeta ? (
+                <p className="analysis-flow-support__meta">{anonymousSupportMeta}</p>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
       </section>
     </PageShell>
   );

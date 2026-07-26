@@ -34,18 +34,21 @@ function PasteIcon() {
       xmlns="http://www.w3.org/2000/svg"
     >
       <path
-        d="M7.5 4.16667H6.16667C5.24619 4.16667 4.5 4.91286 4.5 5.83333V14.1667C4.5 15.0871 5.24619 15.8333 6.16667 15.8333H12.8333C13.7538 15.8333 14.5 15.0871 14.5 14.1667V12.8333"
+        d="M7.5 4.5H5.75A1.75 1.75 0 0 0 4 6.25v9A1.75 1.75 0 0 0 5.75 17h8.5A1.75 1.75 0 0 0 16 15.25v-9A1.75 1.75 0 0 0 14.25 4.5H12.5"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth="1.6"
+        strokeWidth="1.5"
       />
-      <path
-        d="M8.83333 10.8333L14.9167 4.75M14.9167 4.75H10.5M14.9167 4.75V9.16667"
+      <rect
+        x="7"
+        y="3"
+        width="6"
+        height="3.2"
+        rx="1"
         stroke="currentColor"
-        strokeLinecap="round"
+        strokeWidth="1.5"
         strokeLinejoin="round"
-        strokeWidth="1.6"
       />
     </svg>
   );
@@ -81,6 +84,12 @@ interface AnalyzeUrlFormProps {
   inputClassName?: string;
   inputLabel?: string;
   onStateChange?: (state: "idle" | "submitting" | "error", meta?: { deep?: boolean }) => void;
+  /**
+   * When provided, a finished verification is handed back to the parent instead
+   * of navigating to the detail page — this lets the caller render the result
+   * in place (no scroll, no page change).
+   */
+  onVerified?: (verification: ApiVerification) => void;
   placeholder?: string;
   showQuotaIndicator?: boolean;
   showProPanel?: boolean;
@@ -96,6 +105,7 @@ export function AnalyzeUrlForm({
   inputClassName,
   inputLabel,
   onStateChange,
+  onVerified,
   placeholder,
   showQuotaIndicator = true,
   showProPanel = true,
@@ -113,6 +123,7 @@ export function AnalyzeUrlForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deepScan, setDeepScan] = useState(false);
   const [isDeepScanning, setIsDeepScanning] = useState(false);
+  const [deepScanAuthPending, setDeepScanAuthPending] = useState(false);
   const [isQuotaRetrying, setIsQuotaRetrying] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
@@ -244,11 +255,15 @@ export function AnalyzeUrlForm({
 
       void refreshQuotaStatus();
 
-      navigate(`/verifications/${verification.id}`, {
-        state: {
-          verification,
-        },
-      });
+      if (onVerified) {
+        onVerified(verification);
+      } else {
+        navigate(`/verifications/${verification.id}`, {
+          state: {
+            verification,
+          },
+        });
+      }
     } catch (error) {
       trackAnalysisFailed({
         sourcePath: location.pathname,
@@ -326,11 +341,15 @@ export function AnalyzeUrlForm({
 
       void refreshQuotaStatus();
 
-      navigate(`/verifications/${verification.id}`, {
-        state: {
-          verification,
-        },
-      });
+      if (onVerified) {
+        onVerified(verification);
+      } else {
+        navigate(`/verifications/${verification.id}`, {
+          state: {
+            verification,
+          },
+        });
+      }
     } catch (error) {
       trackAnalysisFailed({
         sourcePath: location.pathname,
@@ -459,6 +478,18 @@ export function AnalyzeUrlForm({
     });
   }
 
+  // The auth modal is shared: it may be opened to unblock a quota-limited
+  // submission, or to let an anonymous user enable deep analysis. Route the
+  // post-login action accordingly.
+  async function handleModalAuthenticated() {
+    if (deepScanAuthPending) {
+      setDeepScanAuthPending(false);
+      setDeepScan(true);
+      return;
+    }
+    await retryAfterAuthentication();
+  }
+
   return (
     <div className="analysis-form-shell">
       <form className={formClassName} onSubmit={(event) => void handleSubmit(event)}>
@@ -505,13 +536,14 @@ export function AnalyzeUrlForm({
             ? isDeepScanning
               ? copy.analyzeForm.deepScan.progressLabel
               : resolvedSubmittingLabel
-            : resolvedButtonLabel}
+            : deepScan && isAuthenticated
+              ? copy.analyzeForm.deepScan.label
+              : resolvedButtonLabel}
         </Button>
         <label
           className={[
             "deep-toggle",
             deepScan && isAuthenticated ? "deep-toggle--on" : "",
-            isAuthenticated ? "" : "deep-toggle--disabled",
           ]
             .filter(Boolean)
             .join(" ")}
@@ -520,8 +552,15 @@ export function AnalyzeUrlForm({
             className="deep-toggle__input"
             type="checkbox"
             checked={deepScan && isAuthenticated}
-            disabled={isSubmitting || !isAuthenticated}
-            onChange={(event) => setDeepScan(event.target.checked)}
+            disabled={isSubmitting}
+            onChange={(event) => {
+              if (!isAuthenticated) {
+                setDeepScanAuthPending(true);
+                setIsEmailAuthModalOpen(true);
+                return;
+              }
+              setDeepScan(event.target.checked);
+            }}
           />
           <span className="deep-toggle__icon" aria-hidden="true">
             <ScanIcon />
@@ -692,8 +731,11 @@ export function AnalyzeUrlForm({
       />
       <EmailAuthModal
         open={isEmailAuthModalOpen}
-        onAuthenticated={retryAfterAuthentication}
-        onClose={() => setIsEmailAuthModalOpen(false)}
+        onAuthenticated={handleModalAuthenticated}
+        onClose={() => {
+          setDeepScanAuthPending(false);
+          setIsEmailAuthModalOpen(false);
+        }}
       />
     </div>
   );
