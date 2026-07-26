@@ -9,6 +9,8 @@ from app.application.use_cases.get_owned_verification_result import GetOwnedVeri
 from app.domain.entities.user import User
 from app.entrypoints.api.client_ip import resolve_client_ip
 from app.entrypoints.api.dependencies.auth import get_current_user, get_optional_current_user
+from app.application.ports.screenshot_store import ScreenshotStorePort
+from app.domain.ports.verification_job_store import VerificationJobStore
 from app.entrypoints.api.dependencies.container import (
     get_authenticated_verification_rate_limiter,
     get_create_verification_burst_rate_limiter,
@@ -16,6 +18,8 @@ from app.entrypoints.api.dependencies.container import (
     get_create_url_verification_use_case,
     get_get_owned_verification_result_use_case,
     get_quota_status_service,
+    get_screenshot_store,
+    get_verification_job_store,
 )
 from app.entrypoints.api.locale import select_response_locale
 from app.entrypoints.api.presenters.verification_presenter import VerificationPresenter
@@ -170,6 +174,8 @@ def get_verification(
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     use_case: GetOwnedVerificationResultUseCase = Depends(get_get_owned_verification_result_use_case),
+    job_store: VerificationJobStore = Depends(get_verification_job_store),
+    screenshot_store: ScreenshotStorePort = Depends(get_screenshot_store),
 ) -> VerificationResponse:
     locale = select_response_locale(accept_language)
     result = use_case.execute(
@@ -178,7 +184,17 @@ def get_verification(
             owner_user_id=str(current_user.id),
         )
     )
-    return VerificationPresenter.to_response(result, locale=locale)
+    # A deep-scan result carries its screenshot on the scan job, not the
+    # verification. Surface it here so the detail page can show the capture.
+    screenshot_ref = job_store.screenshot_ref_for_result(
+        verification_id, str(current_user.id)
+    )
+    screenshot_url = (
+        screenshot_store.presigned_url(screenshot_ref) if screenshot_ref else None
+    )
+    return VerificationPresenter.to_response(
+        result, locale=locale, screenshot_url=screenshot_url
+    )
 
 def _rate_limit_headers(quota_status) -> dict[str, str]:
     return {

@@ -239,23 +239,28 @@ export function HomePage() {
                           })}
                         </p>
                         <div className="analysis-result-card__actions">
+                          {isAuthenticated ? (
+                            <Button
+                              to={`/verifications/${inlineResult.id}`}
+                              variant="primary"
+                              onClick={() => {
+                                trackResultActionClicked({
+                                  sourcePath: location.pathname,
+                                  language,
+                                  isAuthenticated,
+                                  plan: analyticsPlan,
+                                  action: "view_result",
+                                  resultState: "latest_result",
+                                });
+                              }}
+                            >
+                              {copy.common.viewResult}
+                            </Button>
+                          ) : null}
                           <Button
-                            to={`/verifications/${inlineResult.id}`}
-                            variant="primary"
-                            onClick={() => {
-                              trackResultActionClicked({
-                                sourcePath: location.pathname,
-                                language,
-                                isAuthenticated,
-                                plan: analyticsPlan,
-                                action: "view_result",
-                                resultState: "latest_result",
-                              });
-                            }}
+                            variant={isAuthenticated ? "secondary" : "primary"}
+                            onClick={handleVerifyAnother}
                           >
-                            {copy.common.viewResult}
-                          </Button>
-                          <Button variant="secondary" onClick={handleVerifyAnother}>
                             {copy.common.verifyAnotherLink}
                           </Button>
                         </div>

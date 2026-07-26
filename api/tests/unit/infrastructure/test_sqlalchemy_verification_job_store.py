@@ -76,3 +76,19 @@ def test_get_unknown_job_returns_none() -> None:
     store = _store()
     assert store.get("missing") is None
     assert store.get_for_owner("missing", "user-1") is None
+
+
+def test_screenshot_ref_for_result_is_owner_and_result_scoped() -> None:
+    store = _store()
+    job = _queued_job(owner="user-1")
+    job.screenshot_ref = "screenshots/abc.png"
+    job.mark_completed("verification-42")
+    store.save(job)
+
+    assert (
+        store.screenshot_ref_for_result("verification-42", "user-1")
+        == "screenshots/abc.png"
+    )
+    # Never leaks across owners or to the wrong verification.
+    assert store.screenshot_ref_for_result("verification-42", "someone-else") is None
+    assert store.screenshot_ref_for_result("other-verification", "user-1") is None

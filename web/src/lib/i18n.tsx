@@ -177,6 +177,7 @@ const translations = {
         clipboardBlocked: "Clipboard access was blocked.",
         enterUrl: "Enter a URL to verify.",
         invalidUrl: "That doesn't look like a valid link. Paste a full URL (e.g. example.com).",
+        analysisFailed: "We couldn't finish analyzing that link — it may be unreachable. Try again or check the URL.",
         verificationFailed: "Verification failed.",
       },
       quota: {
@@ -547,14 +548,14 @@ const translations = {
       },
       scoreGuide: {
         highDanger: "This score falls in the highest-danger band and should not be treated as safe.",
-        strongCaution: "This score sits in a dangerous band and needs careful review before trust.",
-        caution: "This score suggests caution. Review the retained signals before relying on it.",
-        safe: "No strong insecurity was retained in this check, but the result is still not a guarantee.",
+        strongCaution: "This score is in a dangerous range — review it carefully before trusting the link.",
+        caution: "This score suggests caution. Check the flagged signals before you rely on it.",
+        safe: "We didn't find strong signs of risk in this check — but no result is a full guarantee.",
         legend: [
-          { label: "High danger", range: "0-40", tone: "danger" },
-          { label: "Dangerous / strong caution", range: "41-60", tone: "warning-strong" },
+          { label: "High risk", range: "0-40", tone: "danger" },
+          { label: "Risky · strong caution", range: "41-60", tone: "warning-strong" },
           { label: "Proceed with caution", range: "61-80", tone: "warning-soft" },
-          { label: "No strong insecurity detected", range: "81-100", tone: "success" },
+          { label: "No strong risk signals", range: "81-100", tone: "success" },
         ],
       },
       modalPoints: [
@@ -852,6 +853,7 @@ const translations = {
         clipboardBlocked: "El acceso al portapapeles fue bloqueado.",
         enterUrl: "Introduce una URL para verificar.",
         invalidUrl: "Eso no parece un enlace válido. Pegá una URL completa (ej.: ejemplo.com).",
+        analysisFailed: "No pudimos terminar de analizar ese enlace — puede estar inaccesible. Probá de nuevo o revisá la URL.",
         verificationFailed: "La verificación falló.",
       },
       quota: {
@@ -1223,14 +1225,14 @@ const translations = {
       },
       scoreGuide: {
         highDanger: "Esta puntuación cae en la banda de mayor peligro y no debe tratarse como segura.",
-        strongCaution: "Esta puntuación se sitúa en una banda peligrosa y requiere una revisión cuidadosa antes de confiar.",
-        caution: "Esta puntuación sugiere cautela. Revisa las señales retenidas antes de apoyarte en ella.",
-        safe: "No se retuvo una inseguridad fuerte en esta comprobación, pero el resultado no es una garantía.",
+        strongCaution: "Esta puntuación está en una banda peligrosa: conviene revisarla con cuidado antes de confiar en el enlace.",
+        caution: "Esta puntuación sugiere cautela. Conviene revisar las señales detectadas antes de confiar.",
+        safe: "No encontramos señales fuertes de riesgo en este análisis, pero ningún resultado es una garantía total.",
         legend: [
-          { label: "Peligro alto", range: "0-40", tone: "danger" },
-          { label: "Peligroso / fuerte cautela", range: "41-60", tone: "warning-strong" },
+          { label: "Riesgo alto", range: "0-40", tone: "danger" },
+          { label: "Riesgoso · fuerte cautela", range: "41-60", tone: "warning-strong" },
           { label: "Procede con cautela", range: "61-80", tone: "warning-soft" },
-          { label: "No se detectó una inseguridad fuerte", range: "81-100", tone: "success" },
+          { label: "Sin señales fuertes de riesgo", range: "81-100", tone: "success" },
         ],
       },
       modalPoints: [

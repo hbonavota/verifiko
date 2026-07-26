@@ -120,6 +120,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     container.get_reputation_signal_analyzer.cache_clear()
     container.get_infrastructure_signal_analyzer.cache_clear()
     container.get_resolved_destination_signal_analyzer.cache_clear()
+    # GET /verifications/:id now reads the scan job store + screenshot store to
+    # surface a deep-scan capture; both are session-factory-bound lru_caches and
+    # must be rebuilt per test DB.
+    container.get_verification_job_store.cache_clear()
+    container.get_screenshot_store.cache_clear()
 
     monkeypatch.setattr(
         container,
@@ -158,6 +163,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     container.get_auth_token_service.cache_clear()
     container.get_password_hasher.cache_clear()
     _clear_cache_if_present(container.get_google_identity_verifier)
+    container.get_verification_job_store.cache_clear()
+    container.get_screenshot_store.cache_clear()
     get_verification_repository.cache_clear()
     get_user_repository.cache_clear()
     get_session_factory.cache_clear()
