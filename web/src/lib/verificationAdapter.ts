@@ -29,6 +29,19 @@ function titleCase(value: string): string {
     .join(" ");
 }
 
+// Decision-trace stage status comes from the backend as a stable key
+// (signals_detected / clean / degraded). Localize the known ones; fall back to
+// a readable title-case for anything new.
+function localizeTraceStatus(status: string, language: Language): string {
+  const key = status.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const labels: Record<string, { en: string; es: string }> = {
+    signals_detected: { en: "Signals detected", es: "Señales detectadas" },
+    clean: { en: "Clean", es: "Sin señales" },
+    degraded: { en: "Partial coverage", es: "Cobertura parcial" },
+  };
+  return labels[key]?.[language] ?? titleCase(status);
+}
+
 function formatSignalCategory(category: string, language: Language): string {
   const normalized = category.trim().toUpperCase();
   const labels = {
@@ -96,7 +109,7 @@ function mapAnalysisTraceStep(step: ApiAnalysisTraceStep, language: Language): V
   return {
     stage: titleCase(step.stage),
     source: formatSignalSource(step.source, language),
-    status: titleCase(step.status),
+    status: localizeTraceStatus(step.status, language),
     signalCount: step.signal_count,
     signalTitles: step.signal_titles,
     warnings: step.warnings,

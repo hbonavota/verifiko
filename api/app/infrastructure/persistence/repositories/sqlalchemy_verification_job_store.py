@@ -43,6 +43,21 @@ class SqlAlchemyVerificationJobStore(VerificationJobStore):
             return None
         return job
 
+    def screenshot_ref_for_result(
+        self, result_verification_id: str, owner_user_id: str
+    ) -> str | None:
+        with self._session_factory() as session:
+            return session.execute(
+                select(VerificationJobModel.screenshot_ref)
+                .where(
+                    VerificationJobModel.result_verification_id == result_verification_id,
+                    VerificationJobModel.owner_user_id == owner_user_id,
+                    VerificationJobModel.screenshot_ref.is_not(None),
+                )
+                .order_by(VerificationJobModel.updated_at.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+
 
 def _to_model(job: VerificationJob) -> VerificationJobModel:
     return VerificationJobModel(

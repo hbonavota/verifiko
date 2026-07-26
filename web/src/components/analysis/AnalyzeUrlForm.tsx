@@ -259,6 +259,12 @@ export function AnalyzeUrlForm({
           plan: analyticsPlan,
           errorType: "analysis_failed",
         });
+        void refreshQuotaStatus();
+        // Don't hand a resultless "failed" verification to the result view — show
+        // a clear message instead of silently resetting the form.
+        setSubmitError(copy.analyzeForm.errors.analysisFailed);
+        onStateChange?.("error");
+        return;
       }
 
       void refreshQuotaStatus();
@@ -345,6 +351,12 @@ export function AnalyzeUrlForm({
           plan: analyticsPlan,
           errorType: "analysis_failed",
         });
+        void refreshQuotaStatus();
+        // Don't hand a resultless "failed" verification to the result view — show
+        // a clear message instead of silently resetting the form.
+        setSubmitError(copy.analyzeForm.errors.analysisFailed);
+        onStateChange?.("error");
+        return;
       }
 
       void refreshQuotaStatus();
