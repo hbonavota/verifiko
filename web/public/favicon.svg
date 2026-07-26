@@ -1,5 +1,14 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="64" height="64" rx="18" fill="#214D42"/>
-  <path d="M18 21H46L33.5 45H30.5L18 21Z" fill="#F5F0E6"/>
-  <path d="M25 26H39L32 39L25 26Z" fill="#B87A2D"/>
+  <defs>
+    <linearGradient id="fv-bg" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#16304F"/>
+      <stop offset="1" stop-color="#0C1A2E"/>
+    </linearGradient>
+    <linearGradient id="fv-mark" x1="13" y1="15" x2="51" y2="47" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5AE7FF"/>
+      <stop offset="1" stop-color="#0A93E6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#fv-bg)"/>
+  <path d="M17 31 L30 45 L48 19" stroke="url(#fv-mark)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 </svg>
