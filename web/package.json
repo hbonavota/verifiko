@@ -6,17 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "postbuild": "react-snap",
+    "postbuild": "node scripts/prerender.mjs",
     "preview": "vite preview"
-  },
-  "reactSnap": {
-    "source": "dist",
-    "include": ["/"],
-    "crawl": false,
-    "//inlineCss": "kept false on purpose: react-snap's critical-CSS swap injects an inline script/handler that the app CSP (script-src without 'unsafe-inline') would block, breaking the full stylesheet. Prerendered HTML alone already fixes FCP/LCP.",
-    "inlineCss": false,
-    "skipThirdPartyRequests": true,
-    "puppeteerArgs": ["--no-sandbox", "--disable-setuid-sandbox"]
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -24,11 +15,12 @@
     "react-router-dom": "^6.30.1"
   },
   "devDependencies": {
+    "@sparticuz/chromium": "^131.0.1",
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
-    "react-snap": "^1.23.0",
+    "puppeteer-core": "^23.11.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
   }
