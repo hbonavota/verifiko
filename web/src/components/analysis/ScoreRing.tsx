@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import type { RiskLevel } from "../../types/verification";
 
 interface ScoreRingProps {
@@ -52,9 +54,41 @@ export function ScoreRing({
   riskLevel,
 }: ScoreRingProps) {
   const clampedScore = Math.max(0, Math.min(100, score));
-  const roundedDisplayScore = Math.round(clampedScore);
-  const progress = state === "ready" ? `${clampedScore} ${100 - clampedScore}` : "32 68";
-  const displayValue = valueLabel ?? (state === "ready" ? String(roundedDisplayScore) : "--");
+  const isReadyNumeric = state === "ready" && valueLabel === undefined;
+
+  // Animate the score counting up from 0 as the result reveals — a small,
+  // satisfying payoff for running a check. Skips when reduced motion is set.
+  const [animatedScore, setAnimatedScore] = useState(isReadyNumeric ? 0 : clampedScore);
+  useEffect(() => {
+    if (!isReadyNumeric) {
+      setAnimatedScore(clampedScore);
+      return;
+    }
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      setAnimatedScore(clampedScore);
+      return;
+    }
+    let frame = 0;
+    const start = performance.now();
+    const duration = 750;
+    const tick = (now: number) => {
+      const progressT = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progressT, 3);
+      setAnimatedScore(clampedScore * eased);
+      if (progressT < 1) {
+        frame = requestAnimationFrame(tick);
+      }
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [isReadyNumeric, clampedScore]);
+
+  const shownScore = isReadyNumeric ? animatedScore : clampedScore;
+  const progress = state === "ready" ? `${shownScore} ${100 - shownScore}` : "32 68";
+  const displayValue = valueLabel ?? (state === "ready" ? String(Math.round(shownScore)) : "--");
   const className = scoreRingClassName({ score: clampedScore, size, state });
 
   return (
