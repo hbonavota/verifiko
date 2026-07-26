@@ -28,6 +28,7 @@ export function Sidebar() {
   const { copy, language } = useI18n();
   const { currentUser, logout, quotaStatus } = useAuth();
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
   const isAuthenticated = Boolean(currentUser);
   const displayName = currentUser ? displayNameForUser(currentUser) : "";
@@ -57,23 +58,61 @@ export function Sidebar() {
           </div>
         </Link>
 
-        <LanguageSwitcher className="sidebar__language" />
+        <div className="sidebar__header-actions">
+          <LanguageSwitcher className="sidebar__language" />
+          <button
+            type="button"
+            className="sidebar__menu-toggle"
+            aria-label={isMenuOpen ? copy.navigation.closeMenu : copy.navigation.openMenu}
+            aria-expanded={isMenuOpen}
+            aria-controls="primary-nav"
+            onClick={() => setIsMenuOpen((open) => !open)}
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+              {isMenuOpen ? (
+                <path
+                  d="M6 6l12 12M18 6L6 18"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              ) : (
+                <path
+                  d="M4 7h16M4 12h16M4 17h16"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <nav aria-label={copy.navigation.primaryLabel} className="sidebar-nav">
+      <nav
+        id="primary-nav"
+        aria-label={copy.navigation.primaryLabel}
+        className={isMenuOpen ? "sidebar-nav sidebar-nav--open" : "sidebar-nav"}
+      >
         {primaryNavigation.map((item) => (
           <NavLink
             key={item.href}
             to={item.href}
+            onClick={() => setIsMenuOpen(false)}
             className={isActiveItem(item.href) ? "sidebar-nav__link sidebar-nav__link--active" : "sidebar-nav__link"}
           >
-            {copy.navigation[item.labelKey]}
+            {item.labelKey === "review"
+              ? currentUser
+                ? copy.navigation.history
+                : copy.navigation.info
+              : copy.navigation[item.labelKey]}
           </NavLink>
         ))}
         {!currentUser ? (
           <button
             className="sidebar-nav__button sidebar-nav__button--mobile-only"
             onClick={() => {
+              setIsMenuOpen(false);
               trackAuthEntryClicked({
                 sourcePath: location.pathname,
                 language,
