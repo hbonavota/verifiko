@@ -108,32 +108,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!authReady) {
-      return;
-    }
-
-    setQuotaReady(false);
-    // Keep the quota fetch off the critical rendering path so it never blocks
-    // first paint (especially on the lightweight landing).
-    const idle = (window as unknown as {
-      requestIdleCallback?: (cb: () => void) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    });
-    const run = () => {
-      void refreshQuotaStatus();
-    };
-    const handle = idle.requestIdleCallback
-      ? idle.requestIdleCallback(run)
-      : window.setTimeout(run, 200);
-    return () => {
-      if (idle.cancelIdleCallback) {
-        idle.cancelIdleCallback(handle);
-      } else {
-        window.clearTimeout(handle);
-      }
-    };
-  }, [authReady, currentUser?.id, refreshQuotaStatus]);
+  // NOTE: quota-status is intentionally NOT fetched here. The landing ("/") must
+  // stay API-free on first paint, so the app shell (AppLayout) triggers the
+  // quota fetch on mount instead — it only ever renders inside the app.
 
   function applyAuthenticatedSession(accessToken: {
     access_token: string;
