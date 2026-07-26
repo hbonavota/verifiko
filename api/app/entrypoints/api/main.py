@@ -8,6 +8,7 @@ from app.domain.exceptions.domain_exception import DomainException
 from app.entrypoints.api.locale import select_response_locale
 from app.entrypoints.api.routes.api_keys import router as api_keys_router
 from app.entrypoints.api.routes.auth import router as auth_router
+from app.entrypoints.api.routes.internal_scan_worker import router as internal_scan_worker_router
 from app.entrypoints.api.routes.me import router as me_router
 from app.entrypoints.api.routes.scans import router as scans_router
 from app.entrypoints.api.routes.verifications import router as verifications_router
@@ -47,7 +48,17 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
-_API_ROUTERS = (auth_router, me_router, api_keys_router, scans_router, verifications_router)
+_API_ROUTERS = (
+    auth_router,
+    me_router,
+    api_keys_router,
+    scans_router,
+    verifications_router,
+    # Internal QStash worker callback. Hidden from the OpenAPI schema (the route
+    # itself sets include_in_schema=False); authenticated by Upstash-Signature,
+    # not user auth.
+    internal_scan_worker_router,
+)
 
 # Canonical, versioned surface. This is the documented contract and the source
 # of truth for generated SDKs and OpenAPI operation IDs.
