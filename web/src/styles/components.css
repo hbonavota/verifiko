@@ -1495,6 +1495,13 @@
   gap: 0.4rem;
 }
 
+.activity-feed__action-message {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-primary, #00bfff);
+}
+
 .icon-action:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -3424,10 +3431,12 @@
   }
 
   .verification-disclaimer-float {
+    position: static;
     display: inline-flex;
-    left: 1rem;
-    right: 1rem;
+    width: 100%;
     justify-content: center;
+    margin-top: 1rem;
+    box-shadow: none;
   }
 
   .analysis-form,

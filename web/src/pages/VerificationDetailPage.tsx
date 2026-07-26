@@ -338,7 +338,7 @@ export function VerificationDetailPage() {
         >
           <div className="verification-assessment-card__topline">
             <Badge
-              label={`${formatRiskLevel(riskAssessment.riskLevel, language)} ${copy.common.risk}`}
+              label={formatRiskLevel(riskAssessment.riskLevel, language)}
               tone={toneForRiskLevel(riskAssessment.riskLevel)}
             />
             <p className="verification-assessment-card__status">{formatVerificationStatus(verification.status, language)}</p>
