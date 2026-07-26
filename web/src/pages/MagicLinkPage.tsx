@@ -50,7 +50,13 @@ export function MagicLinkPage() {
     return () => {
       active = false;
     };
-  }, [token, loginWithMagicLinkToken, navigate]);
+    // Depend only on the token. loginWithMagicLinkToken is recreated on every
+    // auth-context render, and a successful exchange updates that context — so
+    // including it here re-runs this effect, whose cleanup flips `active` to
+    // false and swallows the success state, leaving the page stuck on
+    // "Signing you in…". startedRef already guarantees the exchange runs once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const message =
     status === "verifying"
