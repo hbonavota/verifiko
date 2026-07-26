@@ -706,7 +706,7 @@ const translations = {
     },
     landing: {
       eyebrow: "Seguridad de enlaces, en segundos",
-      title: "Verifika si un enlace es seguro antes de hacer clic",
+      title: "Verifica si un enlace es seguro antes de hacer clic",
       lead: "Pega cualquier enlace y Verifiko revisa el dominio, la reputación, el certificado y el contenido. Con análisis profundo abre la página en un entorno seguro y te muestra una captura — nunca tienes que entrar.",
       start: "Empezar ahora",
       ctaNote: "Gratis · no necesitas registrarte para probar",
