@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 
 import { ApiRequestError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -24,6 +24,13 @@ export function EmailAuthModal({ open, onClose, onAuthenticated }: EmailAuthModa
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<RequestStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Stable across email keystrokes so the Google button effect never re-runs and
+  // re-renders (which caused the button to flicker/resize while typing).
+  const handleGoogleSuccess = useCallback(async () => {
+    await onAuthenticated?.();
+    onClose();
+  }, [onAuthenticated, onClose]);
 
   if (!open) {
     return null;
@@ -76,13 +83,7 @@ export function EmailAuthModal({ open, onClose, onAuthenticated }: EmailAuthModa
         <div className="auth-modal__content">
           <div className="auth-modal__alternate">
             <p className="auth-modal__alternate-label">{copy.authModal.googlePrompt}</p>
-            <GoogleSignInButton
-              className="auth-modal__google"
-              onSuccess={async () => {
-                await onAuthenticated?.();
-                onClose();
-              }}
-            />
+            <GoogleSignInButton className="auth-modal__google" onSuccess={handleGoogleSuccess} />
           </div>
 
           <div className="auth-modal__support">

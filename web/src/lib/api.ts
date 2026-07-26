@@ -193,6 +193,16 @@ export async function runDeepScan(
   options: RunDeepScanOptions = {},
 ): Promise<ApiVerification> {
   const { onStatus, intervalMs = 3000, maxAttempts = 20, signal } = options;
+  const language = getStoredLanguage();
+  const failedMessage =
+    language === "es"
+      ? "No pudimos completar el análisis profundo. Probá de nuevo."
+      : "We couldn't complete the deep analysis. Please try again.";
+  const timeoutMessage =
+    language === "es"
+      ? "El análisis profundo está tardando más de lo normal. Probá de nuevo en un momento."
+      : "The deep analysis is taking longer than usual. Please try again shortly.";
+
   const accepted = await submitScan(input);
   onStatus?.(accepted.status, 0);
 
@@ -203,18 +213,18 @@ export async function runDeepScan(
 
     if (scan.status === "completed") {
       if (!scan.result) {
-        throw new ApiRequestError("Scan completed without a result.", 502);
+        throw new ApiRequestError(failedMessage, 502);
       }
       // Ensure the presigned screenshot URL is present on the result even if the
       // presenter did not inline it.
       return { ...scan.result, screenshot_url: scan.result.screenshot_url ?? scan.screenshot_url };
     }
     if (scan.status === "failed") {
-      throw new ApiRequestError(scan.error ?? "Deep scan failed.", 502);
+      throw new ApiRequestError(failedMessage, 502);
     }
   }
 
-  throw new ApiRequestError("Deep scan timed out.", 504);
+  throw new ApiRequestError(timeoutMessage, 504);
 }
 
 export function authenticateWithGoogle(idToken: string): Promise<ApiAuthSession> {
