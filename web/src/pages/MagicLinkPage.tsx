@@ -65,15 +65,38 @@ export function MagicLinkPage() {
 
   return (
     <PageShell>
-      <div className="section-title section-title--center">
+      <div className="auth-status" role="status" aria-live="polite">
+        <div className={`auth-status__indicator auth-status__indicator--${status}`} aria-hidden="true">
+          {status === "verifying" ? (
+            <span className="auth-status__spinner" />
+          ) : status === "success" ? (
+            <svg viewBox="0 0 24 24" fill="none" width="30" height="30">
+              <path
+                d="M5 12.5l4 4 10-10"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" width="30" height="30">
+              <path d="M12 7v6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              <circle cx="12" cy="16.5" r="1.15" fill="currentColor" />
+            </svg>
+          )}
+        </div>
         <p className="section-title__eyebrow">Verifiko</p>
-        <h1 className="section-title__heading">{message}</h1>
+        <h1 className="auth-status__title">{message}</h1>
+        {status === "success" ? (
+          <p className="auth-status__hint">{copy.magicLink.redirecting}</p>
+        ) : null}
+        {showRetry ? (
+          <Button to="/" variant="secondary">
+            {copy.magicLink.backHome}
+          </Button>
+        ) : null}
       </div>
-      {showRetry ? (
-        <Button to="/" variant="secondary">
-          {copy.magicLink.backHome}
-        </Button>
-      ) : null}
     </PageShell>
   );
 }
