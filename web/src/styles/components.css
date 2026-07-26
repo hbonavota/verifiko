@@ -764,6 +764,15 @@
   gap: var(--space-2);
 }
 
+/* Reserve the rendered GSI button's footprint. The div starts empty (0 height)
+   and Google fills it with a ~40px pill only after its async script loads; that
+   growth was shifting the hero down (the landing's CLS). Holding the space keeps
+   layout stable whether Google has rendered yet or not. */
+.google-sign-in__button {
+  min-height: 40px;
+  min-width: 200px;
+}
+
 .analysis-form__quota-eyebrow,
 .analysis-form__quota-title,
 .analysis-form__quota-copy,
