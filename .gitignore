@@ -20,3 +20,6 @@ web/dist/
 # Environment files
 .env
 *.env.local
+
+# Local QA reports (not part of the repo)
+QA-informe-fase*.md
