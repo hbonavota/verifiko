@@ -51,7 +51,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar__header">
-        <Link className="brand-lockup" to="/">
+        <Link className="brand-lockup" to="/app">
           <img alt="" className="brand-lockup__mark" height="52" src={brandMark} width="52" />
           <div>
             <span className="brand-lockup__name">Verifiko</span>

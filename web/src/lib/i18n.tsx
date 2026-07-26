@@ -29,6 +29,14 @@ const translations = {
       openMenu: "Open menu",
       closeMenu: "Close menu",
     },
+    landing: {
+      eyebrow: "Link safety, in seconds",
+      title: "Know if a link is safe before you click",
+      lead: "Paste any link and Verifiko checks the domain, reputation, certificate and content. With deep analysis it even opens the page in a safe sandbox and shows you a screenshot — you never have to visit it.",
+      start: "Start now",
+      ctaNote: "Free · no sign-up needed to try it",
+      emailCta: "Sign in with email",
+    },
     topbar: {
       eyebrow: "Verification",
       title: "Review verified links, signals, and risk decisions.",
@@ -294,6 +302,7 @@ const translations = {
       missingToken: "This sign-in link is missing its token.",
       invalidToken: "This sign-in link is invalid or has expired.",
       backHome: "Back to home",
+      redirecting: "Taking you to your dashboard…",
     },
     home: {
       metaTitle: "Verify Link",
@@ -692,6 +701,14 @@ const translations = {
       openMenu: "Abrir menú",
       closeMenu: "Cerrar menú",
     },
+    landing: {
+      eyebrow: "Seguridad de enlaces, en segundos",
+      title: "Sabé si un enlace es seguro antes de hacer clic",
+      lead: "Pegá cualquier enlace y Verifiko revisa el dominio, la reputación, el certificado y el contenido. Con análisis profundo abre la página en un entorno seguro y te muestra una captura — nunca tenés que entrar.",
+      start: "Empezar ahora",
+      ctaNote: "Gratis · no necesitás registrarte para probar",
+      emailCta: "Iniciar sesión con email",
+    },
     topbar: {
       eyebrow: "Verificación",
       title: "Revisa enlaces verificados, señales y decisiones de riesgo.",
@@ -958,6 +975,7 @@ const translations = {
       missingToken: "A este enlace de acceso le falta el token.",
       invalidToken: "Este enlace de acceso no es válido o ha caducado.",
       backHome: "Volver al inicio",
+      redirecting: "Te llevamos a tu panel…",
     },
     home: {
       metaTitle: "Verificar enlace",
