@@ -114,7 +114,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     setQuotaReady(false);
-    void refreshQuotaStatus();
+    // Keep the quota fetch off the critical rendering path so it never blocks
+    // first paint (especially on the lightweight landing).
+    const idle = (window as unknown as {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    });
+    const run = () => {
+      void refreshQuotaStatus();
+    };
+    const handle = idle.requestIdleCallback
+      ? idle.requestIdleCallback(run)
+      : window.setTimeout(run, 200);
+    return () => {
+      if (idle.cancelIdleCallback) {
+        idle.cancelIdleCallback(handle);
+      } else {
+        window.clearTimeout(handle);
+      }
+    };
   }, [authReady, currentUser?.id, refreshQuotaStatus]);
 
   function applyAuthenticatedSession(accessToken: {
