@@ -2088,10 +2088,14 @@
   z-index: 1;
   width: min(34rem, calc(100vw - 2rem));
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.38);
-  /* Force a fully opaque surface: the shared card is ~6% translucent with a
-     blur, which on mobile (where backdrop-filter is weaker) let the hero text
-     ghost through the dialog. A modal must never show the page behind it. */
+  /* Force a fully opaque surface — a modal must never show the page behind it. */
   background: #0e1527;
+  /* The shared card carries backdrop-filter: blur(). Inside this fixed-position
+     overlay that triggers a Chrome-Android compositing bug where the page bleeds
+     through even with an opaque background (desktop renders it fine). The blur is
+     useless on a solid panel, so disable it here to kill the see-through. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .auth-modal__content,
