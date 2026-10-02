@@ -6,6 +6,10 @@ import { useI18n } from "../../lib/i18n";
 const GOOGLE_IDENTITY_SCRIPT_SELECTOR = 'script[data-google-identity="true"]';
 const GOOGLE_IDENTITY_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 const GOOGLE_IDENTITY_LOAD_TIMEOUT_MS = 10_000;
+// GIS exposes no "popup blocked" callback (initialize's callback fires only on
+// success), so a blocked or abandoned popup is inferred from window focus.
+const POPUP_FOCUS_CHECK_MS = 1200;
+const POPUP_RETURN_GRACE_MS = 1500;
 // Production must set the same OAuth web client ID in both the web and API projects.
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? "";
 
@@ -59,7 +63,11 @@ export function GoogleSignInButton({
   const { isAuthenticating, loginWithGoogleCredential } = useAuth();
   const buttonRef = useRef<HTMLDivElement | null>(null);
   const credentialHandlerRef = useRef<((credential: string) => void) | null>(null);
+  // Set by the popup-detection effect; called when a credential arrives so a
+  // pending "popup blocked/closed" check never fires over a real sign-in.
+  const cancelPopupCheckRef = useRef<(() => void) | null>(null);
   const [runtimeErrorMessage, setRuntimeErrorMessage] = useState<string | null>(null);
+  const [showPopupNotice, setShowPopupNotice] = useState(false);
   const busyState = busy || isAuthenticating;
   const variantClassName = variant === "quota" ? "google-sign-in--quota" : "";
   const rootClassName = ["google-sign-in", variantClassName, busyState ? "google-sign-in--busy" : "", className]
@@ -74,9 +82,11 @@ export function GoogleSignInButton({
   // multiple times" warning). The rendered button always routes through this ref.
   useEffect(() => {
     credentialHandlerRef.current = (credential: string) => {
+      cancelPopupCheckRef.current?.();
       void loginWithGoogleCredential(credential)
         .then(async () => {
           setRuntimeErrorMessage(null);
+          setShowPopupNotice(false);
           await onSuccess?.();
         })
         .catch((error) => {
@@ -86,6 +96,71 @@ export function GoogleSignInButton({
         });
     };
   }, [copy.topbar.authenticationFailed, loginWithGoogleCredential, onSuccess]);
+
+  // Popup-blocked inference. The button is a cross-origin iframe, so clicks never
+  // reach React: a click shows up as the window losing focus to that iframe. If
+  // the page still has focus shortly after (no popup took it), the popup was
+  // blocked. If a popup did take focus and the page gets it back without a
+  // credential, the popup was closed. Own effect with no deps, so it never
+  // re-runs the render effect below (that would rebuild the GIS iframe).
+  useEffect(() => {
+    let armed = false;
+    let focusCheckTimer: number | undefined;
+    let returnGraceTimer: number | undefined;
+
+    function clearTimers() {
+      window.clearTimeout(focusCheckTimer);
+      window.clearTimeout(returnGraceTimer);
+    }
+
+    function disarm() {
+      armed = false;
+      clearTimers();
+    }
+
+    function showNotice() {
+      disarm();
+      setShowPopupNotice(true);
+    }
+
+    function handleBlur() {
+      const host = buttonRef.current;
+      const active = document.activeElement;
+      if (!host || !(active instanceof HTMLIFrameElement) || !host.contains(active)) {
+        return;
+      }
+      disarm();
+      armed = true;
+      setShowPopupNotice(false);
+      focusCheckTimer = window.setTimeout(() => {
+        if (armed && document.hasFocus()) {
+          showNotice();
+        }
+      }, POPUP_FOCUS_CHECK_MS);
+    }
+
+    function handleFocus() {
+      if (!armed) {
+        return;
+      }
+      clearTimers();
+      returnGraceTimer = window.setTimeout(() => {
+        if (armed) {
+          showNotice();
+        }
+      }, POPUP_RETURN_GRACE_MS);
+    }
+
+    cancelPopupCheckRef.current = disarm;
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+      clearTimers();
+      cancelPopupCheckRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const host = buttonRef.current;
@@ -172,6 +247,11 @@ export function GoogleSignInButton({
         <p className="google-sign-in__hint">{busyLabel ?? copy.topbar.signingIn}</p>
       ) : null}
       {errorMessage ? <p className="google-sign-in__error">{errorMessage}</p> : null}
+      {showPopupNotice && !errorMessage ? (
+        <p className="google-sign-in__hint google-sign-in__notice" role="status">
+          {copy.topbar.googlePopupBlocked}
+        </p>
+      ) : null}
     </div>
   );
 }
