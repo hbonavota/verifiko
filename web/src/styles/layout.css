@@ -251,6 +251,14 @@
   flex: none;
 }
 
+/* With a session, the language switcher always sits on its own row under the
+   account area, so the width of the account text (e.g. the quota note arriving)
+   can never decide whether it wraps — and change the topbar height. */
+.topbar__actions--account {
+  flex-direction: column;
+  align-items: flex-end;
+}
+
 .topbar-account,
 .topbar-auth {
   display: grid;
@@ -328,6 +336,97 @@
 .topbar-auth__quota-copy {
   font-size: 0.78rem;
   color: var(--color-text-muted);
+}
+
+/* Above 1120px the text column has a fixed width (fits the longest quota note),
+   so the account block does not widen — and the avatar does not jump — when
+   the quota arrives. */
+@media (min-width: 1121px) {
+  .topbar-account__copy {
+    width: 26rem;
+  }
+}
+
+/* Loading placeholders keep the real line classes (same font size and line
+   height), so they reserve exactly the space of the text that replaces them. */
+.topbar-account__quota--skeleton,
+.topbar-account__quota--reserved,
+.topbar-skeleton {
+  position: relative;
+  justify-self: end;
+  color: transparent;
+  user-select: none;
+}
+
+.topbar-account__quota--skeleton::before,
+.topbar-skeleton::before {
+  content: "";
+  position: absolute;
+  inset: 0.22em 0;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.topbar-account__quota.topbar-account__quota--skeleton {
+  width: 9rem;
+}
+
+.topbar-account__quota-note.topbar-account__quota--skeleton {
+  width: 7rem;
+}
+
+.topbar-account__eyebrow.topbar-skeleton {
+  width: 4rem;
+}
+
+.topbar-account__label.topbar-skeleton {
+  width: 8rem;
+}
+
+.topbar-account__value.topbar-skeleton {
+  width: 6.5rem;
+}
+
+.topbar-account__meta.topbar-skeleton {
+  width: 10rem;
+}
+
+.topbar-account__avatar--skeleton {
+  border-color: transparent;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+/* Same .button box as the real actions, so the column has the same height. */
+.topbar-account__button-skeleton {
+  border-color: transparent;
+  background: rgba(148, 163, 184, 0.1);
+  color: transparent;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Opacity-only fade between topbar states: no size/position animation, so it
+   cannot add layout shift. */
+.topbar-account,
+.topbar-auth {
+  animation: topbar-state-fade-in 160ms ease-out;
+}
+
+@keyframes topbar-state-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-account,
+  .topbar-auth {
+    animation: none;
+  }
 }
 
 .topbar-auth__quota {

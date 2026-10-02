@@ -5,6 +5,7 @@ import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
 import { Button } from "../components/ui/Button";
 import { UpgradeModal } from "../components/ui/UpgradeModal";
 import { useAuth } from "../lib/auth";
+import { readStoredAuthSession } from "../lib/authSessionStorage";
 import { trackAuthEntryClicked, trackUpgradeIntentClicked } from "../lib/analytics";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { useI18n } from "../lib/i18n";
@@ -13,7 +14,7 @@ import { useUpgradeIntent } from "../lib/upgradeIntentStorage";
 
 export function Topbar() {
   const { copy, language } = useI18n();
-  const { currentUser, logout, quotaReady, quotaStatus } = useAuth();
+  const { authReady, currentUser, logout, quotaReady, quotaStatus } = useAuth();
   const location = useLocation();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
@@ -28,6 +29,10 @@ export function Topbar() {
   const quotaSummary = quotaReady && quotaStatus ? buildQuotaSummary(copy, quotaStatus) : null;
   const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
   const isAuthenticated = Boolean(currentUser);
+  // While a saved session is being validated, show an account-sized placeholder
+  // instead of the sign-in actions so the swap to the account block does not
+  // push the page down. Anonymous visitors (no saved session) are unaffected.
+  const pendingSessionPlan = !authReady && !currentUser ? readPendingSessionPlan() : null;
 
   return (
     <>
@@ -36,7 +41,13 @@ export function Topbar() {
           <p className="topbar__eyebrow">{copy.topbar.eyebrow}</p>
           <p className="topbar__title">{copy.topbar.title}</p>
         </div>
-        <div className="topbar__actions">
+        <div
+          className={
+            currentUser || pendingSessionPlan
+              ? "topbar__actions topbar__actions--account"
+              : "topbar__actions"
+          }
+        >
           {currentUser ? (
             <div className="topbar-account">
               <div className="topbar-account__avatar" aria-hidden="true">
@@ -61,7 +72,11 @@ export function Topbar() {
                     <p className="topbar-account__quota">{quotaSummary.title}</p>
                     <p className="topbar-account__quota-note">{quotaSummary.detail}</p>
                   </>
-                ) : null}
+                ) : (
+                  // Keep the quota lines' space so the block does not grow when the
+                  // quota arrives; if it never does, keep the space but show nothing.
+                  <QuotaLinePlaceholders variant={quotaReady ? "reserved" : "skeleton"} />
+                )}
               </div>
               <div className="topbar-account__actions">
                 <Button to="/dashboard" variant="ghost">
@@ -92,6 +107,8 @@ export function Topbar() {
                 </Button>
               </div>
             </div>
+          ) : pendingSessionPlan ? (
+            <PendingAccountPlaceholder plan={pendingSessionPlan} />
           ) : (
             <div className="topbar-auth">
               <div className="topbar-auth__access-actions">
@@ -140,6 +157,64 @@ export function Topbar() {
       />
     </>
   );
+}
+
+const NBSP = "\u00a0";
+
+function QuotaLinePlaceholders({ variant }: { variant: "skeleton" | "reserved" }) {
+  const modifier = `topbar-account__quota--${variant}`;
+  return (
+    <>
+      <p aria-hidden="true" className={`topbar-account__quota ${modifier}`}>
+        {NBSP}
+      </p>
+      <p aria-hidden="true" className={`topbar-account__quota-note ${modifier}`}>
+        {NBSP}
+      </p>
+    </>
+  );
+}
+
+// Mirrors the account block's structure and line classes so it has the same size.
+function PendingAccountPlaceholder({ plan }: { plan: string }) {
+  const actionCount = plan === "FREE" ? 3 : 2;
+  return (
+    <div aria-hidden="true" className="topbar-account topbar-account--pending">
+      <div className="topbar-account__avatar topbar-account__avatar--skeleton" />
+      <div className="topbar-account__copy">
+        <p className="topbar-account__eyebrow topbar-skeleton">{NBSP}</p>
+        <p className="topbar-account__label topbar-skeleton">{NBSP}</p>
+        <p className="topbar-account__value topbar-skeleton">{NBSP}</p>
+        <p className="topbar-account__meta topbar-skeleton">{NBSP}</p>
+        <QuotaLinePlaceholders variant="skeleton" />
+      </div>
+      <div className="topbar-account__actions">
+        {/* Same elements as the real actions (a link, then <button>s): native
+            buttons do not inherit the font size, so the element type matters. */}
+        <span className="button topbar-account__button-skeleton">{NBSP}</span>
+        {Array.from({ length: actionCount - 1 }, (_, index) => (
+          <button
+            className="button topbar-account__button-skeleton"
+            disabled
+            key={index}
+            tabIndex={-1}
+            type="button"
+          >
+            {NBSP}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function readPendingSessionPlan(): string | null {
+  try {
+    const session = readStoredAuthSession();
+    return session ? session.user?.plan ?? "FREE" : null;
+  } catch {
+    return null;
+  }
 }
 
 function buildQuotaSummary(
