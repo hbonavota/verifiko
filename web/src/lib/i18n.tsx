@@ -55,6 +55,7 @@ const translations = {
       googleSignInUnavailable: "Google Sign-In is temporarily unavailable. Try again in a moment.",
       googleSignInNotConfigured:
         "Google Sign-In is not configured for this deployment. Set VITE_GOOGLE_CLIENT_ID.",
+      googlePopupBlocked: "Allow pop-ups for this site, or sign in with your email instead.",
       quota: {
         anonymousTitle: "{remaining} of {dailyLimit} free analyses left today",
         anonymousDetail:
@@ -738,6 +739,8 @@ const translations = {
         "El inicio de sesión con Google no está disponible temporalmente. Inténtalo de nuevo en un momento.",
       googleSignInNotConfigured:
         "El inicio de sesión con Google no está configurado para este despliegue. Define VITE_GOOGLE_CLIENT_ID.",
+      googlePopupBlocked:
+        "Permite las ventanas emergentes para este sitio o inicia sesión con tu email.",
       quota: {
         anonymousTitle: "Te quedan {remaining} de {dailyLimit} análisis gratuitos hoy",
         anonymousDetail:
