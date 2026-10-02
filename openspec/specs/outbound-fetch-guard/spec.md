@@ -382,15 +382,19 @@ Test: NONE
 
 Test: NONE
 
-### Requirement: Webhook destinations are validated before delivery
+### Requirement: Webhook destinations are validated and delivered over a pinned connection
 
 The scan webhook notifier SHALL validate the job's webhook URL with the guard once per
-notification, before the first delivery attempt. A rejected destination MUST NOT be
-contacted. The notifier SHALL log a warning
-that names the scan id (not the URL) and SHALL NOT retry. At submission time, the API
+notification, before the first delivery attempt; a rejected destination MUST NOT be
+contacted, and the notifier SHALL log a warning naming the scan id (not the URL). Delivery
+SHALL go through the pinned HTTP client, so the connection is made only to the
+guard-validated IP (no DNS re-resolution between validation and connect) and redirects are
+NOT followed — a 3xx is treated as a failed, non-2xx delivery. A guard, transport, or
+protocol failure during delivery SHALL be surfaced as a delivery error so the notifier
+retries or gives up without ever contacting an unsafe address. At submission time, the API
 SHALL accept a webhook URL only if its scheme is `http` or `https`.
 
-Source: api/app/infrastructure/webhooks/http_scan_webhook_notifier.py:HttpScanWebhookNotifier.notify; api/app/entrypoints/api/dependencies/container.py:get_scan_webhook_notifier; api/app/entrypoints/api/schemas/scan_schema.py:_validate_webhook_url
+Source: api/app/infrastructure/webhooks/http_scan_webhook_notifier.py:HttpScanWebhookNotifier.notify, build_pinned_webhook_poster; api/app/infrastructure/external_services/pinned_http_client.py:send_pinned_post_request; api/app/entrypoints/api/dependencies/container.py:get_scan_webhook_notifier; api/app/entrypoints/api/schemas/scan_schema.py:_validate_webhook_url
 
 #### Scenario: Unsafe webhook destination is skipped
 
@@ -398,6 +402,27 @@ Source: api/app/infrastructure/webhooks/http_scan_webhook_notifier.py:HttpScanWe
 - **THEN** the HTTP poster is never called
 
 Test: api/tests/unit/infrastructure/test_http_scan_webhook_notifier.py::test_unsafe_destination_is_not_delivered
+
+#### Scenario: Webhook delivery connects only to the validated IP
+
+- **WHEN** the webhook is delivered
+- **THEN** it is sent with `send_pinned_post_request`, which connects to the guard-validated address rather than re-resolving the hostname
+
+Test: api/tests/unit/infrastructure/test_http_scan_webhook_notifier.py::test_pinned_webhook_poster_delivers_via_pinned_client
+
+#### Scenario: Webhook redirects are not followed
+
+- **WHEN** the webhook endpoint responds with a 3xx redirect to another host
+- **THEN** the poster returns the 3xx status without issuing a request to the `Location`
+
+Test: api/tests/unit/infrastructure/test_pinned_http_client.py::test_pinned_post_request_pins_ip_and_does_not_follow_redirects; api/tests/unit/infrastructure/test_http_scan_webhook_notifier.py::test_pinned_webhook_poster_returns_redirect_status_without_following
+
+#### Scenario: Rebinding to a private address at delivery time is blocked
+
+- **WHEN** the webhook host resolves to a private/special-use address at delivery time
+- **THEN** the pinned client's guard rejects it and the poster raises a delivery error, so the destination is never contacted
+
+Test: api/tests/unit/infrastructure/test_http_scan_webhook_notifier.py::test_pinned_webhook_poster_blocks_rebinding_target
 
 #### Scenario: Non-HTTP webhook URL is rejected at submission
 

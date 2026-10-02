@@ -140,28 +140,30 @@ Observaciones sobre los tests que sí existen:
 
 ### Riesgos
 
-**1. CONFIRMADO: las redirecciones del webhook no se revalidan.**
-Evidencia: `http_scan_webhook_notifier.py:133-147`. `build_urllib_webhook_poster` usa
-`urlopen` con el opener por defecto, que incluye `HTTPRedirectHandler`. En la librería
-estándar (`HTTPRedirectHandler.redirect_request`), un POST que recibe 301/302/303 se
-convierte en GET a la nueva `Location` y conserva las cabeceras salvo `Content-Type` y
-`Content-Length`, incluidas `X-Verifiko-*` y la firma. El guardia solo se ejecutó sobre la
-URL original (`notify`, línea 54). El resultado es un SSRF ciego: solo se registra el código
-de estado. Ningún test cubre el poster real.
+**1. ~~CONFIRMADO~~ → RESUELTO: las redirecciones del webhook no se revalidaban.**
+Evidencia original: `build_urllib_webhook_poster` usaba `urlopen` con el opener por defecto
+(`HTTPRedirectHandler`), que ante un 301/302/303 repetía la petición como GET a la nueva
+`Location` conservando las cabeceras `X-Verifiko-*` y la firma, sin pasar por el guardia.
+Era un SSRF ciego. **Arreglo:** el envío ahora usa `build_pinned_webhook_poster` →
+`send_pinned_post_request` (`http.client` directo), que **no sigue redirecciones**: un 3xx
+vuelve como estado y el notifier lo trata como entrega fallida. Cubierto por
+`test_pinned_post_request_pins_ip_and_does_not_follow_redirects` y
+`test_pinned_webhook_poster_returns_redirect_status_without_following`.
 
-**2. CONFIRMADO: el webhook es vulnerable a DNS rebinding (la IP cambia entre validar y conectar).**
-Evidencia: `notify` valida en la línea 54 (el guardia resuelve DNS), y después
-`self.http_poster(...)` (línea 67) → `urlopen`, que vuelve a resolver el nombre por su
-cuenta. Cada reintento resuelve otra vez. No se fija la IP como en `pinned_http_client`.
-Un dominio con TTL bajo puede pasar la validación con una IP pública y conectar a una privada.
+**2. ~~CONFIRMADO~~ → RESUELTO: el webhook era vulnerable a DNS rebinding (la IP cambiaba entre validar y conectar).**
+Evidencia original: `notify` validaba con el guardia y luego `urlopen` volvía a resolver el
+nombre por su cuenta (y en cada reintento), sin fijar la IP. **Arreglo:** el poster fijado
+resuelve+valida y conecta solo a esa IP (igual que el camino del objetivo), sin
+re-resolución; si el host pasa a resolver a una dirección privada en el momento de entregar,
+el guardia lo rechaza y el poster lanza `WebhookDeliveryError` sin contactar el destino.
+Cubierto por `test_pinned_webhook_poster_blocks_rebinding_target`.
 
-**3. A VERIFICAR: el guardia y `urllib` parsean distinto la URL del webhook.**
-Evidencia: el guardia usa `urlsplit(url).hostname`. `urllib.request.Request` usa su propio
-partido de host y aplica `unquote` al host. En local divergen con userinfo
-(`user@host` → urllib conserva `user@host`), con barra invertida y con `%40`. No encontré
-una entrada que el guardia acepte y que `urllib` conecte a una dirección privada (las que
-probé acaban en un host que no resuelve), pero la búsqueda no fue exhaustiva. El arreglo
-natural del Riesgo 1 (usar el cliente fijado) también eliminaría esta diferencia.
+**3. ~~A VERIFICAR~~ → RESUELTO (por el mismo arreglo): el guardia y `urllib` parseaban distinto la URL del webhook.**
+Evidencia original: el guardia usa `urlsplit(url).hostname`; `urllib.request.Request` usaba
+su propio partido de host (con `unquote`), divergiendo con userinfo, barra invertida y
+`%40`. **Arreglo:** el webhook ya no pasa por `urllib`. El cliente fijado usa el **mismo**
+`urlsplit` que el guardia tanto para validar como para construir la conexión, así que no hay
+dos parsers distintos. No queda un vector concreto, pero no se buscó de forma exhaustiva.
 
 **4. A VERIFICAR: IPv6 de transición que Python 3.11 considera globales.**
 Evidencia: guardia, línea 62 (`is_global`). En 3.11.9, `64:ff9b::7f00:1` (NAT64 de

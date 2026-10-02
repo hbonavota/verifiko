@@ -73,6 +73,55 @@ def send_pinned_get_request(
     read_body: bool,
     max_bytes: int | None = None,
 ) -> PinnedHttpResponse:
+    return _send_pinned_request(
+        url,
+        method="GET",
+        headers=headers,
+        body=None,
+        timeout_seconds=timeout_seconds,
+        read_body=read_body,
+        max_bytes=max_bytes,
+    )
+
+
+def send_pinned_post_request(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    body: bytes = b"",
+    timeout_seconds: float,
+    read_body: bool = False,
+    max_bytes: int | None = None,
+) -> PinnedHttpResponse:
+    """POST to a URL over a connection pinned to a guard-validated IP.
+
+    Like the GET variant, the hostname is resolved and validated once, the socket
+    connects only to those addresses, and ``http.client`` is used directly — so
+    it never re-resolves DNS (no rebinding window) and never follows redirects (a
+    3xx is returned as-is). This is what makes outbound POSTs to user-controlled
+    destinations, such as scan webhooks, safe against SSRF.
+    """
+    return _send_pinned_request(
+        url,
+        method="POST",
+        headers=headers,
+        body=body,
+        timeout_seconds=timeout_seconds,
+        read_body=read_body,
+        max_bytes=max_bytes,
+    )
+
+
+def _send_pinned_request(
+    url: str,
+    *,
+    method: str,
+    headers: dict[str, str] | None,
+    body: bytes | None,
+    timeout_seconds: float,
+    read_body: bool,
+    max_bytes: int | None,
+) -> PinnedHttpResponse:
     parsed = urlsplit(url)
     resolution = resolve_safe_outbound_url(url)
     request_headers = dict(headers or {})
@@ -87,13 +136,16 @@ def send_pinned_get_request(
             timeout_seconds=timeout_seconds,
         )
         try:
-            connection.request("GET", path, headers=request_headers)
+            if body is None:
+                connection.request(method, path, headers=request_headers)
+            else:
+                connection.request(method, path, body=body, headers=request_headers)
             response = connection.getresponse()
-            body = response.read(max_bytes) if read_body else b""
+            response_body = response.read(max_bytes) if read_body else b""
             return PinnedHttpResponse(
                 status_code=response.status,
                 headers={key: value for key, value in response.getheaders()},
-                body=body,
+                body=response_body,
             )
         except (http.client.HTTPException, socket.timeout, OSError, ssl.SSLError) as exc:
             last_error = exc

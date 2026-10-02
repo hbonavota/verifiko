@@ -84,7 +84,7 @@ from app.infrastructure.security.qstash_signature_verifier import (
 )
 from app.infrastructure.webhooks.http_scan_webhook_notifier import (
     HttpScanWebhookNotifier,
-    build_urllib_webhook_poster,
+    build_pinned_webhook_poster,
 )
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
 from app.infrastructure.cache.caching_domain_age_lookup import CachingDomainAgeLookup
@@ -651,7 +651,7 @@ def get_scan_webhook_notifier() -> HttpScanWebhookNotifier:
     return HttpScanWebhookNotifier(
         signing_secret=settings.scan_webhook_signing_secret,
         target_validator=assert_safe_outbound_url,
-        http_poster=build_urllib_webhook_poster(settings.scan_webhook_timeout_seconds),
+        http_poster=build_pinned_webhook_poster(settings.scan_webhook_timeout_seconds),
         max_attempts=settings.scan_webhook_max_attempts,
         current_time_provider=get_time_provider().now,
     )
