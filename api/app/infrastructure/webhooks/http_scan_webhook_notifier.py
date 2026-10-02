@@ -8,14 +8,14 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import http.client
 from typing import Callable
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 from app.application.ports.scan_webhook_notifier import ScanWebhookNotifierPort
 from app.domain.entities.verification_job import VerificationJob
 from app.domain.enums.verification_job_status import VerificationJobStatus
 from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
+from app.infrastructure.external_services.pinned_http_client import send_pinned_post_request
 
 logger = logging.getLogger(__name__)
 
@@ -130,19 +130,32 @@ def _iso_utc(value: datetime) -> str:
     return normalized.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def build_urllib_webhook_poster(timeout_seconds: float = 5.0) -> WebhookPoster:
-    """A poster backed by urllib. Network errors surface as exceptions so the
-    notifier can retry."""
+def build_pinned_webhook_poster(timeout_seconds: float = 5.0) -> WebhookPoster:
+    """A poster that pins the connection to the guard-validated IP and does not
+    follow redirects.
+
+    Using ``urllib.urlopen`` here would re-resolve DNS at connect time (a TOCTOU
+    gap: a low-TTL host can pass the guard's pre-check with a public IP and then
+    connect to a private one) and would follow 3xx redirects to an attacker-
+    chosen ``Location`` (forwarding the signed ``X-Verifiko-*`` headers off to an
+    internal host). Delivering through the pinned client closes both: the socket
+    connects only to the already-validated address, and ``http.client`` returns a
+    redirect as a plain 3xx status instead of following it. Any guard, transport,
+    or protocol failure surfaces as ``WebhookDeliveryError`` so the notifier
+    retries or gives up without ever contacting an unsafe address.
+    """
 
     def _post(url: str, headers: dict[str, str], body: bytes) -> int:
-        request = Request(url, data=body, headers=headers, method="POST")
         try:
-            with urlopen(request, timeout=timeout_seconds) as response:
-                return response.status
-        except HTTPError as exc:
-            return exc.code
-        except (URLError, TimeoutError, OSError) as exc:
+            response = send_pinned_post_request(
+                url,
+                headers=headers,
+                body=body,
+                timeout_seconds=timeout_seconds,
+            )
+        except (UnsafeOutboundTargetError, http.client.HTTPException, OSError) as exc:
             raise WebhookDeliveryError(str(exc)) from exc
+        return response.status_code
 
     return _post
 

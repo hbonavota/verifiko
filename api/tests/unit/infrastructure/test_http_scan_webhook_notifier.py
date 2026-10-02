@@ -3,10 +3,17 @@ import hmac
 import json
 from datetime import datetime, timezone
 
+import pytest
+
 from app.domain.entities.verification_job import VerificationJob
 from app.domain.enums.verification_job_status import VerificationJobStatus
 from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
-from app.infrastructure.webhooks.http_scan_webhook_notifier import HttpScanWebhookNotifier
+from app.infrastructure.external_services.pinned_http_client import PinnedHttpResponse
+from app.infrastructure.webhooks.http_scan_webhook_notifier import (
+    HttpScanWebhookNotifier,
+    WebhookDeliveryError,
+    build_pinned_webhook_poster,
+)
 
 _SECRET = "test-webhook-secret"
 _NOW = datetime(2026, 7, 23, 12, 0, tzinfo=timezone.utc)
@@ -108,3 +115,65 @@ def test_gives_up_after_max_attempts_without_raising() -> None:
     poster = RecordingPoster([500])
     _notifier(poster, max_attempts=3).notify(_job())  # must not raise
     assert len(poster.calls) == 3
+
+
+_PINNED = "app.infrastructure.webhooks.http_scan_webhook_notifier.send_pinned_post_request"
+
+
+def test_pinned_webhook_poster_delivers_via_pinned_client(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_send(url, *, headers, body, timeout_seconds):
+        observed.update(url=url, headers=headers, body=body, timeout_seconds=timeout_seconds)
+        return PinnedHttpResponse(status_code=200, headers={}, body=b"")
+
+    monkeypatch.setattr(_PINNED, fake_send)
+
+    status = build_pinned_webhook_poster(timeout_seconds=4.0)(
+        "https://hooks.example/verifiko",
+        {"X-Verifiko-Signature": "sha256=abc"},
+        b'{"event":"scan.completed"}',
+    )
+
+    assert status == 200
+    assert observed["url"] == "https://hooks.example/verifiko"
+    assert observed["body"] == b'{"event":"scan.completed"}'
+    assert observed["timeout_seconds"] == 4.0
+
+
+def test_pinned_webhook_poster_returns_redirect_status_without_following(monkeypatch) -> None:
+    # http.client does not follow redirects, so a 3xx comes back as the status.
+    # The notifier treats it as a non-2xx failure and never chases the Location.
+    monkeypatch.setattr(
+        _PINNED,
+        lambda url, *, headers, body, timeout_seconds: PinnedHttpResponse(
+            status_code=302, headers={"Location": "https://169.254.169.254/"}, body=b""
+        ),
+    )
+
+    status = build_pinned_webhook_poster()("https://hooks.example/verifiko", {}, b"{}")
+
+    assert status == 302
+
+
+def test_pinned_webhook_poster_blocks_rebinding_target(monkeypatch) -> None:
+    # If the host now resolves to a private address (DNS rebinding), the pinned
+    # client's guard rejects it — surfaced as a delivery error so the notifier
+    # never contacts the unsafe address.
+    def rebinding(url, *, headers, body, timeout_seconds):
+        raise UnsafeOutboundTargetError("resolved to a private address")
+
+    monkeypatch.setattr(_PINNED, rebinding)
+
+    with pytest.raises(WebhookDeliveryError):
+        build_pinned_webhook_poster()("https://hooks.example/verifiko", {}, b"{}")
+
+
+def test_pinned_webhook_poster_wraps_transport_error(monkeypatch) -> None:
+    def boom(url, *, headers, body, timeout_seconds):
+        raise OSError("connection reset")
+
+    monkeypatch.setattr(_PINNED, boom)
+
+    with pytest.raises(WebhookDeliveryError):
+        build_pinned_webhook_poster()("https://hooks.example/verifiko", {}, b"{}")
