@@ -112,67 +112,82 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // stay API-free on first paint, so the app shell (AppLayout) triggers the
   // quota fetch on mount instead — it only ever renders inside the app.
 
-  function applyAuthenticatedSession(accessToken: {
-    access_token: string;
-    token_type: string;
-    user: ApiUser;
-  }) {
-    persistAuthSession(accessToken);
-    setCurrentUser(accessToken.user);
-  }
+  // Every method is wrapped in useCallback with stable deps so its identity does
+  // NOT change when auth/quota state changes. Consumers (notably the imperative
+  // Google button) depend on these references in effects; an unstable identity
+  // made those effects re-run on every quota refresh, tearing down and rebuilding
+  // the Google iframe (visible flicker + the GSI "initialize called multiple
+  // times" warning).
+  const applyAuthenticatedSession = useCallback(
+    (accessToken: { access_token: string; token_type: string; user: ApiUser }) => {
+      persistAuthSession(accessToken);
+      setCurrentUser(accessToken.user);
+    },
+    [],
+  );
 
-  async function loginWithGoogleCredential(idToken: string) {
-    setIsAuthenticating(true);
-    try {
-      const session = await authenticateWithGoogle(idToken);
-      applyAuthenticatedSession(session);
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }
+  const loginWithGoogleCredential = useCallback(
+    async (idToken: string) => {
+      setIsAuthenticating(true);
+      try {
+        applyAuthenticatedSession(await authenticateWithGoogle(idToken));
+      } finally {
+        setIsAuthenticating(false);
+      }
+    },
+    [applyAuthenticatedSession],
+  );
 
-  async function loginWithEmailPassword(email: string, password: string) {
-    setIsAuthenticating(true);
-    try {
-      const session = await authenticateWithEmailPassword({ email, password });
-      applyAuthenticatedSession(session);
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }
+  const loginWithEmailPassword = useCallback(
+    async (email: string, password: string) => {
+      setIsAuthenticating(true);
+      try {
+        applyAuthenticatedSession(await authenticateWithEmailPassword({ email, password }));
+      } finally {
+        setIsAuthenticating(false);
+      }
+    },
+    [applyAuthenticatedSession],
+  );
 
-  async function registerWithEmailPassword(displayName: string, email: string, password: string) {
-    setIsAuthenticating(true);
-    try {
-      const session = await registerWithEmailPasswordRequest({
-        display_name: displayName,
-        email,
-        password,
-      });
-      applyAuthenticatedSession(session);
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }
+  const registerWithEmailPassword = useCallback(
+    async (displayName: string, email: string, password: string) => {
+      setIsAuthenticating(true);
+      try {
+        applyAuthenticatedSession(
+          await registerWithEmailPasswordRequest({
+            display_name: displayName,
+            email,
+            password,
+          }),
+        );
+      } finally {
+        setIsAuthenticating(false);
+      }
+    },
+    [applyAuthenticatedSession],
+  );
 
-  async function requestMagicLink(email: string) {
+  const requestMagicLink = useCallback(async (email: string) => {
     await requestMagicLinkRequest(email);
-  }
+  }, []);
 
-  async function loginWithMagicLinkToken(token: string) {
-    setIsAuthenticating(true);
-    try {
-      const session = await consumeMagicLink(token);
-      applyAuthenticatedSession(session);
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }
+  const loginWithMagicLinkToken = useCallback(
+    async (token: string) => {
+      setIsAuthenticating(true);
+      try {
+        applyAuthenticatedSession(await consumeMagicLink(token));
+      } finally {
+        setIsAuthenticating(false);
+      }
+    },
+    [applyAuthenticatedSession],
+  );
 
-  function logout() {
+  const logout = useCallback(() => {
     clearStoredAuthSession();
     setCurrentUser(null);
-  }
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -195,6 +210,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isAuthenticating,
       quotaReady,
       quotaStatus,
+      loginWithGoogleCredential,
+      loginWithEmailPassword,
+      registerWithEmailPassword,
+      requestMagicLink,
+      loginWithMagicLinkToken,
+      logout,
       refreshQuotaStatus,
     ],
   );
