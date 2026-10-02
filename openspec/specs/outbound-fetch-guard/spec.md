@@ -164,6 +164,38 @@ Test: NONE
 
 Test: api/tests/unit/infrastructure/test_outbound_target_guard.py::test_outbound_target_guard_resolves_public_host_to_validated_ips
 
+### Requirement: IPv4 embedded in an IPv6 transition address must also be global
+
+For each resolved IPv6 address, the guard SHALL extract any embedded IPv4 — from the
+IPv4-mapped (`::ffff:a.b.c.d`), 6to4 (`2002::/16`), Teredo (`2001::/32`), NAT64 well-known
+prefix (`64:ff9b::/96`) and deprecated IPv4-compatible (`::a.b.c.d`) forms — and reject the
+destination if any embedded IPv4 is not globally routable. This holds even when
+`ipaddress.is_global` reports the IPv6 address itself as global, so a non-global IPv4 cannot
+be smuggled in through the IPv6 prefix.
+
+Source: api/app/infrastructure/external_services/outbound_target_guard.py:resolve_safe_outbound_host, _embedded_ipv4_addresses
+
+#### Scenario: NAT64 of a private IPv4 is rejected
+
+- **WHEN** a hostname resolves to `64:ff9b::7f00:1` (NAT64 of `127.0.0.1`)
+- **THEN** the guard raises `UnsafeOutboundTargetError`, even though the IPv6 is reported as global
+
+Test: api/tests/unit/infrastructure/test_outbound_target_guard.py::test_outbound_target_guard_blocks_ipv6_embedding_non_global_ipv4[64:ff9b::7f00:1]
+
+#### Scenario: IPv4-compatible and IPv4-mapped of a non-global IPv4 are rejected
+
+- **WHEN** a hostname resolves to `::127.0.0.1`, `::ffff:169.254.169.254` or `::ffff:10.0.0.1`
+- **THEN** the guard raises `UnsafeOutboundTargetError`
+
+Test: api/tests/unit/infrastructure/test_outbound_target_guard.py::test_outbound_target_guard_blocks_ipv6_embedding_non_global_ipv4
+
+#### Scenario: Transition address embedding a public IPv4 is allowed
+
+- **WHEN** a hostname resolves to `64:ff9b::808:808` (NAT64 of `8.8.8.8`) or to a normal global IPv6 such as `2001:4860:4860::8888`
+- **THEN** the guard returns the resolution
+
+Test: api/tests/unit/infrastructure/test_outbound_target_guard.py::test_outbound_target_guard_allows_nat64_of_public_ipv4; api/tests/unit/infrastructure/test_outbound_target_guard.py::test_outbound_target_guard_allows_normal_global_ipv6
+
 ### Requirement: DNS resolution failures fail closed
 
 The guard SHALL treat a resolution failure as an unsafe target. A name-resolution error

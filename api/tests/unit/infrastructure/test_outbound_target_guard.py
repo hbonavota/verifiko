@@ -107,3 +107,46 @@ def test_outbound_target_guard_does_not_retry_name_resolution_failure(
     with pytest.raises(UnsafeOutboundTargetError):
         resolve_safe_outbound_host("does-not-exist.example", 443)
     assert calls["n"] == 1  # genuine NXDOMAIN is terminal, not retried
+
+
+def _resolves_to(monkeypatch: pytest.MonkeyPatch, ip: str) -> None:
+    monkeypatch.setattr(
+        f"{_GUARD}.socket.getaddrinfo",
+        lambda hostname, port, type: [(None, None, None, None, (ip, port, 0, 0))],
+    )
+
+
+@pytest.mark.parametrize(
+    "ipv6",
+    [
+        "64:ff9b::7f00:1",  # NAT64 well-known prefix of 127.0.0.1
+        "::127.0.0.1",  # deprecated IPv4-compatible of 127.0.0.1
+        "::ffff:169.254.169.254",  # IPv4-mapped of the cloud metadata address
+        "::ffff:10.0.0.1",  # IPv4-mapped of a private address
+    ],
+)
+def test_outbound_target_guard_blocks_ipv6_embedding_non_global_ipv4(
+    monkeypatch: pytest.MonkeyPatch, ipv6: str
+) -> None:
+    # is_global can report these as global based on the IPv6 prefix; the guard
+    # must still reject them because the embedded IPv4 is private/special-use.
+    _resolves_to(monkeypatch, ipv6)
+    with pytest.raises(UnsafeOutboundTargetError):
+        resolve_safe_outbound_host("evil.example", 443)
+
+
+def test_outbound_target_guard_allows_nat64_of_public_ipv4(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # NAT64 of a public IPv4 (8.8.8.8) is a legitimate global destination.
+    _resolves_to(monkeypatch, "64:ff9b::808:808")
+    resolution = resolve_safe_outbound_host("real.example", 443)
+    assert resolution.ip_addresses == ("64:ff9b::808:808",)
+
+
+def test_outbound_target_guard_allows_normal_global_ipv6(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _resolves_to(monkeypatch, "2001:4860:4860::8888")
+    resolution = resolve_safe_outbound_host("real.example", 443)
+    assert resolution.ip_addresses == ("2001:4860:4860::8888",)
