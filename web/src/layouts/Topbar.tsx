@@ -5,7 +5,7 @@ import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
 import { Button } from "../components/ui/Button";
 import { UpgradeModal } from "../components/ui/UpgradeModal";
 import { useAuth } from "../lib/auth";
-import { readStoredAuthSession } from "../lib/authSessionStorage";
+import { readPendingSessionPlan } from "../lib/authSessionStorage";
 import { trackAuthEntryClicked, trackUpgradeIntentClicked } from "../lib/analytics";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { useI18n } from "../lib/i18n";
@@ -26,7 +26,13 @@ export function Topbar() {
     .slice(0, 2)
     .map((segment) => segment.charAt(0).toUpperCase())
     .join("");
-  const quotaSummary = quotaReady && quotaStatus ? buildQuotaSummary(copy, quotaStatus) : null;
+  // A signed-in user's quota is never the anonymous one: that is stale data from
+  // before an in-app login, so treat it as not loaded until the user's arrives.
+  const hasStaleAnonymousQuota = Boolean(currentUser) && quotaStatus?.plan === "ANONYMOUS";
+  const quotaSummary =
+    quotaReady && quotaStatus && !hasStaleAnonymousQuota
+      ? buildQuotaSummary(copy, quotaStatus)
+      : null;
   const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
   const isAuthenticated = Boolean(currentUser);
   // While a saved session is being validated, show an account-sized placeholder
@@ -75,7 +81,9 @@ export function Topbar() {
                 ) : (
                   // Keep the quota lines' space so the block does not grow when the
                   // quota arrives; if it never does, keep the space but show nothing.
-                  <QuotaLinePlaceholders variant={quotaReady ? "reserved" : "skeleton"} />
+                  <QuotaLinePlaceholders
+                    variant={quotaReady && !hasStaleAnonymousQuota ? "reserved" : "skeleton"}
+                  />
                 )}
               </div>
               <div className="topbar-account__actions">
@@ -108,7 +116,19 @@ export function Topbar() {
               </div>
             </div>
           ) : pendingSessionPlan ? (
-            <PendingAccountPlaceholder plan={pendingSessionPlan} />
+            <PendingAccountPlaceholder
+              actionLabels={[
+                copy.topbar.reviewHistory,
+                ...(pendingSessionPlan === "FREE"
+                  ? [
+                      hasSubmittedUpgradeIntent
+                        ? copy.topbar.upgradeInterestSaved
+                        : copy.topbar.upgradeToPro,
+                    ]
+                  : []),
+                copy.topbar.signOut,
+              ]}
+            />
           ) : (
             <div className="topbar-auth">
               <div className="topbar-auth__access-actions">
@@ -176,8 +196,10 @@ function QuotaLinePlaceholders({ variant }: { variant: "skeleton" | "reserved" }
 }
 
 // Mirrors the account block's structure and line classes so it has the same size.
-function PendingAccountPlaceholder({ plan }: { plan: string }) {
-  const actionCount = plan === "FREE" ? 3 : 2;
+// The action pills carry the real (transparent) labels so they are exactly as wide
+// as the buttons that replace them.
+function PendingAccountPlaceholder({ actionLabels }: { actionLabels: string[] }) {
+  const [linkLabel, ...buttonLabels] = actionLabels;
   return (
     <div aria-hidden="true" className="topbar-account topbar-account--pending">
       <div className="topbar-account__avatar topbar-account__avatar--skeleton" />
@@ -191,30 +213,21 @@ function PendingAccountPlaceholder({ plan }: { plan: string }) {
       <div className="topbar-account__actions">
         {/* Same elements as the real actions (a link, then <button>s): native
             buttons do not inherit the font size, so the element type matters. */}
-        <span className="button topbar-account__button-skeleton">{NBSP}</span>
-        {Array.from({ length: actionCount - 1 }, (_, index) => (
+        <span className="button topbar-account__button-skeleton">{linkLabel}</span>
+        {buttonLabels.map((label) => (
           <button
             className="button topbar-account__button-skeleton"
             disabled
-            key={index}
+            key={label}
             tabIndex={-1}
             type="button"
           >
-            {NBSP}
+            {label}
           </button>
         ))}
       </div>
     </div>
   );
-}
-
-function readPendingSessionPlan(): string | null {
-  try {
-    const session = readStoredAuthSession();
-    return session ? session.user?.plan ?? "FREE" : null;
-  } catch {
-    return null;
-  }
 }
 
 function buildQuotaSummary(

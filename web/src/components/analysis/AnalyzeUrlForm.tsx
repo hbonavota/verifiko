@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
 import { EmailAuthModal } from "../auth/EmailAuthModal";
 import { useAuth } from "../../lib/auth";
+import { readPendingSessionPlan } from "../../lib/authSessionStorage";
 import type { ApiQuotaStatus, ApiVerification } from "../../types/verification";
 import { ApiRequestError, createVerification, runDeepScan } from "../../lib/api";
 import {
@@ -112,7 +113,7 @@ export function AnalyzeUrlForm({
   submittingLabel,
 }: AnalyzeUrlFormProps) {
   const { copy, language } = useI18n();
-  const { currentUser, quotaStatus, refreshQuotaStatus } = useAuth();
+  const { authReady, currentUser, quotaStatus, refreshQuotaStatus } = useAuth();
   const { hasSubmittedUpgradeIntent } = useUpgradeIntent();
   const location = useLocation();
   const navigate = useNavigate();
@@ -139,6 +140,11 @@ export function AnalyzeUrlForm({
   const resolvedSubmittingLabel = submittingLabel ?? copy.analyzeForm.submittingLabel;
   const analyticsPlan = quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS");
   const isAuthenticated = Boolean(currentUser);
+  // While a saved session is being validated, show the signed-in hint text so it
+  // does not change length (and move the toggle) when the session is confirmed.
+  // Behavior still depends on isAuthenticated.
+  const showsSignedInHint =
+    isAuthenticated || (!authReady && readPendingSessionPlan() !== null);
 
   function getVerificationWarningCount(verification: ApiVerification): number {
     const analysisWarnings = verification.risk_assessment.analysis_warnings?.length ?? 0;
@@ -591,7 +597,7 @@ export function AnalyzeUrlForm({
               <span className="deep-toggle__badge">{copy.analyzeForm.deepScan.badge}</span>
             </span>
             <span className="deep-toggle__hint">
-              {isAuthenticated
+              {showsSignedInHint
                 ? copy.analyzeForm.deepScan.hint
                 : copy.analyzeForm.deepScan.authHint}
             </span>
