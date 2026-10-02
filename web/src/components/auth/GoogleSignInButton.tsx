@@ -58,6 +58,7 @@ export function GoogleSignInButton({
   const { copy, language } = useI18n();
   const { isAuthenticating, loginWithGoogleCredential } = useAuth();
   const buttonRef = useRef<HTMLDivElement | null>(null);
+  const credentialHandlerRef = useRef<((credential: string) => void) | null>(null);
   const [runtimeErrorMessage, setRuntimeErrorMessage] = useState<string | null>(null);
   const busyState = busy || isAuthenticating;
   const variantClassName = variant === "quota" ? "google-sign-in--quota" : "";
@@ -66,6 +67,25 @@ export function GoogleSignInButton({
     .join(" ");
   const configurationErrorMessage = !GOOGLE_CLIENT_ID ? copy.topbar.googleSignInNotConfigured : null;
   const errorMessage = configurationErrorMessage ?? runtimeErrorMessage;
+
+  // Keep the credential-handling logic in a ref. Updating it (when auth or
+  // onSuccess change) must NOT re-run the render effect below — that would tear
+  // down and rebuild the Google iframe (flicker + the GSI "initialize called
+  // multiple times" warning). The rendered button always routes through this ref.
+  useEffect(() => {
+    credentialHandlerRef.current = (credential: string) => {
+      void loginWithGoogleCredential(credential)
+        .then(async () => {
+          setRuntimeErrorMessage(null);
+          await onSuccess?.();
+        })
+        .catch((error) => {
+          setRuntimeErrorMessage(
+            error instanceof Error ? error.message : copy.topbar.authenticationFailed,
+          );
+        });
+    };
+  }, [copy.topbar.authenticationFailed, loginWithGoogleCredential, onSuccess]);
 
   useEffect(() => {
     const host = buttonRef.current;
@@ -86,19 +106,10 @@ export function GoogleSignInButton({
         return;
       }
 
-      // This button becomes the active credential target while it is mounted.
-      activeGoogleCredentialHandler = (credential) => {
-        void loginWithGoogleCredential(credential)
-          .then(async () => {
-            setRuntimeErrorMessage(null);
-            await onSuccess?.();
-          })
-          .catch((error) => {
-            setRuntimeErrorMessage(
-              error instanceof Error ? error.message : copy.topbar.authenticationFailed,
-            );
-          });
-      };
+      // This button becomes the active credential target while it is mounted; it
+      // routes to the ref, which always holds the latest handler.
+      activeGoogleCredentialHandler = (credential) =>
+        credentialHandlerRef.current?.(credential);
       ensureGoogleIdentityInitialized();
       host.replaceChildren();
       window.google.accounts.id.renderButton(host, {
@@ -134,15 +145,9 @@ export function GoogleSignInButton({
     return () => {
       isCancelled = true;
     };
-  }, [
-    configurationErrorMessage,
-    copy.topbar.authenticationFailed,
-    copy.topbar.googleSignInUnavailable,
-    language,
-    loginWithGoogleCredential,
-    onSuccess,
-    variant,
-  ]);
+    // Deliberately narrow: the iframe is (re)rendered only when the locale, the
+    // variant, or the config-error state changes — never on auth/quota updates.
+  }, [configurationErrorMessage, copy.topbar.googleSignInUnavailable, language, variant]);
 
   return (
     <div className={rootClassName}>
