@@ -24,3 +24,6 @@ web/dist-ssr/
 
 # Local QA reports (not part of the repo)
 QA-informe-fase*.md
+
+# Local scratch (Claude Cowork)
+Claude outputs/
