@@ -64,7 +64,7 @@ cannot change the topbar height.
 
 #### Scenario: Long quota note arrives
 
-- **WHEN** a signed-in user's quota note arrives and makes the account block wider (in English or Spanish)
+- **WHEN** a signed-in user's quota note arrives (in English or Spanish), which would otherwise widen the account block
 - **THEN** the language switcher stays in the same position and the topbar height does not change
 
 ### Requirement: Anonymous topbar is unchanged
