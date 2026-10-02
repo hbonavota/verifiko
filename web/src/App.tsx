@@ -2,6 +2,7 @@ import { lazy, Suspense, type ComponentType } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AnalyticsPageTracker } from "./components/analytics/AnalyticsPageTracker";
+import { RouteErrorBoundary } from "./components/ui/RouteErrorBoundary";
 import { AppLayout } from "./layouts/AppLayout";
 import { LandingPage } from "./pages/LandingPage";
 
@@ -62,9 +63,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AnalyticsPageTracker />
-      <Suspense fallback={null}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
+      <RouteErrorBoundary>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
           <Route element={<AppLayout />}>
             <Route path="/app" element={<HomePage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -79,6 +81,7 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
+      </RouteErrorBoundary>
     </BrowserRouter>
   );
 }

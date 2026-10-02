@@ -306,6 +306,13 @@ const translations = {
       backHome: "Back to home",
       redirecting: "Taking you to your dashboard…",
     },
+    errorBoundary: {
+      title: "Something went wrong",
+      description:
+        "We couldn't load this page. This can happen right after an update — reloading usually fixes it.",
+      reload: "Reload",
+      home: "Go to home",
+    },
     home: {
       metaTitle: "Verify Link",
       metaDescription: "Verify a link and review the latest result in Verifiko.",
@@ -981,6 +988,13 @@ const translations = {
       invalidToken: "Este enlace de acceso no es válido o ha caducado.",
       backHome: "Volver al inicio",
       redirecting: "Te llevamos a tu panel…",
+    },
+    errorBoundary: {
+      title: "Algo salió mal",
+      description:
+        "No pudimos cargar esta página. Puede pasar justo después de una actualización — recargar suele solucionarlo.",
+      reload: "Recargar",
+      home: "Ir al inicio",
     },
     home: {
       metaTitle: "Verificar enlace",
