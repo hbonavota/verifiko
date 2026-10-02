@@ -320,6 +320,13 @@
   .topbar-account {
     grid-template-columns: auto auto auto;
   }
+
+  /* An explicit min-width would become the actions track's minimum and let a wider
+     button slide under the text; auto makes the track honor the widest button
+     (beats the later max-width: 1120px rule that sets min-width: 0). */
+  .topbar-account .topbar-account__actions {
+    min-width: auto;
+  }
 }
 
 .topbar-account__copy {
@@ -396,18 +403,17 @@
   .topbar-account__copy {
     width: 26rem;
   }
+
+  /* Keeps the stacked actions at least 9.5rem wide (formerly the column's min-width). */
+  .topbar-account__actions > * {
+    min-width: 9.5rem;
+  }
 }
 
 /* 721–1120px: the text column width depends only on the viewport, the identity
    lines stay on one line and the quota lines take a fixed number of lines, so the
    account block is the same size before and after the session and quota load. */
 @media (min-width: 721px) and (max-width: 1120px) {
-  /* The actions keep their content width so they cannot slide under the text
-     (beats the later max-width: 1120px rule that sets min-width: 0). */
-  .topbar-account .topbar-account__actions {
-    min-width: auto;
-  }
-
   .topbar-account__copy {
     --topbar-quota-lines: 2;
     --topbar-quota-line-height: 1.35;
