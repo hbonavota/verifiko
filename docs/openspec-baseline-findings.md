@@ -165,17 +165,22 @@ su propio partido de host (con `unquote`), divergiendo con userinfo, barra inver
 `urlsplit` que el guardia tanto para validar como para construir la conexión, así que no hay
 dos parsers distintos. No queda un vector concreto, pero no se buscó de forma exhaustiva.
 
-**4. A VERIFICAR: IPv6 de transición que Python 3.11 considera globales.**
-Evidencia: guardia, línea 62 (`is_global`). En 3.11.9, `64:ff9b::7f00:1` (NAT64 de
-`127.0.0.1`), `2002:7f00:1::` (6to4) y `::127.0.0.1` (IPv4-compatible, obsoleta) dan
-`is_global == True`. Un registro AAAA controlado por un atacante podría apuntar ahí. Que sea
-explotable depende de que la red de ejecución tenga pasarela NAT64/6to4 o enrute esas
-direcciones. Sin verificar en Vercel.
+**4. ~~A VERIFICAR~~ → RESUELTO: IPv6 de transición que Python considera globales.**
+Evidencia original: en 3.11.9, `64:ff9b::7f00:1` (NAT64 de `127.0.0.1`) y `::127.0.0.1`
+(IPv4-compatible) dan `is_global == True`; un AAAA controlado por un atacante podría apuntar
+ahí para alcanzar un host privado. **Arreglo:** el guardia ahora extrae la IPv4 incrustada de
+las formas de transición (IPv4-mapped, 6to4, Teredo, NAT64 `64:ff9b::/96`, IPv4-compat) con
+`_embedded_ipv4_addresses` y la revalida con `is_global`, así que una IPv4 no-global queda
+bloqueada aunque el prefijo IPv6 parezca global. Una forma de transición que embebe una IPv4
+pública (p. ej. NAT64 de 8.8.8.8) sigue permitida. Cubierto por
+`test_outbound_target_guard_blocks_ipv6_embedding_non_global_ipv4` (4 casos) y los dos tests
+`_allows_*`.
 
-**5. A VERIFICAR: la cobertura depende de la versión de Python en producción.**
-Evidencia: Discrepancia 3. Las tablas de `ipaddress` cambiaron en parches recientes
-(por ejemplo, el tratamiento de las IPv4-mapped y nuevos rangos reservados). Hay que
-confirmar qué versión ejecuta el runtime de Vercel y repetir las pruebas del Riesgo 4 con ella.
+**5. A VERIFICAR (mitigado en parte): la cobertura depende de la versión de Python en producción.**
+Evidencia: Discrepancia 3 (CLAUDE.md dice 3.11, `.python-version` dice 3.12). El arreglo del
+Riesgo 4 hace la validación de las IPv6 de transición **independiente de las tablas de
+`is_global`** (extrae y valida la IPv4 incrustada). Queda por confirmar la versión real del
+runtime de Vercel para el resto de rangos que sí dependen de `is_global`.
 
 **6. A VERIFICAR: la navegación durante la detonación headless no pasa por el guardia.**
 Evidencia: `browserless_detonation_client.py:51` (`page.goto(url)` dentro del script
