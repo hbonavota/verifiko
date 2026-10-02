@@ -8,6 +8,7 @@ import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { primaryNavigation } from "../data/navigation";
 import { trackAuthEntryClicked } from "../lib/analytics";
 import { useAuth } from "../lib/auth";
+import { readPendingSessionPlan } from "../lib/authSessionStorage";
 import { useI18n } from "../lib/i18n";
 
 function displayNameForUser(user: NonNullable<ReturnType<typeof useAuth>["currentUser"]>): string {
@@ -26,13 +27,16 @@ function initialsForUser(user: NonNullable<ReturnType<typeof useAuth>["currentUs
 export function Sidebar() {
   const location = useLocation();
   const { copy, language } = useI18n();
-  const { currentUser, logout, quotaStatus } = useAuth();
+  const { authReady, currentUser, logout, quotaStatus } = useAuth();
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const analyticsPlan = currentUser?.plan ?? quotaStatus?.plan ?? "ANONYMOUS";
   const isAuthenticated = Boolean(currentUser);
   const displayName = currentUser ? displayNameForUser(currentUser) : "";
   const initials = currentUser ? initialsForUser(currentUser) : "";
+  // While a saved session is being validated, reserve the session card's space so
+  // it does not push the page down when it appears (the card shows on phones only).
+  const hasPendingSession = !authReady && !currentUser && readPendingSessionPlan() !== null;
 
   function isActiveItem(href: string): boolean {
     const currentPath = `${location.pathname}${location.hash}`;
@@ -160,8 +164,53 @@ export function Sidebar() {
             </Button>
           </div>
         </section>
+      ) : hasPendingSession ? (
+        <PendingSessionCard
+          historyLabel={copy.topbar.reviewHistory}
+          signOutLabel={copy.topbar.signOut}
+        />
       ) : null}
       <EmailAuthModal open={isEmailAuthModalOpen} onClose={() => setIsEmailAuthModalOpen(false)} />
     </aside>
+  );
+}
+
+const NBSP = "\u00a0";
+
+// Mirrors the session card's markup and classes so it has the same size. The pills
+// carry the real (transparent) labels and the same element types as the real
+// actions (a link, then a native <button>, which does not inherit the font size).
+function PendingSessionCard({
+  historyLabel,
+  signOutLabel,
+}: {
+  historyLabel: string;
+  signOutLabel: string;
+}) {
+  return (
+    <section aria-hidden="true" className="sidebar-account sidebar-account--pending">
+      <div className="sidebar-account__identity">
+        <div className="sidebar-account__avatar sidebar-account__avatar--skeleton" />
+        <div className="sidebar-account__copy">
+          <p className="sidebar-account__eyebrow sidebar-skeleton">{NBSP}</p>
+          <p className="sidebar-account__label sidebar-skeleton">{NBSP}</p>
+          <p className="sidebar-account__value sidebar-skeleton">{NBSP}</p>
+          <p className="sidebar-account__meta sidebar-skeleton">{NBSP}</p>
+        </div>
+      </div>
+      <div className="sidebar-account__actions">
+        <span className="button sidebar-account__history sidebar-account__button-skeleton">
+          {historyLabel}
+        </span>
+        <button
+          className="button sidebar-account__logout sidebar-account__button-skeleton"
+          disabled
+          tabIndex={-1}
+          type="button"
+        >
+          {signOutLabel}
+        </button>
+      </div>
+    </section>
   );
 }

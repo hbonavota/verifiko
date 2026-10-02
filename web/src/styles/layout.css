@@ -224,6 +224,48 @@
   width: 100%;
 }
 
+/* Session-restore placeholder for the session card (same classes, same size). */
+.sidebar-skeleton {
+  position: relative;
+  justify-self: start;
+  color: transparent;
+  user-select: none;
+}
+
+.sidebar-skeleton::before {
+  content: "";
+  position: absolute;
+  inset: 0.22em 0;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.sidebar-account__eyebrow.sidebar-skeleton {
+  width: 4.5rem;
+}
+
+.sidebar-account__label.sidebar-skeleton,
+.sidebar-account__meta.sidebar-skeleton {
+  width: 8rem;
+}
+
+.sidebar-account__value.sidebar-skeleton {
+  width: 6.5rem;
+}
+
+.sidebar-account__avatar--skeleton {
+  border-color: transparent;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.sidebar-account__button-skeleton {
+  border-color: transparent;
+  background: rgba(148, 163, 184, 0.1);
+  color: transparent;
+  cursor: default;
+  pointer-events: none;
+}
+
 .app-layout__main {
   display: flex;
   flex-direction: column;
@@ -256,6 +298,7 @@
    can never decide whether it wraps — and change the topbar height. */
 .topbar__actions--account {
   flex-direction: column;
+  flex-wrap: nowrap; /* a wrapping column under-reports its min width, letting the block overflow */
   align-items: flex-end;
 }
 
@@ -269,6 +312,14 @@
 .topbar-account {
   align-items: center;
   grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+/* Where the text column has a fixed width, its track must not shrink below it
+   (a minmax(0, 1fr) track would let the text overlap the avatar and buttons). */
+@media (min-width: 721px) {
+  .topbar-account {
+    grid-template-columns: auto auto auto;
+  }
 }
 
 .topbar-account__copy {
@@ -344,6 +395,48 @@
 @media (min-width: 1121px) {
   .topbar-account__copy {
     width: 26rem;
+  }
+}
+
+/* 721–1120px: the text column width depends only on the viewport, the identity
+   lines stay on one line and the quota lines take a fixed number of lines, so the
+   account block is the same size before and after the session and quota load. */
+@media (min-width: 721px) and (max-width: 1120px) {
+  /* The actions keep their content width so they cannot slide under the text
+     (beats the later max-width: 1120px rule that sets min-width: 0). */
+  .topbar-account .topbar-account__actions {
+    min-width: auto;
+  }
+
+  .topbar-account__copy {
+    --topbar-quota-lines: 2;
+    --topbar-quota-line-height: 1.35;
+    width: clamp(15rem, 26vw, 18rem);
+  }
+
+  .topbar-account__eyebrow,
+  .topbar-account__label,
+  .topbar-account__value,
+  .topbar-account__meta {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .topbar-account__quota,
+  .topbar-account__quota-note {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--topbar-quota-lines);
+    line-height: var(--topbar-quota-line-height);
+    min-height: calc(var(--topbar-quota-lines) * var(--topbar-quota-line-height) * 1em);
+  }
+
+  /* The skeleton bar marks only the first reserved line. */
+  .topbar-account__quota--skeleton::before {
+    bottom: auto;
+    height: calc(var(--topbar-quota-line-height) * 1em - 0.44em);
   }
 }
 
@@ -658,6 +751,10 @@
 @media (max-width: 1120px) {
   .app-layout {
     grid-template-columns: 1fr;
+    /* Keep the (stacked) sidebar row content-sized: with min-height: 100vh and short
+       content, the free space was spread over both rows and the sidebar stretched,
+       then snapped back once the page content rendered. */
+    grid-template-rows: auto 1fr;
   }
 
   .sidebar {
@@ -796,6 +893,13 @@
   .sidebar-account__label,
   .sidebar-account__meta {
     display: none;
+  }
+
+  /* One line for the name, so the card height does not depend on it. */
+  .sidebar-account__value {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .sidebar-account__actions {
