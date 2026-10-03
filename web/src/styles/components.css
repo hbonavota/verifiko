@@ -2778,6 +2778,10 @@
   grid-template-columns: 1fr;
   gap: clamp(0.8rem, 1.55vw, 1.12rem);
   align-items: stretch;
+  /* The decorative ::before glow (22rem wide, offset 12%) sticks out past the right
+     edge on phones; without clipping it the page is ~411px wide on a 390px screen,
+     which cuts off fixed UI and lets the page shift sideways. */
+  overflow-x: clip;
 }
 
 .analysis-hero::before {
