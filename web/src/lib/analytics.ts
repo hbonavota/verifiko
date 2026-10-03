@@ -235,6 +235,20 @@ export function trackUpgradeIntentClicked({
   });
 }
 
+interface InstallPromptClickedParams extends AnalyticsContextParams {
+  platform: "native" | "ios";
+}
+
+export function trackInstallPromptClicked({
+  platform,
+  ...context
+}: InstallPromptClickedParams): void {
+  trackEvent("install_prompt_clicked", {
+    ...buildAnalyticsContext(context),
+    platform,
+  });
+}
+
 export function categorizeAnalysisError(error: unknown): string {
   if (!(error instanceof Error)) {
     return "unknown_error";

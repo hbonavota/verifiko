@@ -5,6 +5,7 @@ import brandMark from "../assets/verifiko-mark.svg";
 import { EmailAuthModal } from "../components/auth/EmailAuthModal";
 import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
 import { Button } from "../components/ui/Button";
+import { InstallAppButton } from "../components/ui/InstallAppButton";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { useAuth } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
@@ -51,9 +52,14 @@ export function LandingPage() {
           <h1 className="landing__title">{copy.landing.title}</h1>
           <p className="landing__lead">{copy.landing.lead}</p>
           <div className="landing__cta">
-            <Button to="/app" variant="primary" className="landing__start">
-              {copy.landing.start}
-            </Button>
+            <div className="landing__cta-actions">
+              <Button to="/app" variant="primary" className="landing__start">
+                {copy.landing.start}
+              </Button>
+              {/* Renders nothing until the browser says the app is installable, after
+                  hydration; it appears beside "Start" so nothing else moves. */}
+              <InstallAppButton />
+            </div>
             <p className="landing__cta-note">{copy.landing.ctaNote}</p>
           </div>
         </section>

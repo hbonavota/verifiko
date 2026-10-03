@@ -3934,12 +3934,58 @@
   overflow-wrap: break-word;
 }
 
+/* The note sits under the buttons so that "Install app", which only appears after
+   hydration, takes free space beside "Start" instead of pushing anything. */
 .landing__cta {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
   margin-top: 0.6rem;
+}
+
+.landing__cta-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.install-app {
+  position: relative;
+}
+
+.install-app__button {
+  white-space: nowrap;
+}
+
+/* iOS has no install prompt: the steps open over the page, never in the flow. */
+.install-app__steps {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  width: min(18rem, calc(100vw - 2rem));
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgba(13, 20, 38, 0.97);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.install-app__steps p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.install-app__share-icon {
+  flex: none;
+  margin-top: 0.1rem;
+  color: var(--color-primary);
 }
 
 .landing__start {
@@ -3987,14 +4033,13 @@
     grid-template-columns: 1fr;
   }
 
-  .landing__cta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.65rem;
+  .landing__cta-actions {
+    align-self: stretch;
   }
 
+  /* Full width on its own; shares the row when "Install app" appears. */
   .landing__start {
-    width: 100%;
+    flex: 1 1 auto;
   }
 }
 

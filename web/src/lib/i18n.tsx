@@ -36,6 +36,8 @@ const translations = {
       start: "Start now",
       ctaNote: "Free · no sign-up needed to try it",
       emailCta: "Sign in with email",
+      installApp: "Install app",
+      installIosSteps: "Tap the Share button and choose \u201cAdd to Home Screen\u201d.",
     },
     topbar: {
       eyebrow: "Verification",
@@ -721,6 +723,8 @@ const translations = {
       start: "Empezar ahora",
       ctaNote: "Gratis · no necesitas registrarte para probar",
       emailCta: "Iniciar sesión con email",
+      installApp: "Instalar app",
+      installIosSteps: "Toca el botón Compartir y elige \u201cAgregar a inicio\u201d.",
     },
     topbar: {
       eyebrow: "Verificación",
