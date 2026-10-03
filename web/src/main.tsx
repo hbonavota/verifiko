@@ -8,16 +8,6 @@ import "./styles/index.css";
 
 const rootElement = document.getElementById("root") as HTMLElement;
 
-const tree = (
-  <React.StrictMode>
-    <I18nProvider>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </I18nProvider>
-  </React.StrictMode>
-);
-
 // react-snap prerenders only "/" to static HTML. The SPA fallback serves that
 // same index.html for every deep link (e.g. /app), so we must hydrate *only* on
 // "/" — where the markup matches what React renders. On any other path the
@@ -25,6 +15,16 @@ const tree = (
 // it and mount fresh (those routes are behind auth and not perf-critical).
 const isLandingSnapshot =
   rootElement.hasChildNodes() && window.location.pathname === "/";
+
+const tree = (
+  <React.StrictMode>
+    <I18nProvider deferStoredLanguage={isLandingSnapshot}>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </I18nProvider>
+  </React.StrictMode>
+);
 
 if (isLandingSnapshot) {
   ReactDOM.hydrateRoot(rootElement, tree);
