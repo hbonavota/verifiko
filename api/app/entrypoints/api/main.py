@@ -24,6 +24,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # The web app is on another origin; browsers hide response headers that CORS
+    # does not expose, so without this the quota countdown can't read Retry-After.
+    expose_headers=["Retry-After"],
 )
 
 
