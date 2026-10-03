@@ -99,20 +99,14 @@ async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function fetchApiHealth(language: Language = "en"): Promise<HealthCheckResult> {
+// Returns the raw status only; the page localizes the detail text at render time,
+// so switching language never repeats the request.
+export async function fetchApiHealth(): Promise<HealthCheckResult> {
   const payload = await readJson<{ status: string }>("/health");
 
   return {
     status: payload.status === "ok" ? "ok" : "error",
     checkedAt: new Date().toISOString(),
-    detail:
-      payload.status === "ok"
-        ? language === "es"
-          ? "El backend es accesible y responde a la sonda de estado."
-          : "Backend is reachable and responding to the health probe."
-        : language === "es"
-          ? "El backend respondió, pero la carga de estado fue inesperada."
-          : "Backend responded, but the health payload was unexpected.",
   };
 }
 

@@ -113,6 +113,8 @@
   width: 100%;
   background: transparent;
   font: inherit;
+  /* `font: inherit` resets the weight; match the links (600). */
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
 }

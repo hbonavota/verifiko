@@ -29,7 +29,7 @@ export function ApiHealthPage() {
     setHealthState({ status: "loading" });
 
     try {
-      const payload = await fetchApiHealth(language);
+      const payload = await fetchApiHealth();
       setHealthState({ status: "ready", payload });
     } catch (error) {
       const message = error instanceof Error ? error.message : copy.health.statusCheckFailed;
@@ -37,9 +37,11 @@ export function ApiHealthPage() {
     }
   }
 
+  // Check once on mount. The language only changes how the result is worded
+  // (localized at render), so it must not trigger another request; Refresh does.
   useEffect(() => {
     void runHealthCheck();
-  }, [language]);
+  }, []);
 
   return (
     <PageShell>
@@ -73,7 +75,11 @@ export function ApiHealthPage() {
         {healthState.status === "ready" ? (
           <div className="api-health__result">
             <Badge label={healthState.payload.status.toUpperCase()} tone="success" />
-            <p className="api-health__message">{healthState.payload.detail}</p>
+            <p className="api-health__message">
+              {healthState.payload.status === "ok"
+                ? copy.health.detailOk
+                : copy.health.detailUnexpected}
+            </p>
             <p className="api-health__timestamp">
               {copy.common.lastChecked} {new Date(healthState.payload.checkedAt).toLocaleString(locale)}
             </p>

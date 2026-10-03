@@ -112,7 +112,6 @@ export interface VerificationSummary {
 export interface HealthCheckResult {
   status: "ok" | "error";
   checkedAt: string;
-  detail: string;
 }
 
 export interface ApiAnalysisSignal {
