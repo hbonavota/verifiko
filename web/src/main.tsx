@@ -32,3 +32,9 @@ if (isLandingSnapshot) {
   rootElement.innerHTML = "";
   ReactDOM.createRoot(rootElement).render(tree);
 }
+
+// Installable PWA, behind VITE_PWA_ENABLED (a build-time constant): when the flag is
+// off this branch and the registration module are dropped from the bundle.
+if (__PWA_ENABLED__ && "serviceWorker" in navigator) {
+  void import("./pwa/registerPwa").then(({ registerPwa }) => registerPwa());
+}
