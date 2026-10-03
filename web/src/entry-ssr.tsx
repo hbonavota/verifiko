@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
 
@@ -18,7 +19,13 @@ export function render(): string {
     <I18nProvider>
       <AuthProvider>
         <StaticRouter location="/">
-          <LandingPage />
+          {/* Mirrors the client tree in App.tsx, where "/" renders inside
+              <Suspense>. The boundary emits <!--$-->…<!--/$--> markers; without
+              them hydrateRoot sees a different structure and discards the
+              prerendered HTML (React errors #418/#423). */}
+          <Suspense fallback={null}>
+            <LandingPage />
+          </Suspense>
         </StaticRouter>
       </AuthProvider>
     </I18nProvider>,

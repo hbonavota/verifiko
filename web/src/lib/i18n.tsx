@@ -1415,13 +1415,44 @@ export function getStoredLanguage(): Language {
   return "en";
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>(getStoredLanguage);
+// The language the build-time prerender of "/" is rendered in (no storage at build time).
+const PRERENDER_LANGUAGE: Language = "en";
+
+export function I18nProvider({
+  children,
+  deferStoredLanguage = false,
+}: {
+  children: ReactNode;
+  // When hydrating the prerendered landing, the first render must match the
+  // prerender exactly, so start in PRERENDER_LANGUAGE and switch to the stored
+  // language right after hydration. Everywhere else, read it up front.
+  deferStoredLanguage?: boolean;
+}) {
+  const [language, setLanguage] = useState<Language>(() =>
+    deferStoredLanguage ? PRERENDER_LANGUAGE : getStoredLanguage(),
+  );
+  const [hasLoadedStoredLanguage, setHasLoadedStoredLanguage] = useState(!deferStoredLanguage);
 
   useEffect(() => {
+    if (hasLoadedStoredLanguage) {
+      return;
+    }
+    const storedLanguage = getStoredLanguage();
+    if (storedLanguage !== PRERENDER_LANGUAGE) {
+      setLanguage(storedLanguage);
+    }
+    setHasLoadedStoredLanguage(true);
+  }, [hasLoadedStoredLanguage]);
+
+  useEffect(() => {
+    // Until the stored language is read, don't persist the placeholder: it
+    // would overwrite the user's saved choice.
+    if (!hasLoadedStoredLanguage) {
+      return;
+    }
     window.localStorage.setItem(STORAGE_KEY, language);
     document.documentElement.lang = language;
-  }, [language]);
+  }, [hasLoadedStoredLanguage, language]);
 
   const value = useMemo<I18nContextValue>(
     () => ({
