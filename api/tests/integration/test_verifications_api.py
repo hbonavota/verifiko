@@ -418,6 +418,38 @@ def test_verification_api_decrements_anonymous_quota_status_remaining(client: Te
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
 
 
+def test_verification_api_exposes_retry_after_to_allowed_cross_origin_callers(
+    client: TestClient,
+) -> None:
+    # The web app calls the API cross-origin; browsers hide response headers that
+    # CORS does not expose, so the quota countdown needs Retry-After exposed.
+    limiter = get_create_verification_rate_limiter()
+    limiter.reset()
+    limiter.daily_limit = 1
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    allowed_origin = {"Origin": "http://localhost:5173"}
+
+    first = client.post("/api/verifications", json={"url": "https://example.org"}, headers=allowed_origin)
+    blocked = client.post("/api/verifications", json={"url": "https://example.net"}, headers=allowed_origin)
+    foreign = client.post(
+        "/api/verifications",
+        json={"url": "https://example.com"},
+        headers={"Origin": "https://evil.example"},
+    )
+
+    assert first.status_code == 201
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"] == "43200"
+    assert blocked.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "retry-after" in blocked.headers["access-control-expose-headers"].lower()
+    # A disallowed origin gets no Access-Control-Allow-Origin, so the browser blocks
+    # the whole response (Starlette still adds Expose-Headers; it is inert there).
+    assert "access-control-allow-origin" not in foreign.headers
+
+    limiter.reset()
+    limiter.daily_limit = get_settings().anonymous_daily_verification_limit
+
+
 def test_verification_api_resets_anonymous_daily_limit_at_utc_midnight(client: TestClient) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
