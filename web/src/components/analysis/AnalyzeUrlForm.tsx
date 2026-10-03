@@ -153,14 +153,24 @@ export function AnalyzeUrlForm({
     return analysisWarnings + coverageWarnings;
   }
 
+  // Clear anonymous-era errors when the user signs in. Only on the sign-in itself:
+  // `onStateChange` is usually an inline callback whose identity changes on every
+  // parent render, so depending on it made this wipe every signed-in error (and
+  // force "idle" mid-request) whenever the parent re-rendered.
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
+  const previousUserIdRef = useRef(currentUser?.id ?? null);
   useEffect(() => {
-    if (currentUser && quotaExceededRetryAfter === null && !isQuotaRetrying) {
+    const userId = currentUser?.id ?? null;
+    const justSignedIn = userId !== null && userId !== previousUserIdRef.current;
+    previousUserIdRef.current = userId;
+    if (justSignedIn && quotaExceededRetryAfter === null && !isQuotaRetrying) {
       setSubmitError(null);
       setQuotaExceededRetryAfter(null);
       setQuotaExceededPlan(null);
-      onStateChange?.("idle");
+      onStateChangeRef.current?.("idle");
     }
-  }, [currentUser, isQuotaRetrying, onStateChange, quotaExceededRetryAfter]);
+  }, [currentUser?.id, isQuotaRetrying, quotaExceededRetryAfter]);
 
   async function handlePaste() {
     if (!navigator.clipboard?.readText) {
@@ -295,7 +305,10 @@ export function AnalyzeUrlForm({
       if (error instanceof ApiRequestError && error.status === 429) {
         await refreshQuotaStatus();
         setSubmitError(error.message);
-        setQuotaExceededRetryAfter(error.retryAfterSeconds);
+        // The API is cross-origin and does not expose Retry-After to the browser,
+        // so this is usually null; 0 still shows the quota panel ("resets at
+        // midnight") instead of a plain error line.
+        setQuotaExceededRetryAfter(error.retryAfterSeconds ?? 0);
         setQuotaExceededPlan(quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS"));
       } else {
         setSubmitError(
@@ -399,7 +412,10 @@ export function AnalyzeUrlForm({
           retryAfterSeconds: error.retryAfterSeconds,
         });
         setSubmitError(error.message);
-        setQuotaExceededRetryAfter(error.retryAfterSeconds);
+        // The API is cross-origin and does not expose Retry-After to the browser,
+        // so this is usually null; 0 still shows the quota panel ("resets at
+        // midnight") instead of a plain error line.
+        setQuotaExceededRetryAfter(error.retryAfterSeconds ?? 0);
         setQuotaExceededPlan(quotaStatus?.plan ?? (currentUser ? currentUser.plan : "ANONYMOUS"));
       } else {
         setSubmitError(
@@ -544,6 +560,11 @@ export function AnalyzeUrlForm({
             const nextValue = event.target.value;
             setAnalysisTarget(nextValue);
             setInputType("manual");
+            // Editing the URL dismisses a previous error; a quota limit is not
+            // about the URL, so its panel stays.
+            if (submitError && quotaExceededRetryAfter === null) {
+              setSubmitError(null);
+            }
             if (nextValue.trim()) {
               trackInputStartedIfNeeded("manual");
             } else {

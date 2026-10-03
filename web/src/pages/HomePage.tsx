@@ -40,6 +40,9 @@ export function HomePage() {
   const [analysisState, setAnalysisState] = useState<"idle" | "submitting" | "error">("idle");
   const [deepAnalysisActive, setDeepAnalysisActive] = useState(false);
   const [inlineResult, setInlineResult] = useState<VerificationSummary | null>(null);
+  // Bumped after a successful analysis so "Verify another link" starts from a fresh,
+  // empty form. Failures keep the same form instance (see the render below).
+  const [formKey, setFormKey] = useState(0);
   const hasTrackedAnonymousSupportRef = useRef(false);
 
   useEffect(() => {
@@ -127,6 +130,7 @@ export function HomePage() {
   function handleVerified(verification: ApiVerification) {
     setInlineResult(adaptApiVerification(verification, language));
     setAnalysisState("idle");
+    setFormKey((key) => key + 1);
   }
 
   function handleVerifyAnother() {
@@ -136,6 +140,9 @@ export function HomePage() {
   // While a scan is running (or a fresh result is ready) the verify card morphs
   // in place: the form is swapped for the live spinner and then the result, so
   // the user watches it happen without navigating or scrolling to hunt for it.
+  // The form is only hidden, never unmounted, while that happens: a failed
+  // request sets its error, quota panel or sign-in modal on the same instance,
+  // so they (and the URL the user typed) are still there when it reappears.
   const showActivityPanel = isLoadingAnalysis || inlineResult !== null;
 
   return (
@@ -270,28 +277,29 @@ export function HomePage() {
                 ) : null}
               </Card>
             </div>
-          ) : (
-            <Card className="analysis-hero__panel" tone="success">
-              <p className="hero-panel__eyebrow">{copy.home.startVerification}</p>
+          ) : null}
 
-              <AnalyzeUrlForm
-                buttonLabel={copy.analyzeForm.buttonLabel}
-                buttonClassName="analysis-form__button analysis-form__button--hero"
-                className="analysis-form--hero"
-                hint=""
-                inputClassName="analysis-form__input-control"
-                onStateChange={(state, meta) => {
-                  setAnalysisState(state);
-                  if (state === "submitting") {
-                    setDeepAnalysisActive(Boolean(meta?.deep));
-                  }
-                }}
-                onVerified={handleVerified}
-                showQuotaIndicator={false}
-                showProPanel={false}
-              />
-            </Card>
-          )}
+          <Card className="analysis-hero__panel" hidden={showActivityPanel} tone="success">
+            <p className="hero-panel__eyebrow">{copy.home.startVerification}</p>
+
+            <AnalyzeUrlForm
+              key={formKey}
+              buttonLabel={copy.analyzeForm.buttonLabel}
+              buttonClassName="analysis-form__button analysis-form__button--hero"
+              className="analysis-form--hero"
+              hint=""
+              inputClassName="analysis-form__input-control"
+              onStateChange={(state, meta) => {
+                setAnalysisState(state);
+                if (state === "submitting") {
+                  setDeepAnalysisActive(Boolean(meta?.deep));
+                }
+              }}
+              onVerified={handleVerified}
+              showQuotaIndicator={false}
+              showProPanel={false}
+            />
+          </Card>
         </div>
 
         {showAnonymousSupport ? (
