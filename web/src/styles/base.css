@@ -28,6 +28,12 @@ a {
   text-decoration: none;
 }
 
+/* Author display rules (e.g. .card { display: grid }) would otherwise override the
+   UA's [hidden] { display: none }. */
+[hidden] {
+  display: none !important;
+}
+
 a,
 button,
 input,
