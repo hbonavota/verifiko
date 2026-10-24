@@ -2,6 +2,10 @@
 
 _Last updated: 2026-07-24. Based on a full read of urlert.com and developer.urlert.com._
 
+> Snapshot as of that date. Since then Verifiko has shipped the fail-fast orchestrator,
+> typosquatting detection, multi-user-agent anti-cloaking and headless detonation with
+> screenshots (behind feature flags). See the [README](../README.md) for the current state.
+
 ## 1. What URLert is
 
 URLert ("Is this link safe?") is an AI-powered URL/link threat-detection service that
@@ -12,7 +16,7 @@ It ships three things at once:
 2. A **developer API** (pay-as-you-go) — the monetization engine.
 3. A **threat-intelligence content layer** (domain pages, threat feed, blog) — SEO moat.
 
-Company: URLERT LLC (Texas), started 2025, incorporated early 2026. Small/new — beatable.
+Company: URLERT LLC (Texas), started 2025, incorporated early 2026. A small, young company.
 
 ## 2. Their detection engine (the "model to replicate")
 
@@ -78,7 +82,7 @@ We are much closer than it looks. Already shipped:
   Bilingual + the Spanish-speaking market is a real wedge.
 - **Multi-user-agent anti-cloaking already in progress** (`feat/anti-camouflage-*`).
 - **Reputation aggregation with 2-of-N consensus + circuit breaker**, parallel lookups,
-  caching, fail-open limiters, Postgres-backed durable state. Solid, cheap foundation.
+  caching, Postgres-backed durable state. Solid, cheap foundation.
 
 ## 5. Gaps to close (what they have that we don't yet)
 

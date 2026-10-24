@@ -16,7 +16,7 @@ beat: **URLert** (see `docs/COMPETITIVE-ANALYSIS-URLERT.md`).
 - **DB**: Neon (Postgres) via SQLAlchemy + Alembic (`api/alembic/versions`). Driver is **psycopg v3**
   — URLs must be normalized to `postgresql+psycopg://` (see `normalize_database_url`).
 - **Redis**: Upstash (`REDIS_URL`, `rediss://`). Used for rate/quota limiters and caches.
-  Limiters **fail open** and use single `EVAL` Lua scripts (1 command each).
+  Limiters use single `EVAL` Lua scripts (1 command each).
 - **Deploy**: Vercel — `verifiko-api` (Python API via `api/index.py`) and `verifiko` (frontend).
   Custom domains `api.verifiko.es` / `www.verifiko.es`. DB migrations auto-run via the
   **"DB migrations" GitHub Action** on any push touching `api/alembic/versions/**`.
@@ -25,7 +25,7 @@ beat: **URLert** (see `docs/COMPETITIVE-ANALYSIS-URLERT.md`).
 
 - **Small, low-risk PRs.** One concern per branch, branched from up-to-date `main`.
 - **Always run tests + the eval harness** before committing:
-  - `cd api && python -m pytest -q`  (full suite; ~410 tests, must stay green)
+  - `cd api && python -m pytest -q`  (full suite; ~500 tests, must stay green)
   - `cd api && python -m evaluation.run_evaluation`  (detection quality — precision **must not**
     regress: baseline precision 1.00, recall ~0.80, FPR 0.00 at MEDIUM threshold)
 - **New detection signals** require: enum in `signal_type.py`, weight + category in
@@ -33,51 +33,53 @@ beat: **URLert** (see `docs/COMPETITIVE-ANALYSIS-URLERT.md`).
   Decisive standalone signals are escalated via a compound rule in `compound_rules.py`.
 - **Everything risky is behind a feature flag** (settings + env var), off by default, so `main`
   behavior is byte-for-byte unchanged until enabled in Vercel.
-- Backend Python here is 3.11 (has `enum.StrEnum`). No shims needed locally.
+- Backend requires Python ≥ 3.11 (`requires-python`, uses `enum.StrEnum`); local dev and the
+  migrations workflow use 3.11, `api/.python-version` pins 3.12. No shims needed.
+- **Behavior changes go through OpenSpec** (`/opsx:propose` → `/opsx:apply` → `/opsx:archive`);
+  living specs are in `openspec/specs/`. Docs, refactors and dependency hygiene skip it.
 
 ## Current state (what's merged)
 
 Detection engine: deterministic URL/HTML/TLS heuristics + reputation aggregation (URLhaus +
-OpenPhish, 2-of-N consensus, circuit breaker) + parallel waves + Redis caching. SaaS: API keys +
-`/api/v1`, async **scan pipeline** (submit → poll/webhook, Postgres job store), **magic-link** auth
-(Resend, `login@verifiko.es`), quotas/rate-limits. Recently shipped:
+OpenPhish, 2-of-N consensus, circuit breaker) + wave-based orchestration + Redis caching +
+multi-user-agent anti-cloaking (`CONTENT_VARIATION_DETECTED`). SaaS: API keys + `/api/v1`, async
+**scan pipeline** (submit/batch → poll/webhook, Postgres job store; in-process or QStash dispatch
+via `SCAN_DISPATCH_MODE`), auth via **Google Sign-In**, **magic link** (Resend) and email +
+password (Argon2), quotas/rate-limits. Also shipped:
 
 - **Brand typosquatting** detection (`paypa1.com`, `g00gle.com`) — leetspeak + edit-distance.
 - **Fail-fast orchestrator** (`VERIFICATION_FAST_PATH_ENABLED`): skips network waves when the
   URL-only verdict is already HIGH/CRITICAL.
-- **Phase B.1** — behavioral detonation model: `HeadlessDetonationPort` + `DetonationResult`
-  (`app/application/ports/headless_detonation.py`), `BehavioralSignalAnalyzer` (4 signals:
-  rendered credential form, offsite form action, JS redirect offsite, drive-by download),
-  `DetonationPolicy.should_detonate`.
-- **Phase B.2a** — `BrowserlessDetonationClient` adapter (`app/infrastructure/detonation/`,
-  Browserless `/function` REST → `DetonationResult`) + `NullHeadlessDetonation` + settings.
+- **Phase B — headless detonation ("deep scan"), behind flags.** Plan and locked decisions in
+  `docs/PHASE-B-HEADLESS-DETONATION.md`: **Browserless** (managed `/function`, self-host path),
+  **Cloudflare R2** for screenshots, detonation **async-only** (scan pipeline, never on sync
+  `/verifications`).
+  - **B.1** — `HeadlessDetonationPort` + `DetonationResult`, `BehavioralSignalAnalyzer` (rendered
+    credential form, offsite form action, JS redirect offsite, drive-by download),
+    `DetonationPolicy.should_detonate`.
+  - **B.2a** — `BrowserlessDetonationClient` adapter + `NullHeadlessDetonation`.
+  - **B.2b** — pipeline integration: `deep_analysis` on `CreateVerificationCommand` (set by the
+    scan processor), gated by `DetonationPolicy`; behavioral signals are merged **before
+    scoring**; wired in `container.py` behind `DETONATION_ENABLED`.
+  - **B.3** — screenshots stored in R2 (`R2ScreenshotStore`, `SCREENSHOT_STORAGE_ENABLED`); only
+    the object key (`screenshot_ref`) travels through the pipeline, and responses expose a
+    presigned `screenshot_url`. Plan in `docs/PHASE-B3-SCREENSHOTS-R2.md`.
+  - Web: deep-scan toggle for signed-in users + screenshot lightbox on the result/detail views.
+- **Production config safety**: the API refuses to start in production with a dev/blank
+  `AUTH_TOKEN_SECRET` or `SCAN_WEBHOOK_SIGNING_SECRET` (spec `production-config-safety`).
+- Web: PWA (behind `VITE_PWA_ENABLED`), build-time prerendered landing.
 
 ## Roadmap — next up
 
-Phase B = headless detonation (dynamic analysis). Full plan in
-`docs/PHASE-B-HEADLESS-DETONATION.md`. Locked decisions: **Browserless** (managed `/function`,
-with a self-host migration path since it's open-core), **Cloudflare R2** for screenshots,
-detonation runs **async-only** (scan pipeline, never on sync `/verifications`).
-
-- **B.2b (next)** — integrate detonation into the pipeline: add `deep_analysis` to
-  `CreateVerificationCommand`; on the async scan path, gate with `DetonationPolicy`, run the
-  detonation adapter, feed `BehavioralSignalAnalyzer` output into the signals **before scoring**,
-  wire in `container.py` behind `DETONATION_ENABLED` (`NullHeadlessDetonation` when off).
-  Needs a live Browserless smoke test with a real key. Also validate that the async scan worker
-  survives a 10–30s external call on Vercel (`maxDuration`/`waitUntil`), else move the scan worker
-  to a small dedicated service.
-- **B.3** — screenshot capture + storage in Cloudflare R2; surface `screenshot_ref` in results.
 - **B.4** — add detonation-dependent corpus samples; calibrate weights; confirm no regression.
 - **Phase C** — computer vision over screenshots (brand-logo match, visual fake-login).
 - **Business layer (later)** — usage-based billing (credits, per-request price), domain
   classification product, programmatic SEO (`/domains/*`, threat feed), Chrome extension.
+- Frontend tests + a CI workflow for the test suite and eval harness.
 
-## Gotchas / operational notes
+## Conventions worth knowing
 
-- **Redis is over its Upstash monthly quota**; limiters fail open (limits not enforced) until the
-  monthly reset. The EVAL/TTL work cut future usage; watch Upstash usage.
-- On Vercel, `VERIFICATION_PARALLEL_ANALYSIS_ENABLED=false` (a DNS EBUSY issue under concurrent
-  getaddrinfo). `VERIFICATION_FAST_PATH_ENABLED=true`.
-- Resend/Cloudflare: outbound HTTP must send a real browser `User-Agent` or Cloudflare returns
-  403 "error 1010" (bit us on the magic-link email; fixed in `resend_email_sender.py`).
+- Outbound requests to user-controlled destinations (verification targets, redirects, webhooks)
+  must go through the outbound target guard and the pinned HTTP client — see
+  `openspec/specs/outbound-fetch-guard/spec.md`.
 - Extended design docs live in `docs/` — read them before large changes.
