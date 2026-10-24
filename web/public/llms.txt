@@ -1,0 +1,28 @@
+# Verifiko
+
+> Verifiko checks whether a link is safe. Paste a URL and get an explainable verdict in
+> seconds (a 0-100 trust score, a risk level from SAFE to CRITICAL, and the signals behind
+> it) for phishing, scams and malware. The same engine is available through a REST API.
+
+Detection combines deterministic URL, page and TLS heuristics, brand-typosquatting checks,
+domain age and reputation feeds (URLhaus, OpenPhish). Signed-in users can request a deep
+scan that opens the page in an isolated headless browser and returns a screenshot.
+Verdicts are available in English and Spanish.
+
+## Product
+
+- [Verifiko](https://www.verifiko.es/): landing page and overview
+- [Verify a link](https://www.verifiko.es/app): the web app; anonymous checks have a daily limit
+- [Service status](https://www.verifiko.es/api-health): live API health check
+
+## Developers
+
+- [API reference](https://github.com/hbonavota/verifiko/blob/main/docs/API.md): authentication, synchronous verifications, async scans, webhooks, quotas and errors
+- [API base URL](https://api.verifiko.es/api/v1): versioned REST API; requests use an API key (`X-API-Key`)
+- [Source code](https://github.com/hbonavota/verifiko): Apache-2.0
+
+## Legal
+
+- [Privacy Policy](https://www.verifiko.es/privacy)
+- [Terms of Service](https://www.verifiko.es/terms)
+- [Contact](https://www.verifiko.es/contact)

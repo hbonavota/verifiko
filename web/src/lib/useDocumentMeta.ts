@@ -2,6 +2,21 @@ import { useEffect } from "react";
 
 import { useI18n } from "./i18n";
 
+// Unknown routes are served by the SPA rewrite with a 200 (soft 404). Pages that
+// render a "not found" state call this so crawlers do not index those URLs.
+export function useNoIndex() {
+  useEffect(() => {
+    const robotsTag = document.createElement("meta");
+    robotsTag.name = "robots";
+    robotsTag.content = "noindex";
+    document.head.appendChild(robotsTag);
+
+    return () => {
+      robotsTag.remove();
+    };
+  }, []);
+}
+
 export function useDocumentMeta(title: string, description?: string) {
   const { copy, language } = useI18n();
   const resolvedDescription = description ?? copy.document.defaultDescription;

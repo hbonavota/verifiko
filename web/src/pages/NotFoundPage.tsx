@@ -1,7 +1,7 @@
 import { Button } from "../components/ui/Button";
 import { SectionTitle } from "../components/ui/SectionTitle";
 import { useI18n } from "../lib/i18n";
-import { useDocumentMeta } from "../lib/useDocumentMeta";
+import { useDocumentMeta, useNoIndex } from "../lib/useDocumentMeta";
 import { PageShell } from "../layouts/PageShell";
 
 export function NotFoundPage() {
@@ -11,6 +11,7 @@ export function NotFoundPage() {
     copy.notFound.metaTitle,
     copy.notFound.metaDescription,
   );
+  useNoIndex();
 
   return (
     <PageShell>
