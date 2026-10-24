@@ -1,13 +1,25 @@
 from functools import lru_cache
 from ipaddress import IPv4Network, IPv6Network, ip_network
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Development-only signing secrets. They are public (this file is), so a
+# production deploy must override both; see `_reject_dev_secrets_in_production`.
+_DEV_AUTH_TOKEN_SECRET = "verifiko-dev-auth-secret"
+_DEV_WEBHOOK_SIGNING_SECRET = "verifiko-dev-webhook-secret"
+
+# Any other APP_ENV value (production, staging, a typo...) is treated as production.
+_NON_PRODUCTION_ENVS = frozenset({"development", "dev", "local", "test"})
 
 
 class Settings(BaseSettings):
     app_name: str = "Verifiko API"
     app_env: str = "development"
     app_debug: bool = False
+    # Set automatically by Vercel ("production" | "preview" | "development").
+    # Backstop so the production checks apply even if APP_ENV is not set there.
+    vercel_env: str = ""
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     database_url: str = "postgresql+psycopg://verifiko:verifiko@localhost:5432/verifiko"
@@ -63,7 +75,7 @@ class Settings(BaseSettings):
     scan_job_key_prefix: str = "verifiko:scan"
     scan_job_ttl_seconds: int = 86_400
     scan_worker_max_workers: int = 4
-    scan_webhook_signing_secret: str = "verifiko-dev-webhook-secret"
+    scan_webhook_signing_secret: str = _DEV_WEBHOOK_SIGNING_SECRET
     scan_webhook_timeout_seconds: float = 5.0
     scan_webhook_max_attempts: int = 3
     # Async scan worker durability. The default in-process ThreadPool dispatcher
@@ -95,10 +107,45 @@ class Settings(BaseSettings):
     magic_link_request_limit_window_seconds: int = 300
     trusted_proxy_ips: str = ""
     google_client_id: str = ""
-    auth_token_secret: str = "verifiko-dev-auth-secret"
+    auth_token_secret: str = _DEV_AUTH_TOKEN_SECRET
     auth_token_ttl_seconds: int = 60 * 60 * 24 * 7
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # hide_input_in_errors: a ValidationError would otherwise echo the raw input
+    # (every env value, secrets included) into the startup logs.
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        hide_input_in_errors=True,
+    )
+
+    @property
+    def is_production(self) -> bool:
+        return (
+            self.app_env.strip().lower() not in _NON_PRODUCTION_ENVS
+            or self.vercel_env.strip().lower() == "production"
+        )
+
+    @model_validator(mode="after")
+    def _reject_dev_secrets_in_production(self) -> "Settings":
+        if not self.is_production:
+            return self
+        dev_defaults = {
+            "auth_token_secret": _DEV_AUTH_TOKEN_SECRET,
+            "scan_webhook_signing_secret": _DEV_WEBHOOK_SIGNING_SECRET,
+        }
+        unsafe = [
+            field.upper()
+            for field, dev_default in dev_defaults.items()
+            if getattr(self, field) == dev_default or not getattr(self, field).strip()
+        ]
+        if unsafe:
+            raise ValueError(
+                "Refusing to start in production: "
+                f"{', '.join(unsafe)} must be set to a unique random value "
+                "(the built-in development default is public and blank values are not allowed)."
+            )
+        return self
 
     @property
     def cors_allowed_origins_list(self) -> list[str]:
