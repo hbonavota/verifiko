@@ -30,6 +30,10 @@ const translations = {
       closeMenu: "Close menu",
     },
     landing: {
+      // Must match the static <title>/description in index.html (the prerendered landing).
+      metaTitle: "Verifiko — Is this link safe? Phishing & malware checker",
+      metaDescription:
+        "Paste any link and Verifiko tells you if it's safe — an explainable phishing and malware verdict in seconds. Free, no sign-up needed to try.",
       eyebrow: "Link safety, in seconds",
       title: "Know if a link is safe before you click",
       lead: "Paste any link and Verifiko checks the domain, reputation, certificate and content. With deep analysis it even opens the page in a safe sandbox and shows you a screenshot — you never have to visit it.",
@@ -717,6 +721,9 @@ const translations = {
       closeMenu: "Cerrar menú",
     },
     landing: {
+      metaTitle: "Verifiko — ¿Este enlace es seguro? Detector de phishing y malware",
+      metaDescription:
+        "Pega cualquier enlace y Verifiko te dice si es seguro: un veredicto explicable de phishing y malware en segundos. Gratis, sin registro para probarlo.",
       eyebrow: "Seguridad de enlaces, en segundos",
       title: "Verifica si un enlace es seguro antes de hacer clic",
       lead: "Pega cualquier enlace y Verifiko revisa el dominio, la reputación, el certificado y el contenido. Con análisis profundo abre la página en un entorno seguro y te muestra una captura — nunca tienes que entrar.",

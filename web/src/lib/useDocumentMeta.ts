@@ -2,6 +2,21 @@ import { useEffect } from "react";
 
 import { useI18n } from "./i18n";
 
+// Unknown routes are served by the SPA rewrite with a 200 (soft 404). Pages that
+// render a "not found" state call this so crawlers do not index those URLs.
+export function useNoIndex() {
+  useEffect(() => {
+    const robotsTag = document.createElement("meta");
+    robotsTag.name = "robots";
+    robotsTag.content = "noindex";
+    document.head.appendChild(robotsTag);
+
+    return () => {
+      robotsTag.remove();
+    };
+  }, []);
+}
+
 export function useDocumentMeta(title: string, description?: string) {
   const { copy, language } = useI18n();
   const resolvedDescription = description ?? copy.document.defaultDescription;
@@ -15,7 +30,9 @@ export function useDocumentMeta(title: string, description?: string) {
     const previousCanonical = canonicalTag?.getAttribute("href");
     const canonicalHref = `${window.location.origin}${window.location.pathname}`;
 
-    document.title = `${title} | Verifiko`;
+    // Titles that already carry the brand (e.g. the landing's, which mirrors the
+    // static <title> in index.html) are used as-is instead of getting a suffix.
+    document.title = title.includes("Verifiko") ? title : `${title} | Verifiko`;
     document.documentElement.lang = language;
 
     if (descriptionTag) {

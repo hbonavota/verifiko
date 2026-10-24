@@ -79,7 +79,6 @@ export function UpgradeModal({ open, onClose, source = "topbar" }: UpgradeModalP
               <Button
                 onClick={() => {
                   saveUpgradeIntent(source);
-                  console.log("upgrade_intent_saved", { source });
                   setView("submitted");
                 }}
                 variant="primary"
