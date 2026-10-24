@@ -17,7 +17,7 @@ export function LandingPage() {
   const navigate = useNavigate();
   const [isEmailAuthModalOpen, setIsEmailAuthModalOpen] = useState(false);
 
-  useDocumentMeta(copy.home.metaTitle, copy.home.metaDescription);
+  useDocumentMeta(copy.landing.metaTitle, copy.landing.metaDescription);
 
   // Signed-in visitors don't need the marketing page — take them to the app.
   useEffect(() => {

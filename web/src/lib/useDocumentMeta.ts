@@ -30,7 +30,9 @@ export function useDocumentMeta(title: string, description?: string) {
     const previousCanonical = canonicalTag?.getAttribute("href");
     const canonicalHref = `${window.location.origin}${window.location.pathname}`;
 
-    document.title = `${title} | Verifiko`;
+    // Titles that already carry the brand (e.g. the landing's, which mirrors the
+    // static <title> in index.html) are used as-is instead of getting a suffix.
+    document.title = title.includes("Verifiko") ? title : `${title} | Verifiko`;
     document.documentElement.lang = language;
 
     if (descriptionTag) {
