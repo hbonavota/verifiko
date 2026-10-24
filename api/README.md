@@ -1,176 +1,59 @@
 # Verifiko API
 
-Verifiko is a signal-based verification API focused on explainable risk assessment for suspicious digital content.
+The FastAPI service behind [Verifiko](../README.md). The root README covers the product overview,
+architecture, detection engine and security model. The full endpoint contract, with auth, scans,
+webhooks, quotas and errors, is in [`docs/API.md`](../docs/API.md).
 
-The current codebase includes a usable domain scoring flow, application use cases, and a FastAPI layer backed by a SQLAlchemy repository. Verifications now persist to the configured PostgreSQL database.
-
-## Tech Stack
-
-- Python 3.11+
-- FastAPI
-- SQLAlchemy
-- Alembic
-- PostgreSQL
-- Docker / Docker Compose
-
-## Project Structure
+## Layout
 
 ```text
 app/
-  domain/
-  application/
-  infrastructure/
-  entrypoints/
-
-tests/
-  unit/
-  integration/
+  domain/          entities, value objects, enums, scoring policy, compound rules (no I/O)
+  application/     use cases, DTOs, signal analyzers, ports
+  infrastructure/  adapters: persistence, security, reputation, fetchers, detonation, storage, email
+  entrypoints/api/ FastAPI routes, schemas, DI container (dependencies/container.py)
+alembic/           schema migrations
+evaluation/        offline detection-quality harness and labeled corpus
+tests/             unit/ and integration/
+index.py           Vercel entrypoint
 ```
 
-## Local Run
-
-1. Create environment file:
+## Run locally
 
 ```bash
-cp .env.example .env
-```
-
-2. Create and activate a virtual environment:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
-
-3. Install dependencies:
-
-```bash
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-```
-
-4. Start PostgreSQL locally:
-
-Using Docker Compose for PostgreSQL:
-
-```bash
+cp .env.example .env          # every setting is documented inline
 docker compose up -d db
-```
-
-5. Run database migrations:
-
-```bash
 alembic upgrade head
+uvicorn app.entrypoints.api.main:app --reload --port 8000
 ```
 
-6. Start the API:
+Or run the API and Postgres together with `docker compose up --build`, then
+`alembic upgrade head`.
 
-```bash
-uvicorn app.entrypoints.api.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-7. Health check:
+Smoke test:
 
 ```bash
 curl http://localhost:8000/health
-```
-
-8. Run tests:
-
-```bash
-python -m pytest
-```
-
-9. Create a verification:
-
-```bash
-curl -X POST http://localhost:8000/api/verifications \
+curl -X POST http://localhost:8000/api/v1/verifications \
   -H "Content-Type: application/json" \
-  -d '{
-    "url": "verifiko.es/login",
-    "signals": [
-      {
-        "signal_type": "brand_impersonation",
-        "category": "content_behavior",
-        "severity": "HIGH",
-        "confidence": 92,
-        "title": "Brand impersonation",
-        "description": "Brand styling copied from the legitimate destination.",
-        "source": "content-analyzer"
-      }
-    ]
-  }'
+  -d '{"url": "https://example.com"}'
 ```
 
-## Docker Run
+The versioned `/api/v1` routes are the documented contract. The same routes are also mounted
+under `/api` for the existing web client, hidden from the OpenAPI schema.
 
-1. Create environment file:
+## Tests and detection quality
 
 ```bash
-cp .env.example .env
+python -m pytest -q
+python -m evaluation.run_evaluation
 ```
 
-2. Start services:
+Both must stay green before a change is merged, and the evaluation must not regress precision.
 
-```bash
-docker compose up --build
-```
+## Deploy
 
-3. Run migrations:
-
-```bash
-alembic upgrade head
-```
-
-API URL: `http://localhost:8000`
-
-## Vercel Deployment
-
-This API is intended to be deployed as its own Vercel project with Root Directory `api/`.
-
-Runtime expectations:
-
-- Vercel discovers the FastAPI application from `index.py`.
-- The application does not run database migrations at startup.
-- A real `DATABASE_URL` must be provided through Vercel environment variables.
-
-Required environment variables:
-
-- `DATABASE_URL`
-- `CORS_ALLOWED_ORIGINS` for the deployed frontend origin
-- `APP_DEBUG=false`
-
-Optional environment variables:
-
-- `CORS_ALLOWED_ORIGIN_REGEX` for controlled preview-origin access
-
-Deploy checklist:
-
-1. Provision the production database.
-2. Run the migration command against that database outside the Vercel request runtime:
-
-```bash
-source .venv/bin/activate
-DATABASE_URL='YOUR_PRODUCTION_DATABASE_URL' python -m alembic upgrade head
-```
-
-3. Deploy the `api` Vercel project.
-4. Verify `GET /health`.
-5. Verify `POST /api/verifications`.
-
-Notes:
-
-- The verification request path performs synchronous outbound checks for RDAP, HTML fetching, and TLS validation. Those calls are bounded and degrade gracefully, but they can increase response time.
-- The current implementation is suitable for a first deployment, not for claiming full production hardening.
-- For custom-domain cutover, update `CORS_ALLOWED_ORIGINS` from the temporary frontend Vercel URL to `https://verifiko.es` after the `web` project is attached to the final domain.
-
-## Current API Surface
-
-- `GET /health`
-- `POST /api/verifications`
-- `GET /api/verifications`
-- `GET /api/verifications/{verification_id}`
-
-## Known Gaps
-
-- The API no longer bootstraps schema automatically; migrations must be applied explicitly before startup.
-- Some analyzers perform request-time outbound lookups and degrade gracefully when those checks fail.
+The service deploys as its own Vercel project with Root Directory `api/`. Migrations are applied
+before the code that needs them, never at app startup. See [`DEPLOY.md`](DEPLOY.md).

@@ -1,192 +1,181 @@
 # Verifiko
 
-Verifiko is a portfolio-grade verification workspace for suspicious digital content, built to demonstrate explainable scoring, evidence traceability, and operational review workflows.
+**Is this link safe?** Verifiko detects phishing and malware links. You paste a URL and get an
+explainable verdict in seconds. The same engine is available to developers through a versioned
+REST API. It is built as a direct alternative to tools like URLert.
 
-## System Status
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+<!-- CI badge goes here once the test workflow exists. -->
 
-- The backend verification pipeline is real and exposed through FastAPI routes.
-- The frontend is partially live:
-  - `/api-health` uses the live API.
-  - `/verifications/:id` uses the live API.
-  - `/dashboard` is API-backed for verification creation, latest-result review, recent verification records, and counts derived from the current API runtime.
-- Verification records are persisted through SQLAlchemy to the configured PostgreSQL database.
-- The backend combines deterministic URL heuristics with additional request-time checks such as domain registration age, HTML credential-surface inspection, and TLS transport validation when those lookups succeed.
+**Live:** https://www.verifiko.es · **API:** `https://api.verifiko.es/api/v1` ([reference](docs/API.md))
 
-## Product Overview
+| Landing | Verdict |
+|---|---|
+| ![Verifiko landing page: "Know if a link is safe before you click"](screenshots/landing.png) | ![Verification result for a PayPal typosquat URL: trust score 34, verdict Malicious](screenshots/verification-result.png) |
 
-Verifiko is positioned as a serious analyst-facing product surface rather than a marketing demo. The project shows how suspicious URLs or content can be reviewed through a clear workflow: assess the target, inspect the contributing signals, understand the reasoning behind the score, review supporting evidence, and decide the next action.
+## What it does
 
-Current web routes:
+Each verification produces a **trust score** (0–100), a **risk level** (`SAFE` → `CRITICAL`) and
+the list of signals that led to it. Every signal has a severity, a confidence and an EN/ES
+explanation, so the verdict can be audited instead of trusted blindly.
 
-- `/` product overview
-- `/dashboard` verification operations workspace
-- `/verifications/:id` verification detail and explainability view
-- `/api-health` live API health check
+**Detection engine**
+- **Deterministic heuristics** across about 30 signal types. On the URL: IP-address hosts, Unicode
+  homographs, zero-width characters, deceptive brand subdomains, high-entropy domains, risky TLDs and
+  shorteners. On the page and transport: credential-harvest forms, login-surface lures, TLS failures
+  and hostname mismatches, suspicious redirect chains, and domain registration age (RDAP).
+- **Brand typosquatting** (`paypa1.com`, `g00gle.com`) detected through leetspeak normalization plus
+  edit distance.
+- **Reputation aggregation** across URLhaus and OpenPhish. A **2-of-N consensus** rule keeps one
+  noisy feed from deciding a verdict, and each provider sits behind a **circuit breaker**.
+- **Weighted scoring policy** plus **compound rules**, which escalate combinations of signals and
+  decisive standalone signals.
+- **Wave-based orchestration**: network-bound analyzers run in dependency-ordered waves, and
+  reputation, domain-age and infrastructure lookups are cached in Redis. A **fail-fast** path skips
+  the network waves when the URL alone is already `HIGH`/`CRITICAL`.
 
-Current API surface:
+**Product and API**
+- Public web app: anonymous checks with daily quotas. Accounts sign in with **Google**, an
+  **email magic link**, or email + password.
+- Developer **API keys** and the versioned **`/api/v1`** surface, with per-plan daily quotas and
+  burst rate limits.
+- **Async scan pipeline**: `POST /scans` (or `/scans/batch`) → `202`, then poll `GET /scans/{id}` or
+  receive a signed **webhook**. Jobs live in Postgres. Dispatch runs either in-process or through a
+  queue (Upstash QStash) for serverless runtimes.
+- **Deep scan** (signed-in users, async only, behind a feature flag): the URL is detonated in a
+  headless browser (Browserless). Behavioral signals feed into scoring before the verdict: a rendered
+  credential form, an off-site form action, a JS redirect off-site, a drive-by download. A screenshot
+  is stored in Cloudflare R2 and served via a short-lived presigned URL.
+- EN/ES throughout: UI, verdicts and API error messages.
 
-- `GET /health`
-- `POST /api/verifications`
-- `GET /api/verifications`
-- `GET /api/verifications/{verification_id}`
+**Roadmap (not built yet)**
+- Calibrating detection weights against a detonation-specific corpus.
+- Computer vision over deep-scan screenshots: brand-logo matching, visual fake-login detection.
+- Usage-based billing (credits), a domain-classification product, a public threat feed, a browser
+  extension.
+- Frontend tests and CI.
 
-## Screenshots
-
-Landing page:
-
-![Landing page](/screenshots/landing.png)
-
-Dashboard workspace:
-
-![Dashboard workspace](/screenshots/dashboard.png)
-
-Verification detail view:
-
-![Verification detail view](/screenshots/verification-detail.png)
-
-## Live Demo
-
-Live demo: https://verifiko-demo.example.com
-
-Replace the placeholder URL with the deployed web entry point when the project is published.
-
-## Feature Highlights
-
-- Explainable verification results with readable signal breakdowns
-- Analyst-oriented dashboard for triage, evidence review, and next-step framing
-- Verification detail surface focused on score rationale, supporting evidence, unresolved items, and recommended action
-- Live API health check from the web workspace
-- Dashboard overview derived from live verification records in the current API runtime
-
-## Tech Stack
-
-Web:
-
-- React 18
-- TypeScript
-- Vite
-- React Router
-
-API:
-
-- Python 3.11+
-- FastAPI
-- SQLAlchemy
-- Alembic
-- PostgreSQL
-
-## Architecture Overview
-
-The web workspace is a React + TypeScript + Vite application built around reusable layout primitives and a small design system. The API is a FastAPI service with explicit domain, application, infrastructure, and entrypoint layers. The backend verification flow is implemented behind the current API surface, with request-time analyzers for URL heuristics, domain age lookup, HTML credential-surface detection, and TLS validation. Verification records, signals, and risk assessments are now persisted through SQLAlchemy to the configured database. The frontend routes use live API data for health checks, verification detail views, and dashboard record summaries.
-
-## Repository Structure
+## Architecture
 
 ```text
-verifiko/
-  api/        FastAPI verification service
-  web/        React + TypeScript + Vite investigation workspace
-  screenshots/
+   Browser (React SPA)              API clients (X-API-Key)
+   www.verifiko.es                           │
+          └───────────────┬──────────────────┘
+                          ▼
+             FastAPI  ·  /api/v1  ·  api.verifiko.es
+  ┌──────────────────────────────────────────────────────────┐
+  │ entrypoints     routes, schemas, DI container            │
+  │ application     use cases, signal analyzers, ports       │
+  │ domain          entities, scoring policy, compound rules │
+  │ infrastructure  adapters behind the ports ↓              │
+  └──────────────────────────────────────────────────────────┘
+   Postgres (Neon)   Redis (Upstash)   URLhaus · OpenPhish · RDAP
+   SQLAlchemy +      limiters, caches  HTML / TLS / DNS fetchers
+   Alembic                             (SSRF-guarded, IP-pinned)
+   Browserless · Cloudflare R2 · Resend · QStash   (optional)
 ```
 
-## Running Locally
+- **Backend** (`api/`): Python 3.11, FastAPI, and **Clean Architecture** with strict layering.
+  The domain does no I/O. Application code depends only on ports. Infrastructure adapters are wired
+  in one dependency-injection container (`app/entrypoints/api/dependencies/container.py`).
+  Postgres is reached through SQLAlchemy and psycopg v3, with Alembic migrations.
+- **Frontend** (`web/`): React 18, TypeScript and Vite, with React Router and EN/ES i18n. The
+  landing is server-rendered at build time (prerendered). PWA support (service worker + install
+  prompt) is behind a build flag.
+- **Deploy**: two Vercel projects, the API (`api/index.py`) and the static frontend. Schema
+  migrations run from a GitHub Action whenever a migration lands on `main`, separately from the
+  code deploy (see [`api/DEPLOY.md`](api/DEPLOY.md)).
 
-API:
+Risky capabilities ship **behind feature flags that are off by default**: deep scan, screenshot
+storage, the fail-fast path, the OpenPhish feed and queue dispatch. New capabilities therefore land
+dark until they are explicitly enabled.
+
+## Security highlights
+
+- **SSRF guard on every outbound fetch to user-controlled destinations**: verification targets,
+  redirects, HTML/TLS/DNS lookups and webhook URLs. The guard allows only `http`/`https`, rejects
+  internal hostnames, resolves DNS, and blocks the request unless **every** resolved address is
+  globally routable. That includes IPv4 addresses embedded in IPv6: IPv4-mapped, 6to4, Teredo,
+  NAT64 and IPv4-compatible. Adapters then connect only to the **validated, pinned IP**, which closes
+  DNS-rebinding/TOCTOU and redirect-follow bypasses.
+- **Fails closed in production**: the API refuses to start if a signing secret is unset, blank, or
+  still its development default.
+- **Signed webhooks**: HMAC-SHA256 over `timestamp.body`, sent as `X-Verifiko-Signature`. See
+  [verification](docs/API.md#verifying-the-signature).
+- **Authenticated internal worker**: queue callbacks must carry a valid QStash JWT (HS256, with
+  current/next key rotation).
+- **Credentials at rest**: passwords are hashed with Argon2. API keys are stored only as SHA-256
+  hashes and shown once.
+- **Client IP for quotas** comes from `X-Forwarded-For` only when the request arrives from a
+  configured trusted proxy.
+
+## Running locally
+
+Requirements: Python 3.11, Node.js 18+, and Docker (for the local Postgres).
+
+**API**
 
 ```bash
 cd api
-python -m venv .venv
-source .venv/bin/activate
-cp .env.example .env
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+cp .env.example .env          # local-dev defaults; every variable is documented inline
 docker compose up -d db
 alembic upgrade head
-uvicorn app.entrypoints.api.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.entrypoints.api.main:app --reload --port 8000
 ```
 
-Web:
+`api/.env.example` lists every setting by name. Without extra configuration you get a working
+local API using Postgres only. Redis, Google Sign-In (`GOOGLE_CLIENT_ID`), email
+(`RESEND_API_KEY`), deep scan (`DETONATION_ENABLED`, `BROWSERLESS_ENDPOINT`) and screenshot storage
+(`SCREENSHOT_STORAGE_ENABLED`, `R2_*`) are optional. In production `AUTH_TOKEN_SECRET` and
+`SCAN_WEBHOOK_SIGNING_SECRET` are required.
+
+**Web**
 
 ```bash
 cd web
-cp .env.example .env
-npm install
-npm run dev
+npm ci
+npm run dev                   # http://localhost:5173, talks to http://localhost:8000
 ```
 
-Web expects the API at `http://localhost:8000` by default.
-
-Production build check:
-
-```bash
-cd web
-npm run build
-```
-
-## Vercel Deployment
-
-Deploy the monorepo as two separate Vercel projects:
-
-- `web/` as the frontend project
-- `api/` as the backend project
-
-Recommended order:
-
-1. Create the `api` Vercel project with Root Directory `api/`.
-2. Set the required API environment variables:
-   - `DATABASE_URL`
-   - `CORS_ALLOWED_ORIGINS` for the deployed frontend origin
-   - `GOOGLE_CLIENT_ID` with the Google OAuth web client ID used by the frontend
-   - `APP_DEBUG=false`
-3. Run the migration command against the production database outside the Vercel request runtime:
-
-```bash
-cd api
-source .venv/bin/activate
-DATABASE_URL='YOUR_PRODUCTION_DATABASE_URL' python -m alembic upgrade head
-```
-
-4. Deploy the `web` Vercel project with Root Directory `web/`.
-5. Set `VITE_API_BASE_URL` in the `web` project to the deployed API base URL.
-6. Set `VITE_GOOGLE_CLIENT_ID` in the `web` project to the same Google OAuth web client ID used by the API.
-
-Current deployment-specific behavior:
-
-- The frontend is configured as a Vite SPA and includes a Vercel rewrite for client-side routing.
-- The API exposes a Vercel-compatible FastAPI entrypoint from `api/index.py`.
-- CORS is environment-driven and does not assume localhost-only origins.
-- The frontend refuses to guess a production API URL. `VITE_API_BASE_URL` must be set outside development.
-- Google Sign-In requires the same OAuth web client ID in both `GOOGLE_CLIENT_ID` and `VITE_GOOGLE_CLIENT_ID`.
-
-Intentional non-features for the first deployment:
-
-- Alembic migrations are not run during app startup.
-- There is no background worker or async job system for verification enrichment.
-- There is no authentication or authorization layer yet.
-
-Custom-domain cutover:
-
-1. First deploy both projects on their Vercel-provided domains.
-2. Point the frontend project at the deployed API Vercel URL.
-3. After end-to-end verification, attach `verifiko.es` to `web` and `api.verifiko.es` to `api`.
-4. Update `VITE_API_BASE_URL` to `https://api.verifiko.es`.
-5. Update `VITE_GOOGLE_CLIENT_ID` to the production Google OAuth web client ID if it differs from the preview environment.
-6. Update `GOOGLE_CLIENT_ID` to the same production Google OAuth web client ID.
-7. Update `CORS_ALLOWED_ORIGINS` to `https://verifiko.es`.
-8. Add `https://verifiko.es` and the active preview domain origins to the Google OAuth client's Authorized JavaScript origins.
+In development the app targets `http://localhost:8000` when `VITE_API_BASE_URL` is unset. Copy
+`web/.env.example` to `.env` only if you need to set `VITE_GOOGLE_CLIENT_ID`, and in that case
+set `VITE_API_BASE_URL=http://localhost:8000` too.
 
 ## Testing
 
-Backend tests:
-
 ```bash
 cd api
-source .venv/bin/activate
-python -m pytest
+python -m pytest -q                      # ~500 unit + integration tests
+python -m evaluation.run_evaluation      # detection-quality harness
 ```
 
-## Limitations
+The evaluation harness scores the engine offline against a labeled corpus of malicious and benign
+URLs. At the `MEDIUM` threshold the current baseline is **precision 1.00, recall 0.82, false
+positive rate 0.00**. Changes must not regress precision.
 
-- Database schema changes are now managed through Alembic migrations and must be applied explicitly before starting the API.
-- The dashboard reflects verification records available through the current API surface; it does not provide broader operational telemetry or persistent analyst workflow history beyond those stored verification records.
-- Request-time enrichment depends on outbound network access. If RDAP, HTML fetches, or TLS validation fail, the verification still completes with reduced signal coverage.
-- Verification creation performs synchronous outbound checks during the request. This is acceptable for a first deployment, but it can add latency and inherits failures from external services.
-- There is currently no authentication, authorization, or production-grade operational hardening in the API layer.
+Frontend: `cd web && npm run build` type-checks (`tsc --noEmit`), builds and prerenders. There
+are no frontend unit tests or CI yet. Both are on the roadmap.
+
+## Spec-driven changes
+
+Behavior changes go through [OpenSpec](https://github.com/Fission-AI/OpenSpec). Each one starts as
+a proposal with a spec delta, design and tasks under `openspec/changes/`, and once merged it is
+archived into living capability specs under [`openspec/specs/`](openspec/specs/). Examples include
+the outbound fetch guard and the production config safety rules. Pure refactors, docs and
+dependency hygiene skip it.
+
+## Repository layout
+
+```text
+api/          FastAPI service (app/{domain,application,infrastructure,entrypoints}), tests, evaluation
+web/          React + Vite + TypeScript app
+docs/         API reference and design docs (headless detonation, R2 screenshots, PWA)
+openspec/     Capability specs and archived change proposals
+screenshots/  Images used in this README
+```
+
+## License
+
+[Apache License 2.0](LICENSE) © 2026 Hernán Bonavota
