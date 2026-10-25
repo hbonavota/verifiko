@@ -3,7 +3,9 @@ from dataclasses import dataclass
 from app.application.dto.verification_dto import VerificationDTO
 from app.application.exceptions.application_exception import VerificationNotFoundError
 from app.application.mappers.verification_mapper import VerificationMapper
-from app.application.queries.get_owned_verification_query import GetOwnedVerificationQuery
+from app.application.queries.get_owned_verification_query import (
+    GetOwnedVerificationQuery,
+)
 from app.domain.i18n.resolver import resolve_message
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.value_objects.user_id import UserId

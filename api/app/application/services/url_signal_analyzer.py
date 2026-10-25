@@ -3,11 +3,18 @@ import re
 from dataclasses import dataclass
 from urllib.parse import parse_qsl
 
-from app.application.services.message_resolver import build_localized_signal, evidence_ref, message_ref
+from app.application.services.message_resolver import (
+    build_localized_signal,
+    evidence_ref,
+    message_ref,
+)
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
-from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
+from app.domain.services.scoring_policies import (
+    BASE_SIGNAL_WEIGHTS,
+    SIGNAL_CATEGORY_MAP,
+)
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
@@ -106,8 +113,32 @@ _REPUTABLE_REGISTERED_DOMAINS = {
     "openai.com",
     "python.org",
 }
-_UNCOMMON_BRANDISH_TLDS = {"buzz", "click", "gq", "info", "link", "live", "rest", "shop", "top", "xyz"}
-_COMMON_DOMAIN_SUFFIXES = {"ac", "app", "biz", "co", "com", "dev", "edu", "gov", "info", "io", "net", "org"}
+_UNCOMMON_BRANDISH_TLDS = {
+    "buzz",
+    "click",
+    "gq",
+    "info",
+    "link",
+    "live",
+    "rest",
+    "shop",
+    "top",
+    "xyz",
+}
+_COMMON_DOMAIN_SUFFIXES = {
+    "ac",
+    "app",
+    "biz",
+    "co",
+    "com",
+    "dev",
+    "edu",
+    "gov",
+    "info",
+    "io",
+    "net",
+    "org",
+}
 _OFFICIAL_INSTITUTION_SUFFIXES = (".gov", ".gov.uk", ".gob.es", ".gov.es", ".gc.ca")
 _REDIRECT_KEYS = {"continue", "next", "redirect", "return", "target", "url"}
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
@@ -136,7 +167,19 @@ _GENERIC_AUTH_KEYWORDS = {
 # Common "leetspeak" homoglyph substitutions used to disguise a brand in a domain
 # (e.g. paypa1 -> paypal, g00gle -> google, micr0soft -> microsoft).
 _LEET_TRANSLATION = str.maketrans(
-    {"0": "o", "1": "l", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "9": "g", "$": "s", "@": "a", "|": "l"}
+    {
+        "0": "o",
+        "1": "l",
+        "3": "e",
+        "4": "a",
+        "5": "s",
+        "7": "t",
+        "8": "b",
+        "9": "g",
+        "$": "s",
+        "@": "a",
+        "|": "l",
+    }
 )
 # Only brands at least this long are considered, to avoid false positives from
 # near-collisions with very short brand tokens.
@@ -159,7 +202,7 @@ def _is_edit_distance_one(shorter: str, longer: str) -> bool:
     if len_longer - len_shorter > 1:
         return False
     if len_shorter == len_longer:
-        return sum(1 for a, b in zip(shorter, longer) if a != b) == 1
+        return sum(1 for a, b in zip(shorter, longer, strict=False) if a != b) == 1
     # longer has exactly one extra character: verify a single clean insertion.
     i = j = 0
     edited = False
@@ -182,7 +225,9 @@ class DeterministicUrlSignalAnalyzer:
     def analyze(self, normalized_url: NormalizedUrl) -> list[AnalysisSignal]:
         signals: list[AnalysisSignal] = []
         host_labels = [label for label in normalized_url.ascii_host.split(".") if label]
-        subdomain_labels = [label for label in normalized_url.subdomain.split(".") if label]
+        subdomain_labels = [
+            label for label in normalized_url.subdomain.split(".") if label
+        ]
         subdomain_tokens = self._subdomain_tokens(subdomain_labels)
         text_tokens = _tokenize(
             " ".join(
@@ -197,9 +242,15 @@ class DeterministicUrlSignalAnalyzer:
         )
         keyword_matches = sorted(_SUSPICIOUS_KEYWORDS.intersection(text_tokens))
         brand_matches = sorted(_BRAND_KEYWORDS.intersection(text_tokens))
-        institution_context_matches = sorted(_INSTITUTION_CONTEXT_KEYWORDS.intersection(text_tokens))
-        institution_demand_matches = sorted(_INSTITUTION_DEMAND_KEYWORDS.intersection(text_tokens))
-        subdomain_lure_matches = self._suspicious_subdomain_label_matches(subdomain_tokens)
+        institution_context_matches = sorted(
+            _INSTITUTION_CONTEXT_KEYWORDS.intersection(text_tokens)
+        )
+        institution_demand_matches = sorted(
+            _INSTITUTION_DEMAND_KEYWORDS.intersection(text_tokens)
+        )
+        subdomain_lure_matches = self._suspicious_subdomain_label_matches(
+            subdomain_tokens
+        )
         deceptive_brand_pattern = self._deceptive_brand_subdomain_pattern(
             normalized_url,
             subdomain_labels,
@@ -250,7 +301,9 @@ class DeterministicUrlSignalAnalyzer:
                 )
             else:
                 evidence.append(
-                    evidence_ref("evidence.ascii_host", ascii_host=normalized_url.ascii_host)
+                    evidence_ref(
+                        "evidence.ascii_host", ascii_host=normalized_url.ascii_host
+                    )
                 )
 
             signals.append(
@@ -336,12 +389,18 @@ class DeterministicUrlSignalAnalyzer:
                 )
             )
 
-        if keyword_matches and not self._is_official_auth_flow(normalized_url, keyword_matches):
+        if keyword_matches and not self._is_official_auth_flow(
+            normalized_url, keyword_matches
+        ):
             keyword_sample = ", ".join(keyword_matches[:4])
             signals.append(
                 self._signal(
                     signal_type=SignalType.PHISHING_KEYWORDS,
-                    severity=SignalSeverity.HIGH if len(keyword_matches) >= 3 else SignalSeverity.MEDIUM,
+                    severity=(
+                        SignalSeverity.HIGH
+                        if len(keyword_matches) >= 3
+                        else SignalSeverity.MEDIUM
+                    ),
                     confidence=min(92, 62 + len(keyword_matches) * 7),
                     message_key="signal.credential_lure_wording_in_url",
                     message_params={
@@ -356,17 +415,25 @@ class DeterministicUrlSignalAnalyzer:
                 )
             )
 
-        if brand_matches and keyword_matches and not self._is_official_brand_target(normalized_url):
+        if (
+            brand_matches
+            and keyword_matches
+            and not self._is_official_brand_target(normalized_url)
+        ):
             brand_sample = ", ".join(brand_matches[:3])
             signals.append(
                 self._signal(
                     signal_type=SignalType.BRAND_IMPERSONATION,
                     severity=SignalSeverity.HIGH,
-                    confidence=min(95, 76 + len(brand_matches) * 5 + len(keyword_matches) * 2),
+                    confidence=min(
+                        95, 76 + len(brand_matches) * 5 + len(keyword_matches) * 2
+                    ),
                     message_key="signal.brand_like_impersonation_hints",
                     message_params={
                         "evidence": [
-                            evidence_ref("evidence.matched_brand_terms", brands=brand_sample),
+                            evidence_ref(
+                                "evidence.matched_brand_terms", brands=brand_sample
+                            ),
                             evidence_ref(
                                 "evidence.registered_domain_under_review",
                                 registered_domain=normalized_url.registered_domain,
@@ -408,7 +475,9 @@ class DeterministicUrlSignalAnalyzer:
                             ),
                         ]
                     },
-                    tags=tuple((institution_context_matches + institution_demand_matches)[:5]),
+                    tags=tuple(
+                        (institution_context_matches + institution_demand_matches)[:5]
+                    ),
                 )
             )
 
@@ -494,7 +563,9 @@ class DeterministicUrlSignalAnalyzer:
         if (
             (
                 deceptive_brand_pattern is None
-                or self._deep_deceptive_subdomain_chain(subdomain_labels, deceptive_brand_pattern)
+                or self._deep_deceptive_subdomain_chain(
+                    subdomain_labels, deceptive_brand_pattern
+                )
             )
             and not self._is_official_brand_target(normalized_url)
             and self._misleading_subdomain(subdomain_labels, keyword_matches)
@@ -502,8 +573,14 @@ class DeterministicUrlSignalAnalyzer:
             signals.append(
                 self._signal(
                     signal_type=SignalType.MISLEADING_SUBDOMAIN,
-                    severity=SignalSeverity.HIGH if len(subdomain_labels) >= 3 else SignalSeverity.MEDIUM,
-                    confidence=min(91, 70 + len(subdomain_labels) * 5 + len(keyword_matches) * 3),
+                    severity=(
+                        SignalSeverity.HIGH
+                        if len(subdomain_labels) >= 3
+                        else SignalSeverity.MEDIUM
+                    ),
+                    confidence=min(
+                        91, 70 + len(subdomain_labels) * 5 + len(keyword_matches) * 3
+                    ),
                     message_key="signal.misleading_subdomain_structure",
                     message_params={
                         "evidence": [
@@ -535,18 +612,24 @@ class DeterministicUrlSignalAnalyzer:
 
         entropy_label = self._high_entropy_label(host_labels)
         if entropy_label is not None:
-            suspicious_label_terms = self._suspicious_synthetic_label_terms(entropy_label)
+            suspicious_label_terms = self._suspicious_synthetic_label_terms(
+                entropy_label
+            )
             signals.append(
                 self._signal(
                     signal_type=SignalType.HIGH_DOMAIN_ENTROPY,
                     severity=(
-                        SignalSeverity.HIGH if suspicious_label_terms else SignalSeverity.MEDIUM
+                        SignalSeverity.HIGH
+                        if suspicious_label_terms
+                        else SignalSeverity.MEDIUM
                     ),
                     confidence=84 if suspicious_label_terms else 73,
                     message_key="signal.high_entropy_hostname_token",
                     message_params={
                         "evidence": [
-                            evidence_ref("evidence.suspicious_label", label=entropy_label),
+                            evidence_ref(
+                                "evidence.suspicious_label", label=entropy_label
+                            ),
                             *(
                                 [
                                     evidence_ref(
@@ -679,7 +762,9 @@ class DeterministicUrlSignalAnalyzer:
             for token in _tokenize(label.replace("-", " "))
         }
 
-    def _suspicious_subdomain_label_matches(self, subdomain_tokens: set[str]) -> list[str]:
+    def _suspicious_subdomain_label_matches(
+        self, subdomain_tokens: set[str]
+    ) -> list[str]:
         suspicious_labels = (
             _SUSPICIOUS_KEYWORDS
             | _CONTEXTUAL_ACCOUNT_TAKEOVER_KEYWORDS
@@ -772,7 +857,9 @@ class DeterministicUrlSignalAnalyzer:
         for brand in _BRAND_KEYWORDS:
             if len(brand) < _TYPOSQUAT_EDIT_DISTANCE_MIN_BRAND_LEN or label == brand:
                 continue
-            if abs(len(label) - len(brand)) <= 1 and _is_edit_distance_one(label, brand):
+            if abs(len(label) - len(brand)) <= 1 and _is_edit_distance_one(
+                label, brand
+            ):
                 return brand, label
 
         return None
@@ -798,9 +885,7 @@ class DeterministicUrlSignalAnalyzer:
             return False
         if normalized_url.is_ip_address:
             return False
-        if normalized_url.contains_unicode or normalized_url.contains_punycode:
-            return False
-        return True
+        return not (normalized_url.contains_unicode or normalized_url.contains_punycode)
 
     def _deceptive_brand_subdomain_pattern(
         self,
@@ -824,7 +909,9 @@ class DeterministicUrlSignalAnalyzer:
             if _contains_label_sequence(subdomain_labels, trusted_labels):
                 return trusted_domain
 
-        for left_label, right_label in zip(subdomain_labels, subdomain_labels[1:]):
+        for left_label, right_label in zip(
+            subdomain_labels, subdomain_labels[1:], strict=False
+        ):
             left_tokens = _tokenize(left_label.replace("-", " "))
             matched_brands = sorted(_BRAND_KEYWORDS.intersection(left_tokens))
             if not matched_brands:
@@ -842,7 +929,10 @@ def _tokenize(value: str) -> set[str]:
 
 def _shannon_entropy(value: str) -> float:
     counts = {char: value.count(char) for char in set(value)}
-    return -sum((count / len(value)) * math.log2(count / len(value)) for count in counts.values())
+    return -sum(
+        (count / len(value)) * math.log2(count / len(value))
+        for count in counts.values()
+    )
 
 
 def _looks_like_readable_compound(label: str) -> bool:
@@ -850,7 +940,9 @@ def _looks_like_readable_compound(label: str) -> bool:
         return False
 
     segments = [segment for segment in label.split("-") if segment]
-    return len(segments) >= 2 and all(segment.isalpha() and len(segment) >= 3 for segment in segments)
+    return len(segments) >= 2 and all(
+        segment.isalpha() and len(segment) >= 3 for segment in segments
+    )
 
 
 def _contains_label_sequence(labels: list[str], sequence: list[str]) -> bool:

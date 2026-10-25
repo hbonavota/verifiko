@@ -18,7 +18,9 @@ class VerificationId:
         try:
             return VerificationId(value=UUID(raw))
         except ValueError as exc:
-            raise DomainException(resolve_message("error.invalid_verification_id")) from exc
+            raise DomainException(
+                resolve_message("error.invalid_verification_id")
+            ) from exc
 
     def __str__(self) -> str:
         return str(self.value)

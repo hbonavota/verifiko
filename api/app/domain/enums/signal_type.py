@@ -1,7 +1,8 @@
 from enum import Enum
 
 
-class SignalType(str, Enum):
+# Kept as (str, Enum): StrEnum would change str()/format() of members.
+class SignalType(str, Enum):  # noqa: UP042
     RECENT_DOMAIN_REGISTRATION = "recent_domain_registration"
     INSECURE_TRANSPORT = "insecure_transport"
     TLS_VALIDATION_FAILURE = "tls_validation_failure"

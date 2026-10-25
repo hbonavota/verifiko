@@ -44,7 +44,9 @@ def test_redirect_signal_analyzer_skips_same_domain_canonical_redirects() -> Non
         )
     )
 
-    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://example.com/login"))
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://example.com/login")
+    )
 
     assert result.signals == ()
     assert result.redirect_resolution is not None
@@ -67,7 +69,9 @@ def test_redirect_signal_analyzer_flags_cross_domain_chain() -> None:
         )
     )
 
-    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://short.example/abc"))
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://short.example/abc")
+    )
 
     assert len(result.signals) == 1
     assert result.signals[0].signal_type.value == "suspicious_redirect_chain"
@@ -77,7 +81,9 @@ def test_redirect_signal_analyzer_flags_cross_domain_chain() -> None:
     assert result.signals[0].severity.value == "HIGH"
 
 
-def test_redirect_signal_analyzer_treats_reset_destinations_as_strong_redirect_cues() -> None:
+def test_redirect_signal_analyzer_treats_reset_destinations_as_strong_redirect_cues() -> (
+    None
+):
     analyzer = RedirectSignalAnalyzer(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -94,14 +100,18 @@ def test_redirect_signal_analyzer_treats_reset_destinations_as_strong_redirect_c
         )
     )
 
-    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://safe.example/link"))
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://safe.example/link")
+    )
 
     assert len(result.signals) == 1
     assert result.signals[0].signal_type.value == "suspicious_redirect_chain"
     assert result.signals[0].severity.value == "HIGH"
 
 
-def test_redirect_signal_analyzer_skips_clean_single_hop_interstitial_redirect() -> None:
+def test_redirect_signal_analyzer_skips_clean_single_hop_interstitial_redirect() -> (
+    None
+):
     analyzer = RedirectSignalAnalyzer(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -118,7 +128,9 @@ def test_redirect_signal_analyzer_skips_clean_single_hop_interstitial_redirect()
         )
     )
 
-    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://sl1nk.com/7k3qpqd"))
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://sl1nk.com/7k3qpqd")
+    )
 
     assert result.signals == ()
     assert result.redirect_resolution is not None
@@ -141,13 +153,17 @@ def test_redirect_signal_analyzer_skips_clean_single_hop_shortener_redirect() ->
         )
     )
 
-    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://g.co/openai"))
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://g.co/openai")
+    )
 
     assert result.signals == ()
     assert result.redirect_resolution is not None
 
 
-def test_redirect_signal_analyzer_skips_clean_shortener_redirect_to_official_challenge_flow() -> None:
+def test_redirect_signal_analyzer_skips_clean_shortener_redirect_to_official_challenge_flow() -> (
+    None
+):
     analyzer = RedirectSignalAnalyzer(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -172,7 +188,9 @@ def test_redirect_signal_analyzer_skips_clean_shortener_redirect_to_official_cha
     assert result.redirect_resolution is not None
 
 
-def test_redirect_signal_analyzer_flags_shortener_redirect_to_session_review_lure() -> None:
+def test_redirect_signal_analyzer_flags_shortener_redirect_to_session_review_lure() -> (
+    None
+):
     analyzer = RedirectSignalAnalyzer(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -189,7 +207,9 @@ def test_redirect_signal_analyzer_flags_shortener_redirect_to_session_review_lur
         )
     )
 
-    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://bit.ly/session"))
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://bit.ly/session")
+    )
 
     assert len(result.signals) == 1
     assert result.signals[0].signal_type.value == "suspicious_redirect_chain"
@@ -248,7 +268,9 @@ def test_redirect_signal_analyzer_flags_shortener_redirect_to_approve_lure() -> 
     assert result.signals[0].severity.value == "HIGH"
 
 
-def test_redirect_signal_analyzer_flags_shortener_redirect_to_questionable_tld() -> None:
+def test_redirect_signal_analyzer_flags_shortener_redirect_to_questionable_tld() -> (
+    None
+):
     analyzer = RedirectSignalAnalyzer(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -265,17 +287,25 @@ def test_redirect_signal_analyzer_flags_shortener_redirect_to_questionable_tld()
         )
     )
 
-    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://bit.ly/abcd"))
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://bit.ly/abcd")
+    )
 
     assert len(result.signals) == 2
     redirect_signal = next(
-        signal for signal in result.signals if signal.signal_type.value == "suspicious_redirect_chain"
+        signal
+        for signal in result.signals
+        if signal.signal_type.value == "suspicious_redirect_chain"
     )
     tld_signal = next(
-        signal for signal in result.signals if signal.signal_type.value == "questionable_destination_tld"
+        signal
+        for signal in result.signals
+        if signal.signal_type.value == "questionable_destination_tld"
     )
     assert redirect_signal.severity.value == "HIGH"
-    assert "Final destination uses a questionable TLD: .top." in redirect_signal.evidence
+    assert (
+        "Final destination uses a questionable TLD: .top." in redirect_signal.evidence
+    )
     assert tld_signal.severity.value == "MEDIUM"
     assert "Final destination uses a questionable TLD: .top." in tld_signal.evidence
 
@@ -283,7 +313,11 @@ def test_redirect_signal_analyzer_flags_shortener_redirect_to_questionable_tld()
 def test_redirect_signal_analyzer_records_warning_when_resolution_fails() -> None:
     analyzer = RedirectSignalAnalyzer(redirect_resolver=FakeRedirectResolver(fail=True))
 
-    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://example.com"))
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://example.com")
+    )
 
     assert result.signals == ()
-    assert result.warnings == ("Redirect resolution could not be completed for this run.",)
+    assert result.warnings == (
+        "Redirect resolution could not be completed for this run.",
+    )

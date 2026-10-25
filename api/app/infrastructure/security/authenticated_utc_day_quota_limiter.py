@@ -1,8 +1,8 @@
-from dataclasses import dataclass, field
-from datetime import date, datetime, time, timedelta, timezone
 import math
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, time, timedelta
 from threading import Lock
-from typing import Callable
 
 from app.domain.entities.user import User
 from app.domain.services.user_quota_policy import UserQuotaPolicy
@@ -53,7 +53,7 @@ class AuthenticatedUtcDayQuotaLimiter:
         next_midnight = datetime.combine(
             current_day + timedelta(days=1),
             time.min,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
         user_key = str(user.id)
         daily_limit = self.quota_policy.daily_limit_for(user)
@@ -73,5 +73,5 @@ class AuthenticatedUtcDayQuotaLimiter:
 
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

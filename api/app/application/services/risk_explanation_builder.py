@@ -26,7 +26,9 @@ _DOMINANT_EXPLANATION_REASON_KEYS = {
     SignalType.TLS_VALIDATION_FAILURE: "summary.reason.tls_validation_failure",
     SignalType.INSECURE_TRANSPORT: "summary.reason.insecure_transport",
     SignalType.BRAND_IMPERSONATION: "summary.reason.brand_impersonation",
-    SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN: "summary.reason.suspicious_infrastructure_pattern",
+    SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN: (
+        "summary.reason.suspicious_infrastructure_pattern"
+    ),
 }
 _CATEGORY_LABELS = {
     SignalCategory.DOMAIN_REPUTATION.value: "domain reputation",
@@ -183,14 +185,18 @@ class RiskExplanationBuilder:
         )
         if not category_summary:
             category_summary = resolve_message("phrase.no_category_penalties_recorded")
-        if trust_context_factors and category_summary == resolve_message("phrase.no_category_penalties_recorded"):
+        if trust_context_factors and category_summary == resolve_message(
+            "phrase.no_category_penalties_recorded"
+        ):
             return resolve_message(
                 "explanation.decision_basis.with_trust_context",
                 {
                     "score": assessment.score.rounded(),
                     "risk_level": assessment.risk_level.value.lower(),
                     "category_summary": category_summary,
-                    "drivers": ", ".join(factor.title for factor in trust_context_factors[:2]),
+                    "drivers": ", ".join(
+                        factor.title for factor in trust_context_factors[:2]
+                    ),
                 },
             )
 
@@ -229,7 +235,9 @@ class RiskExplanationBuilder:
     @staticmethod
     def _score_contribution(signal: AnalysisSignal) -> float:
         return round(
-            signal.base_weight * SEVERITY_MULTIPLIERS[signal.severity] * signal.confidence.as_ratio,
+            signal.base_weight
+            * SEVERITY_MULTIPLIERS[signal.severity]
+            * signal.confidence.as_ratio,
             2,
         )
 
@@ -252,7 +260,9 @@ class RiskExplanationBuilder:
         return max(eligible, key=RiskExplanationBuilder._score_contribution)
 
     @staticmethod
-    def _analysis_trace(verification: Verification) -> tuple[ExplanationStageTrace, ...]:
+    def _analysis_trace(
+        verification: Verification,
+    ) -> tuple[ExplanationStageTrace, ...]:
         if verification.risk_assessment is None:
             return ()
 

@@ -28,6 +28,8 @@ beat: **URLert** (see `docs/COMPETITIVE-ANALYSIS-URLERT.md`).
   - `cd api && python -m pytest -q`  (full suite; ~500 tests, must stay green)
   - `cd api && python -m evaluation.run_evaluation`  (detection quality — precision **must not**
     regress: baseline precision 1.00, recall ~0.80, FPR 0.00 at MEDIUM threshold)
+  - `cd api && ruff check . && black --check .`  (lint + format; `black .` and
+    `ruff check --fix .` apply fixes. Alembic migrations are excluded.)
 - **New detection signals** require: enum in `signal_type.py`, weight + category in
   `scoring_policies.py`, EN/ES messages in `domain/i18n/messages.py`, and unit tests.
   Decisive standalone signals are escalated via a compound rule in `compound_rules.py`.

@@ -9,7 +9,9 @@ from fastapi.testclient import TestClient
 
 import app.entrypoints.api.dependencies.container as container
 from app.entrypoints.api.main import app
-from app.infrastructure.security.qstash_signature_verifier import QStashSignatureVerifier
+from app.infrastructure.security.qstash_signature_verifier import (
+    QStashSignatureVerifier,
+)
 
 _SIGNING_KEY = "worker-signing-key"
 
@@ -30,7 +32,9 @@ def _token(body: bytes, key: str = _SIGNING_KEY) -> str:
     signing_input = f"{_seg({'alg': 'HS256', 'typ': 'JWT'})}.{_seg(payload)}"
     signature = (
         base64.urlsafe_b64encode(
-            hmac.new(key.encode("utf-8"), signing_input.encode("ascii"), hashlib.sha256).digest()
+            hmac.new(
+                key.encode("utf-8"), signing_input.encode("ascii"), hashlib.sha256
+            ).digest()
         )
         .rstrip(b"=")
         .decode("ascii")
@@ -52,7 +56,9 @@ def worker_client():
     app.dependency_overrides[container.get_qstash_signature_verifier] = (
         lambda: QStashSignatureVerifier(_SIGNING_KEY)
     )
-    app.dependency_overrides[container.get_verification_scan_processor] = lambda: processor
+    app.dependency_overrides[container.get_verification_scan_processor] = (
+        lambda: processor
+    )
     try:
         with TestClient(app) as client:
             yield client, processor

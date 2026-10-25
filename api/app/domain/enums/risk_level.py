@@ -1,7 +1,8 @@
 from enum import Enum
 
 
-class RiskLevel(str, Enum):
+# Kept as (str, Enum): StrEnum would change str()/format() of members.
+class RiskLevel(str, Enum):  # noqa: UP042
     SAFE = "SAFE"
     LOW = "LOW"
     MEDIUM = "MEDIUM"

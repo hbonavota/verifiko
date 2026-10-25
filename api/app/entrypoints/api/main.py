@@ -8,7 +8,9 @@ from app.domain.exceptions.domain_exception import DomainException
 from app.entrypoints.api.locale import select_response_locale
 from app.entrypoints.api.routes.api_keys import router as api_keys_router
 from app.entrypoints.api.routes.auth import router as auth_router
-from app.entrypoints.api.routes.internal_scan_worker import router as internal_scan_worker_router
+from app.entrypoints.api.routes.internal_scan_worker import (
+    router as internal_scan_worker_router,
+)
 from app.entrypoints.api.routes.me import router as me_router
 from app.entrypoints.api.routes.scans import router as scans_router
 from app.entrypoints.api.routes.verifications import router as verifications_router
@@ -36,7 +38,9 @@ _API_SECURITY_HEADERS = {
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 }
-_API_CSP_VALUE = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+_API_CSP_VALUE = (
+    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+)
 
 
 @app.middleware("http")
@@ -85,7 +89,9 @@ def handle_domain_exception(request: Request, exc: DomainException) -> JSONRespo
 
 
 @app.exception_handler(VerificationNotFoundError)
-def handle_verification_not_found(request: Request, exc: VerificationNotFoundError) -> JSONResponse:
+def handle_verification_not_found(
+    request: Request, exc: VerificationNotFoundError
+) -> JSONResponse:
     locale = select_response_locale(request.headers.get("Accept-Language"))
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,

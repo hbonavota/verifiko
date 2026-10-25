@@ -13,13 +13,17 @@ class FakeClock:
 
 
 def test_starts_closed_and_allows() -> None:
-    breaker = CircuitBreaker(failure_threshold=2, reset_seconds=10, time_source=FakeClock())
+    breaker = CircuitBreaker(
+        failure_threshold=2, reset_seconds=10, time_source=FakeClock()
+    )
     assert breaker.state == "closed"
     assert breaker.allow() is True
 
 
 def test_opens_after_threshold_failures() -> None:
-    breaker = CircuitBreaker(failure_threshold=2, reset_seconds=10, time_source=FakeClock())
+    breaker = CircuitBreaker(
+        failure_threshold=2, reset_seconds=10, time_source=FakeClock()
+    )
 
     breaker.record_failure()
     assert breaker.state == "closed"
@@ -30,7 +34,9 @@ def test_opens_after_threshold_failures() -> None:
 
 
 def test_success_resets_failure_count() -> None:
-    breaker = CircuitBreaker(failure_threshold=2, reset_seconds=10, time_source=FakeClock())
+    breaker = CircuitBreaker(
+        failure_threshold=2, reset_seconds=10, time_source=FakeClock()
+    )
 
     breaker.record_failure()
     breaker.record_success()

@@ -20,10 +20,14 @@ def resolve_message(
 ) -> str:
     catalog_entry = MESSAGES[message_key]
     selected_language = normalize_language(language)
-    params = _resolve_template_params(dict(message_params or {}), language=selected_language)
+    params = _resolve_template_params(
+        dict(message_params or {}), language=selected_language
+    )
     localized = catalog_entry.get(selected_language) or catalog_entry["en"]
     if isinstance(localized, dict):
-        raise ValueError(f"Message key {message_key} does not resolve to a plain text template.")
+        raise ValueError(
+            f"Message key {message_key} does not resolve to a plain text template."
+        )
     return localized.format_map(_FormatMap(params))
 
 
@@ -37,7 +41,9 @@ def resolve_signal_text(
     selected_language = normalize_language(language)
     localized = catalog_entry.get(selected_language) or catalog_entry["en"]
     if not isinstance(localized, dict):
-        raise ValueError(f"Signal key {message_key} must resolve to a title/description mapping.")
+        raise ValueError(
+            f"Signal key {message_key} must resolve to a title/description mapping."
+        )
 
     evidence_refs = params.get("evidence") or ()
     evidence = tuple(
@@ -98,7 +104,9 @@ def _resolve_template_value(value: Any, *, language: str) -> Any:
             return ", ".join(str(item) for item in resolved)
         return resolved
     if isinstance(value, tuple):
-        resolved = tuple(_resolve_template_value(item, language=language) for item in value)
+        resolved = tuple(
+            _resolve_template_value(item, language=language) for item in value
+        )
         if all(not isinstance(item, (dict, list, tuple)) for item in resolved):
             return ", ".join(str(item) for item in resolved)
         return resolved

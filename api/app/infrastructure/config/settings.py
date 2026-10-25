@@ -143,7 +143,8 @@ class Settings(BaseSettings):
             raise ValueError(
                 "Refusing to start in production: "
                 f"{', '.join(unsafe)} must be set to a unique random value "
-                "(the built-in development default is public and blank values are not allowed)."
+                "(the built-in development default is public and blank values are not "
+                "allowed)."
             )
         return self
 

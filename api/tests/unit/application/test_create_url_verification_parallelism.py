@@ -1,9 +1,11 @@
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
-from app.application.commands.create_verification_command import CreateVerificationCommand
+from app.application.commands.create_verification_command import (
+    CreateVerificationCommand,
+)
 from app.application.dto.verification_dto import VerificationDTO
 from app.application.ports.domain_age_lookup import DomainAgeLookupPort
 from app.application.ports.html_fetcher import FetchedHtmlDocument, HtmlFetcherPort
@@ -19,9 +21,15 @@ from app.application.ports.redirect_resolver import (
 )
 from app.application.ports.reputation_lookup import ReputationLookupPort
 from app.application.ports.tls_validator import TlsValidationResult, TlsValidatorPort
-from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
-from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
-from app.application.services.infrastructure_signal_analyzer import InfrastructureSignalAnalyzer
+from app.application.services.domain_recency_signal_analyzer import (
+    DomainRecencySignalAnalyzer,
+)
+from app.application.services.html_credential_signal_analyzer import (
+    HtmlCredentialSignalAnalyzer,
+)
+from app.application.services.infrastructure_signal_analyzer import (
+    InfrastructureSignalAnalyzer,
+)
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 from app.application.services.resolved_destination_signal_analyzer import (
@@ -31,7 +39,9 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
-from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
+from app.application.use_cases.create_url_verification import (
+    CreateURLVerificationUseCase,
+)
 from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
@@ -40,8 +50,8 @@ from app.domain.value_objects.verification_id import VerificationId
 _LOGIN_HTML = (
     "<html><body><h1>Security challenge</h1>"
     "<p>Approve this verification to continue your account session.</p>"
-    "<form action=\"/checkpoint\"><input type=\"text\" name=\"otp_code\" />"
-    "<button type=\"submit\">Approve</button></form></body></html>"
+    '<form action="/checkpoint"><input type="text" name="otp_code" />'
+    '<button type="submit">Approve</button></form></body></html>'
 )
 
 
@@ -68,7 +78,9 @@ class _NullDomainAgeLookup(DomainAgeLookupPort):
 
 class _StaticHtmlFetcher(HtmlFetcherPort):
     def fetch(self, url: str, *, user_agent: str | None = None):
-        return FetchedHtmlDocument(content=_LOGIN_HTML, source_url=url, content_type="text/html")
+        return FetchedHtmlDocument(
+            content=_LOGIN_HTML, source_url=url, content_type="text/html"
+        )
 
 
 class _ValidTls(TlsValidatorPort):
@@ -109,10 +121,14 @@ def _build_use_case(parallel_analysis_enabled: bool) -> CreateURLVerificationUse
         signal_analyzer=DeterministicUrlSignalAnalyzer(),
         domain_recency_signal_analyzer=DomainRecencySignalAnalyzer(
             domain_age_lookup=_NullDomainAgeLookup(),
-            current_time_provider=lambda: datetime(2026, 7, 23, tzinfo=timezone.utc),
+            current_time_provider=lambda: datetime(2026, 7, 23, tzinfo=UTC),
         ),
-        redirect_signal_analyzer=RedirectSignalAnalyzer(redirect_resolver=_ScriptedRedirect()),
-        reputation_signal_analyzer=ReputationSignalAnalyzer(reputation_lookup=_NoopReputation()),
+        redirect_signal_analyzer=RedirectSignalAnalyzer(
+            redirect_resolver=_ScriptedRedirect()
+        ),
+        reputation_signal_analyzer=ReputationSignalAnalyzer(
+            reputation_lookup=_NoopReputation()
+        ),
         infrastructure_signal_analyzer=InfrastructureSignalAnalyzer(
             infrastructure_lookup=_NoopInfrastructure()
         ),
@@ -123,7 +139,9 @@ def _build_use_case(parallel_analysis_enabled: bool) -> CreateURLVerificationUse
             html_credential_signal_analyzer=HtmlCredentialSignalAnalyzer(),
         ),
         html_credential_signal_analyzer=HtmlCredentialSignalAnalyzer(),
-        transport_security_signal_analyzer=TransportSecuritySignalAnalyzer(tls_validator=_ValidTls()),
+        transport_security_signal_analyzer=TransportSecuritySignalAnalyzer(
+            tls_validator=_ValidTls()
+        ),
         public_target_validator=None,
         parallel_analysis_enabled=parallel_analysis_enabled,
     )
@@ -158,7 +176,14 @@ def _durable_view(dto: VerificationDTO) -> dict:
         "terminal_override": assessment.terminal_override,
         "analysis_warnings": assessment.analysis_warnings,
         "analysis_trace": [
-            (stage.stage, stage.source, stage.status, stage.signal_count, stage.signal_titles, stage.warnings)
+            (
+                stage.stage,
+                stage.source,
+                stage.status,
+                stage.signal_count,
+                stage.signal_titles,
+                stage.warnings,
+            )
             for stage in assessment.analysis_trace
         ],
     }
@@ -186,7 +211,9 @@ def test_run_stage_group_runs_tasks_concurrently() -> None:
 
         return task
 
-    results = use_case._run_stage_group({"a": make("a"), "b": make("b"), "c": make("c")})
+    results = use_case._run_stage_group(
+        {"a": make("a"), "b": make("b"), "c": make("c")}
+    )
 
     assert results == {"a": "a", "b": "b", "c": "c"}
 

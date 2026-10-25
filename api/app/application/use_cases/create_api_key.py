@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Callable
+from datetime import UTC, datetime
 
 from app.application.dto.api_key_dto import CreatedApiKeyDTO
 from app.application.mappers.api_key_mapper import ApiKeyMapper
@@ -20,7 +20,7 @@ class CreateApiKeyCommand:
 class CreateApiKeyUseCase:
     api_key_repository: ApiKeyRepository
     token_service: ApiKeyTokenServicePort
-    current_time_provider: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    current_time_provider: Callable[[], datetime] = lambda: datetime.now(UTC)
 
     def execute(self, command: CreateApiKeyCommand) -> CreatedApiKeyDTO:
         generated = self.token_service.generate()

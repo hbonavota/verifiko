@@ -2,8 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.application.ports.reputation_lookup import ReputationLookupPort, ReputationMatch
-from app.infrastructure.resilience.circuit_breaker import CircuitBreaker, CircuitOpenError
+from app.application.ports.reputation_lookup import (
+    ReputationLookupPort,
+    ReputationMatch,
+)
+from app.infrastructure.resilience.circuit_breaker import (
+    CircuitBreaker,
+    CircuitOpenError,
+)
 
 
 @dataclass(slots=True)

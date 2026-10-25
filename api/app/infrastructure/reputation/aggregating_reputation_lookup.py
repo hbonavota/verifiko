@@ -48,14 +48,21 @@ class AggregatingReputationLookup(ReputationLookupPort):
             return self._consensus_match(hostname, matches, distinct_providers)
         return max(matches, key=lambda match: match.confidence)
 
-    def _query_providers(
-        self, hostname: str
-    ) -> tuple[bool, list[ReputationMatch]]:
+    def _query_providers(self, hostname: str) -> tuple[bool, list[ReputationMatch]]:
         if len(self.providers) <= 1:
-            results = [self._query_one(provider, hostname) for provider in self.providers]
+            results = [
+                self._query_one(provider, hostname) for provider in self.providers
+            ]
         else:
-            with ThreadPoolExecutor(max_workers=min(self.max_workers, len(self.providers))) as pool:
-                results = list(pool.map(lambda provider: self._query_one(provider, hostname), self.providers))
+            with ThreadPoolExecutor(
+                max_workers=min(self.max_workers, len(self.providers))
+            ) as pool:
+                results = list(
+                    pool.map(
+                        lambda provider: self._query_one(provider, hostname),
+                        self.providers,
+                    )
+                )
 
         any_available = False
         matches: list[ReputationMatch] = []

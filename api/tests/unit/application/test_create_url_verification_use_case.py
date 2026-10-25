@@ -1,8 +1,11 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
-from app.application.commands.create_verification_command import CreateVerificationCommand, SignalInput
+from app.application.commands.create_verification_command import (
+    CreateVerificationCommand,
+    SignalInput,
+)
 from app.application.ports.domain_age_lookup import (
     DomainAgeLookupPort,
     DomainRegistrationInfo,
@@ -14,7 +17,11 @@ from app.application.ports.headless_detonation import (
     HeadlessDetonationError,
     HeadlessDetonationPort,
 )
-from app.application.ports.html_fetcher import FetchedHtmlDocument, HtmlFetchError, HtmlFetcherPort
+from app.application.ports.html_fetcher import (
+    FetchedHtmlDocument,
+    HtmlFetcherPort,
+    HtmlFetchError,
+)
 from app.application.ports.infrastructure_lookup import (
     InfrastructureLookupError,
     InfrastructureLookupPort,
@@ -37,8 +44,12 @@ from app.application.ports.tls_validator import (
     TlsValidationResult,
     TlsValidatorPort,
 )
-from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
-from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.domain_recency_signal_analyzer import (
+    DomainRecencySignalAnalyzer,
+)
+from app.application.services.html_credential_signal_analyzer import (
+    HtmlCredentialSignalAnalyzer,
+)
 from app.application.services.infrastructure_signal_analyzer import (
     InfrastructureSignalAnalyzer,
 )
@@ -52,20 +63,22 @@ from app.application.services.transport_security_signal_analyzer import (
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
 from app.application.use_cases.create_url_verification import (
-    CreateURLVerificationUseCase,
     _HTML_FETCH_VARIANT_PROFILES,
+    CreateURLVerificationUseCase,
 )
 from app.domain.entities.verification import Verification
-from app.domain.exceptions.domain_exception import DomainException
 from app.domain.enums.signal_category import SignalCategory
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
 from app.domain.enums.verification_status import VerificationStatus
+from app.domain.exceptions.domain_exception import DomainException
 from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
 from app.domain.value_objects.verification_id import VerificationId
-from app.infrastructure.external_services.outbound_target_guard import assert_safe_outbound_url
+from app.infrastructure.external_services.outbound_target_guard import (
+    assert_safe_outbound_url,
+)
 
 
 class FakeRepository(VerificationRepository):
@@ -100,7 +113,9 @@ class FakeIdGenerator(IdGeneratorPort):
 
 
 class FakeDomainAgeLookup(DomainAgeLookupPort):
-    def __init__(self, result: DomainRegistrationInfo | None = None, fail: bool = False) -> None:
+    def __init__(
+        self, result: DomainRegistrationInfo | None = None, fail: bool = False
+    ) -> None:
         self._result = result
         self._fail = fail
 
@@ -111,7 +126,9 @@ class FakeDomainAgeLookup(DomainAgeLookupPort):
 
 
 class FakeHtmlFetcher(HtmlFetcherPort):
-    def __init__(self, document: FetchedHtmlDocument | None = None, fail: bool = False) -> None:
+    def __init__(
+        self, document: FetchedHtmlDocument | None = None, fail: bool = False
+    ) -> None:
         self._document = document
         self._fail = fail
 
@@ -155,7 +172,9 @@ class FakeTlsValidator(TlsValidatorPort):
         result: TlsValidationResult | None = None,
         fail: bool = False,
     ) -> None:
-        self._result = result or TlsValidationResult(is_valid=True, provider_name="stub-tls")
+        self._result = result or TlsValidationResult(
+            is_valid=True, provider_name="stub-tls"
+        )
         self._fail = fail
 
     def validate_hostname(self, hostname: str, port: int = 443) -> TlsValidationResult:
@@ -213,7 +232,9 @@ class FakeInfrastructureLookup(InfrastructureLookupPort):
 
     def lookup(self, hostname: str, port: int | None = None) -> InfrastructureProfile:
         if self._fail:
-            raise InfrastructureLookupError(f"infrastructure lookup failed for {hostname}:{port}")
+            raise InfrastructureLookupError(
+                f"infrastructure lookup failed for {hostname}:{port}"
+            )
         return self._profile
 
 
@@ -235,7 +256,7 @@ def _build_use_case(
         signal_analyzer=DeterministicUrlSignalAnalyzer(),
         domain_recency_signal_analyzer=DomainRecencySignalAnalyzer(
             domain_age_lookup=domain_age_lookup or FakeDomainAgeLookup(),
-            current_time_provider=lambda: datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc),
+            current_time_provider=lambda: datetime(2026, 3, 17, 12, 0, tzinfo=UTC),
         ),
         redirect_signal_analyzer=RedirectSignalAnalyzer(
             redirect_resolver=redirect_resolver or FakeRedirectResolver()
@@ -263,10 +284,16 @@ def _build_use_case(
 
 
 def _user_agent_for(profile_name: str) -> str:
-    return next(profile.user_agent for profile in _HTML_FETCH_VARIANT_PROFILES if profile.name == profile_name)
+    return next(
+        profile.user_agent
+        for profile in _HTML_FETCH_VARIANT_PROFILES
+        if profile.name == profile_name
+    )
 
 
-def _html_document(content: str, source_url: str = "https://fresh-example.test/login") -> FetchedHtmlDocument:
+def _html_document(
+    content: str, source_url: str = "https://fresh-example.test/login"
+) -> FetchedHtmlDocument:
     return FetchedHtmlDocument(
         content=content,
         source_url=source_url,
@@ -323,20 +350,26 @@ def test_create_url_verification_use_case_generates_signals_from_url() -> None:
     assert dto.risk_assessment.analysis_trace[0].stage == "url_analysis"
 
 
-def test_create_url_verification_use_case_adds_recency_signal_for_recent_domain() -> None:
+def test_create_url_verification_use_case_adds_recency_signal_for_recent_domain() -> (
+    None
+):
     use_case = _build_use_case(
         FakeDomainAgeLookup(
             DomainRegistrationInfo(
-                registered_at=datetime(2026, 3, 15, 9, 0, tzinfo=timezone.utc),
+                registered_at=datetime(2026, 3, 15, 9, 0, tzinfo=UTC),
                 provider_name="stub-rdap",
             )
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://fresh-example.test/login"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://fresh-example.test/login")
+    )
 
     recency_signals = [
-        signal for signal in dto.signals if signal.signal_type == "recent_domain_registration"
+        signal
+        for signal in dto.signals
+        if signal.signal_type == "recent_domain_registration"
     ]
 
     assert len(recency_signals) == 1
@@ -347,18 +380,24 @@ def test_create_url_verification_use_case_skips_recency_signal_for_old_domain() 
     use_case = _build_use_case(
         FakeDomainAgeLookup(
             DomainRegistrationInfo(
-                registered_at=datetime(2025, 12, 1, 9, 0, tzinfo=timezone.utc),
+                registered_at=datetime(2025, 12, 1, 9, 0, tzinfo=UTC),
                 provider_name="stub-rdap",
             )
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://stable-example.test/login"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://stable-example.test/login")
+    )
 
-    assert all(signal.signal_type != "recent_domain_registration" for signal in dto.signals)
+    assert all(
+        signal.signal_type != "recent_domain_registration" for signal in dto.signals
+    )
 
 
-def test_create_url_verification_use_case_continues_when_domain_age_lookup_fails() -> None:
+def test_create_url_verification_use_case_continues_when_domain_age_lookup_fails() -> (
+    None
+):
     use_case = _build_use_case(FakeDomainAgeLookup(fail=True))
 
     dto = use_case.execute(
@@ -367,10 +406,14 @@ def test_create_url_verification_use_case_continues_when_domain_age_lookup_fails
 
     assert dto.status == "completed"
     assert dto.risk_assessment is not None
-    assert all(signal.signal_type != "recent_domain_registration" for signal in dto.signals)
+    assert all(
+        signal.signal_type != "recent_domain_registration" for signal in dto.signals
+    )
 
 
-def test_create_url_verification_use_case_keeps_clean_domains_safe_when_domain_age_lookup_fails() -> None:
+def test_create_url_verification_use_case_keeps_clean_domains_safe_when_domain_age_lookup_fails() -> (
+    None
+):
     use_case = _build_use_case(FakeDomainAgeLookup(fail=True))
 
     dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
@@ -382,7 +425,9 @@ def test_create_url_verification_use_case_keeps_clean_domains_safe_when_domain_a
     assert dto.risk_assessment.analysis_warnings == (
         "Domain registration intelligence was unavailable for this run.",
     )
-    assert {signal.signal_type for signal in dto.signals} == {"recognized_reputable_domain"}
+    assert {signal.signal_type for signal in dto.signals} == {
+        "recognized_reputable_domain"
+    }
 
 
 def test_create_url_verification_use_case_adds_html_login_signal() -> None:
@@ -407,9 +452,13 @@ def test_create_url_verification_use_case_adds_html_login_signal() -> None:
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://fresh-example.test/login"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://fresh-example.test/login")
+    )
 
-    assert any(signal.signal_type == "credential_harvest_form" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "credential_harvest_form" for signal in dto.signals
+    )
 
 
 def test_create_url_verification_use_case_adds_html_challenge_surface_signal() -> None:
@@ -434,12 +483,18 @@ def test_create_url_verification_use_case_adds_html_challenge_surface_signal() -
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://secure-login.bad-example.test/"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://secure-login.bad-example.test/")
+    )
 
-    assert any(signal.signal_type == "suspicious_login_interface" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_login_interface" for signal in dto.signals
+    )
 
 
-def test_create_url_verification_use_case_skips_generic_legitimate_login_surface_signal() -> None:
+def test_create_url_verification_use_case_skips_generic_legitimate_login_surface_signal() -> (
+    None
+):
     use_case = _build_use_case(
         html_fetcher=FakeHtmlFetcher(
             FetchedHtmlDocument(
@@ -465,10 +520,14 @@ def test_create_url_verification_use_case_skips_generic_legitimate_login_surface
 
     dto = use_case.execute(CreateVerificationCommand(url="https://github.com"))
 
-    assert all(signal.signal_type != "suspicious_login_interface" for signal in dto.signals)
+    assert all(
+        signal.signal_type != "suspicious_login_interface" for signal in dto.signals
+    )
 
 
-def test_create_url_verification_use_case_skips_official_same_site_challenge_surface_signal() -> None:
+def test_create_url_verification_use_case_skips_official_same_site_challenge_surface_signal() -> (
+    None
+):
     use_case = _build_use_case(
         html_fetcher=FakeHtmlFetcher(
             FetchedHtmlDocument(
@@ -490,13 +549,16 @@ def test_create_url_verification_use_case_skips_official_same_site_challenge_sur
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://accounts.google.com/challenge"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://accounts.google.com/challenge")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "SAFE"
     assert dto.risk_assessment.verdict == "TRUSTED"
     assert all(
-        signal.signal_type not in {"credential_harvest_form", "suspicious_login_interface"}
+        signal.signal_type
+        not in {"credential_harvest_form", "suspicious_login_interface"}
         for signal in dto.signals
     )
 
@@ -523,7 +585,9 @@ def test_create_url_verification_use_case_continues_when_html_fetch_fails() -> N
     )
 
 
-def test_create_url_verification_use_case_skips_signal_for_equivalent_html_variants() -> None:
+def test_create_url_verification_use_case_skips_signal_for_equivalent_html_variants() -> (
+    None
+):
     base_desktop = _html_document(
         """
         <html>
@@ -581,18 +645,26 @@ def test_create_url_verification_use_case_skips_signal_for_equivalent_html_varia
     )
     use_case = _build_use_case(html_fetcher=html_fetcher)
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://fresh-example.test/login"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://fresh-example.test/login")
+    )
 
     assert html_fetcher.observed_user_agents == [
         _user_agent_for("desktop"),
         _user_agent_for("mobile"),
         _user_agent_for("googlebot-like"),
     ]
-    assert any(signal.signal_type == "credential_harvest_form" for signal in dto.signals)
-    assert not any(signal.signal_type == "content_variation_detected" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "credential_harvest_form" for signal in dto.signals
+    )
+    assert not any(
+        signal.signal_type == "content_variation_detected" for signal in dto.signals
+    )
 
 
-def test_create_url_verification_use_case_adds_content_variation_signal_for_mobile_login_variant() -> None:
+def test_create_url_verification_use_case_adds_content_variation_signal_for_mobile_login_variant() -> (
+    None
+):
     html_fetcher = MultiVariantHtmlFetcher(
         documents_by_user_agent={
             _user_agent_for("desktop"): _html_document(
@@ -635,13 +707,21 @@ def test_create_url_verification_use_case_adds_content_variation_signal_for_mobi
     )
     use_case = _build_use_case(html_fetcher=html_fetcher)
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://fresh-example.test/login"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://fresh-example.test/login")
+    )
 
-    assert any(signal.signal_type == "credential_harvest_form" for signal in dto.signals)
-    assert any(signal.signal_type == "content_variation_detected" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "credential_harvest_form" for signal in dto.signals
+    )
+    assert any(
+        signal.signal_type == "content_variation_detected" for signal in dto.signals
+    )
 
 
-def test_create_url_verification_use_case_adds_content_variation_signal_for_googlebot_gap() -> None:
+def test_create_url_verification_use_case_adds_content_variation_signal_for_googlebot_gap() -> (
+    None
+):
     login_document = _html_document(
         """
         <html>
@@ -675,13 +755,21 @@ def test_create_url_verification_use_case_adds_content_variation_signal_for_goog
     )
     use_case = _build_use_case(html_fetcher=html_fetcher)
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://fresh-example.test/login"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://fresh-example.test/login")
+    )
 
-    assert any(signal.signal_type == "suspicious_login_interface" for signal in dto.signals)
-    assert any(signal.signal_type == "content_variation_detected" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_login_interface" for signal in dto.signals
+    )
+    assert any(
+        signal.signal_type == "content_variation_detected" for signal in dto.signals
+    )
 
 
-def test_create_url_verification_use_case_records_partial_multi_user_agent_warning_without_degrading_result() -> None:
+def test_create_url_verification_use_case_records_partial_multi_user_agent_warning_without_degrading_result() -> (
+    None
+):
     baseline_fetcher = MultiVariantHtmlFetcher(
         documents_by_user_agent={
             _user_agent_for("desktop"): _html_document(
@@ -777,10 +865,14 @@ def test_create_url_verification_use_case_records_partial_multi_user_agent_warni
     )
 
 
-def test_create_url_verification_use_case_adds_insecure_transport_signal_for_http() -> None:
+def test_create_url_verification_use_case_adds_insecure_transport_signal_for_http() -> (
+    None
+):
     use_case = _build_use_case()
 
-    dto = use_case.execute(CreateVerificationCommand(url="http://portal-example.test/login"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="http://portal-example.test/login")
+    )
 
     assert any(signal.signal_type == "insecure_transport" for signal in dto.signals)
 
@@ -796,12 +888,16 @@ def test_create_url_verification_use_case_adds_tls_validation_failure_signal() -
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://portal-example.test/login"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://portal-example.test/login")
+    )
 
     assert any(signal.signal_type == "tls_validation_failure" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_skips_transport_signal_on_valid_https() -> None:
+def test_create_url_verification_use_case_skips_transport_signal_on_valid_https() -> (
+    None
+):
     use_case = _build_use_case(
         tls_validator=FakeTlsValidator(
             TlsValidationResult(
@@ -811,7 +907,9 @@ def test_create_url_verification_use_case_skips_transport_signal_on_valid_https(
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://portal-example.test/home"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://portal-example.test/home")
+    )
 
     assert all(
         signal.signal_type not in {"insecure_transport", "tls_validation_failure"}
@@ -819,47 +917,65 @@ def test_create_url_verification_use_case_skips_transport_signal_on_valid_https(
     )
 
 
-def test_create_url_verification_use_case_strengthens_deceptive_brand_subdomain() -> None:
+def test_create_url_verification_use_case_strengthens_deceptive_brand_subdomain() -> (
+    None
+):
     use_case = _build_use_case()
 
     dto = use_case.execute(
         CreateVerificationCommand(url="https://paypal.com.security-check-login.com/")
     )
 
-    assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals
+    )
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
     assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
 
 
-def test_create_url_verification_use_case_strengthens_deceptive_institution_subdomain() -> None:
+def test_create_url_verification_use_case_strengthens_deceptive_institution_subdomain() -> (
+    None
+):
     use_case = _build_use_case()
 
     dto = use_case.execute(
-        CreateVerificationCommand(url="https://dgt.gob.es.multa-pendiente.secure-payments.xyz")
+        CreateVerificationCommand(
+            url="https://dgt.gob.es.multa-pendiente.secure-payments.xyz"
+        )
     )
 
-    assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals
+    )
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
     assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
 
 
-def test_create_url_verification_use_case_strengthens_deep_deceptive_subdomain_chains() -> None:
+def test_create_url_verification_use_case_strengthens_deep_deceptive_subdomain_chains() -> (
+    None
+):
     use_case = _build_use_case()
 
     dto = use_case.execute(
-        CreateVerificationCommand(url="https://api.mail.google.com.security.example.net")
+        CreateVerificationCommand(
+            url="https://api.mail.google.com.security.example.net"
+        )
     )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
     assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
-    assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals
+    )
     assert any(signal.signal_type == "misleading_subdomain" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_long_deceptive_paypal_subdomain_chains() -> None:
+def test_create_url_verification_use_case_strengthens_long_deceptive_paypal_subdomain_chains() -> (
+    None
+):
     use_case = _build_use_case()
 
     dto = use_case.execute(
@@ -871,14 +987,20 @@ def test_create_url_verification_use_case_strengthens_long_deceptive_paypal_subd
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"HIGH", "CRITICAL"}
     assert dto.risk_assessment.verdict == "LIKELY_MALICIOUS"
-    assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "deceptive_brand_subdomain" for signal in dto.signals
+    )
     assert any(signal.signal_type == "misleading_subdomain" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_suspicious_synthetic_hostname_labels() -> None:
+def test_create_url_verification_use_case_strengthens_suspicious_synthetic_hostname_labels() -> (
+    None
+):
     use_case = _build_use_case()
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://secure-verify-9x1k-login.net"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://secure-verify-9x1k-login.net")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "LOW"
@@ -888,10 +1010,14 @@ def test_create_url_verification_use_case_strengthens_suspicious_synthetic_hostn
     assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_mailbox_synthetic_hostname_labels() -> None:
+def test_create_url_verification_use_case_strengthens_mailbox_synthetic_hostname_labels() -> (
+    None
+):
     use_case = _build_use_case()
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://mailbox-8f2k-review-login.xyz"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://mailbox-8f2k-review-login.xyz")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
@@ -900,11 +1026,15 @@ def test_create_url_verification_use_case_strengthens_mailbox_synthetic_hostname
     assert any(signal.signal_type == "tactical_email_staging" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_mailbox_mfa_review_lures() -> None:
+def test_create_url_verification_use_case_strengthens_mailbox_mfa_review_lures() -> (
+    None
+):
     use_case = _build_use_case()
 
     dto = use_case.execute(
-        CreateVerificationCommand(url="https://outlook.office365.mfa-review.mail-access.net/")
+        CreateVerificationCommand(
+            url="https://outlook.office365.mfa-review.mail-access.net/"
+        )
     )
 
     assert dto.risk_assessment is not None
@@ -914,11 +1044,15 @@ def test_create_url_verification_use_case_strengthens_mailbox_mfa_review_lures()
     assert any(signal.signal_type == "brand_impersonation" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_mailbox_otp_review_lures() -> None:
+def test_create_url_verification_use_case_strengthens_mailbox_otp_review_lures() -> (
+    None
+):
     use_case = _build_use_case()
 
     dto = use_case.execute(
-        CreateVerificationCommand(url="https://outlook.office365.otp-review.mail-access.net/")
+        CreateVerificationCommand(
+            url="https://outlook.office365.otp-review.mail-access.net/"
+        )
     )
 
     assert dto.risk_assessment is not None
@@ -928,11 +1062,15 @@ def test_create_url_verification_use_case_strengthens_mailbox_otp_review_lures()
     assert any(signal.signal_type == "brand_impersonation" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_mailbox_challenge_review_lures() -> None:
+def test_create_url_verification_use_case_strengthens_mailbox_challenge_review_lures() -> (
+    None
+):
     use_case = _build_use_case()
 
     dto = use_case.execute(
-        CreateVerificationCommand(url="https://outlook.office365.challenge-review.mail-access.net/")
+        CreateVerificationCommand(
+            url="https://outlook.office365.challenge-review.mail-access.net/"
+        )
     )
 
     assert dto.risk_assessment is not None
@@ -942,11 +1080,15 @@ def test_create_url_verification_use_case_strengthens_mailbox_challenge_review_l
     assert any(signal.signal_type == "brand_impersonation" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_mailbox_session_review_lures() -> None:
+def test_create_url_verification_use_case_strengthens_mailbox_session_review_lures() -> (
+    None
+):
     use_case = _build_use_case()
 
     dto = use_case.execute(
-        CreateVerificationCommand(url="https://outlook.office365.session-review.mail-access.net/")
+        CreateVerificationCommand(
+            url="https://outlook.office365.session-review.mail-access.net/"
+        )
     )
 
     assert dto.risk_assessment is not None
@@ -956,7 +1098,9 @@ def test_create_url_verification_use_case_strengthens_mailbox_session_review_lur
     assert any(signal.signal_type == "brand_impersonation" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_caps_safe_result_when_coverage_is_degraded() -> None:
+def test_create_url_verification_use_case_caps_safe_result_when_coverage_is_degraded() -> (
+    None
+):
     use_case = _build_use_case(html_fetcher=FakeHtmlFetcher(fail=True))
 
     dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
@@ -968,7 +1112,9 @@ def test_create_url_verification_use_case_caps_safe_result_when_coverage_is_degr
     assert "Analysis coverage degraded:" in dto.risk_assessment.summary
 
 
-def test_create_url_verification_use_case_adds_redirect_signal_for_cross_domain_chain() -> None:
+def test_create_url_verification_use_case_adds_redirect_signal_for_cross_domain_chain() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -987,10 +1133,14 @@ def test_create_url_verification_use_case_adds_redirect_signal_for_cross_domain_
 
     dto = use_case.execute(CreateVerificationCommand(url="https://short.example/r/abc"))
 
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals
+    )
 
 
-def test_create_url_verification_use_case_uses_blacklist_match_from_redirect_target() -> None:
+def test_create_url_verification_use_case_uses_blacklist_match_from_redirect_target() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1027,7 +1177,9 @@ def test_create_url_verification_use_case_uses_blacklist_match_from_redirect_tar
     assert dto.risk_assessment.verdict == "CONFIRMED_MALICIOUS"
 
 
-def test_create_url_verification_use_case_records_degraded_coverage_when_reputation_is_unavailable() -> None:
+def test_create_url_verification_use_case_records_degraded_coverage_when_reputation_is_unavailable() -> (
+    None
+):
     use_case = _build_use_case(reputation_lookup=FakeReputationLookup(fail=True))
 
     dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
@@ -1039,7 +1191,9 @@ def test_create_url_verification_use_case_records_degraded_coverage_when_reputat
     )
 
 
-def test_create_url_verification_use_case_adds_infrastructure_signal_for_suspicious_ptr() -> None:
+def test_create_url_verification_use_case_adds_infrastructure_signal_for_suspicious_ptr() -> (
+    None
+):
     use_case = _build_use_case(
         infrastructure_lookup=FakeInfrastructureLookup(
             InfrastructureProfile(
@@ -1055,13 +1209,22 @@ def test_create_url_verification_use_case_adds_infrastructure_signal_for_suspici
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://login.safe-example.test/verify"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://login.safe-example.test/verify")
+    )
 
-    assert any(signal.signal_type == "suspicious_infrastructure_pattern" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_infrastructure_pattern"
+        for signal in dto.signals
+    )
 
 
-def test_create_url_verification_use_case_records_degraded_coverage_when_infrastructure_is_unavailable() -> None:
-    use_case = _build_use_case(infrastructure_lookup=FakeInfrastructureLookup(fail=True))
+def test_create_url_verification_use_case_records_degraded_coverage_when_infrastructure_is_unavailable() -> (
+    None
+):
+    use_case = _build_use_case(
+        infrastructure_lookup=FakeInfrastructureLookup(fail=True)
+    )
 
     dto = use_case.execute(CreateVerificationCommand(url="https://openai.com"))
 
@@ -1072,10 +1235,14 @@ def test_create_url_verification_use_case_records_degraded_coverage_when_infrast
     )
 
 
-def test_create_url_verification_use_case_strengthens_static_suspicion_when_domain_age_lookup_fails() -> None:
+def test_create_url_verification_use_case_strengthens_static_suspicion_when_domain_age_lookup_fails() -> (
+    None
+):
     use_case = _build_use_case(domain_age_lookup=FakeDomainAgeLookup(fail=True))
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://secure-verify-9x1k-login.net"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://secure-verify-9x1k-login.net")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.score == 60
@@ -1089,10 +1256,16 @@ def test_create_url_verification_use_case_strengthens_static_suspicion_when_doma
     assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_static_suspicion_when_infrastructure_lookup_fails() -> None:
-    use_case = _build_use_case(infrastructure_lookup=FakeInfrastructureLookup(fail=True))
+def test_create_url_verification_use_case_strengthens_static_suspicion_when_infrastructure_lookup_fails() -> (
+    None
+):
+    use_case = _build_use_case(
+        infrastructure_lookup=FakeInfrastructureLookup(fail=True)
+    )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://secure-verify-9x1k-login.net"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://secure-verify-9x1k-login.net")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.score == 60
@@ -1106,7 +1279,9 @@ def test_create_url_verification_use_case_strengthens_static_suspicion_when_infr
     assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_caps_warning_degraded_result_when_signals_exist() -> None:
+def test_create_url_verification_use_case_caps_warning_degraded_result_when_signals_exist() -> (
+    None
+):
     use_case = _build_use_case(html_fetcher=FakeHtmlFetcher(fail=True))
 
     dto = use_case.execute(CreateVerificationCommand(url="https://g.co/openai"))
@@ -1119,7 +1294,9 @@ def test_create_url_verification_use_case_caps_warning_degraded_result_when_sign
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_source_suspicion_when_redirect_resolution_fails() -> None:
+def test_create_url_verification_use_case_strengthens_source_suspicion_when_redirect_resolution_fails() -> (
+    None
+):
     use_case = _build_use_case(redirect_resolver=FakeRedirectResolver(fail=True))
 
     dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/challenge"))
@@ -1137,7 +1314,9 @@ def test_create_url_verification_use_case_strengthens_source_suspicion_when_redi
     assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_reauth_source_suspicion_when_redirect_resolution_fails() -> None:
+def test_create_url_verification_use_case_strengthens_reauth_source_suspicion_when_redirect_resolution_fails() -> (
+    None
+):
     use_case = _build_use_case(redirect_resolver=FakeRedirectResolver(fail=True))
 
     dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/reauth"))
@@ -1153,7 +1332,9 @@ def test_create_url_verification_use_case_strengthens_reauth_source_suspicion_wh
     assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_keeps_failed_session_shorteners_at_low_caution() -> None:
+def test_create_url_verification_use_case_keeps_failed_session_shorteners_at_low_caution() -> (
+    None
+):
     use_case = _build_use_case(redirect_resolver=FakeRedirectResolver(fail=True))
 
     dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/session"))
@@ -1168,7 +1349,9 @@ def test_create_url_verification_use_case_keeps_failed_session_shorteners_at_low
     assert {signal.signal_type for signal in dto.signals} == {"shortened_url"}
 
 
-def test_create_url_verification_use_case_keeps_failed_clean_shorteners_at_low_caution() -> None:
+def test_create_url_verification_use_case_keeps_failed_clean_shorteners_at_low_caution() -> (
+    None
+):
     use_case = _build_use_case(redirect_resolver=FakeRedirectResolver(fail=True))
 
     dto = use_case.execute(CreateVerificationCommand(url="https://g.co/openai"))
@@ -1185,10 +1368,14 @@ def test_create_url_verification_use_case_keeps_failed_clean_shorteners_at_low_c
     assert {signal.signal_type for signal in dto.signals} == {"shortened_url"}
 
 
-def test_create_url_verification_use_case_strengthens_static_suspicion_when_html_fetch_fails() -> None:
+def test_create_url_verification_use_case_strengthens_static_suspicion_when_html_fetch_fails() -> (
+    None
+):
     use_case = _build_use_case(html_fetcher=FakeHtmlFetcher(fail=True))
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://g.co/account/security"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://g.co/account/security")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.score == 60
@@ -1206,7 +1393,9 @@ def test_create_url_verification_use_case_strengthens_static_suspicion_when_html
     assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
 
 
-def test_create_url_verification_use_case_strengthens_redirected_suspicion_when_destination_fetch_fails() -> None:
+def test_create_url_verification_use_case_strengthens_redirected_suspicion_when_destination_fetch_fails() -> (
+    None
+):
     use_case = _build_use_case(
         html_fetcher=FakeHtmlFetcher(fail=True),
         redirect_resolver=FakeRedirectResolver(
@@ -1240,7 +1429,9 @@ def test_create_url_verification_use_case_strengthens_redirected_suspicion_when_
         "Resolved destination HTML inspection could not be completed.",
         "HTML content inspection could not be completed.",
     )
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals
+    )
     assert any(signal.signal_type == "phishing_keywords" for signal in dto.signals)
 
 
@@ -1250,7 +1441,10 @@ def test_create_url_verification_use_case_rejects_unsafe_local_targets() -> None
     try:
         use_case.execute(CreateVerificationCommand(url="https://localhost/login"))
     except DomainException as exc:
-        assert str(exc) == "Outbound target is a local or special-use hostname and was blocked."
+        assert (
+            str(exc)
+            == "Outbound target is a local or special-use hostname and was blocked."
+        )
     else:
         raise AssertionError("Expected unsafe local target to be rejected.")
 
@@ -1268,7 +1462,9 @@ def test_create_url_verification_use_case_rejects_single_label_targets() -> None
 def test_create_url_verification_use_case_strengthens_branded_shortener_lures() -> None:
     use_case = _build_use_case()
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://g.co/account/security"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://g.co/account/security")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "LOW"
@@ -1276,7 +1472,9 @@ def test_create_url_verification_use_case_strengthens_branded_shortener_lures() 
     assert "shortened_credential_lure_pattern" not in dto.risk_assessment.summary
 
 
-def test_create_url_verification_use_case_keeps_clean_shortener_redirects_safe() -> None:
+def test_create_url_verification_use_case_keeps_clean_shortener_redirects_safe() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1299,13 +1497,19 @@ def test_create_url_verification_use_case_keeps_clean_shortener_redirects_safe()
     assert dto.risk_assessment.risk_level == "SAFE"
     assert dto.risk_assessment.verdict == "TRUSTED"
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
-    assert any(signal.signal_type == "recognized_reputable_domain" for signal in dto.signals)
-    assert all(signal.signal_type != "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "recognized_reputable_domain" for signal in dto.signals
+    )
+    assert all(
+        signal.signal_type != "suspicious_redirect_chain" for signal in dto.signals
+    )
     assert "Compound pattern adjustments applied:" in dto.risk_assessment.summary
     assert "recognized_reputable_domain_bonus" not in dto.risk_assessment.summary
 
 
-def test_create_url_verification_use_case_flags_shortener_redirects_to_questionable_tlds() -> None:
+def test_create_url_verification_use_case_flags_shortener_redirects_to_questionable_tlds() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1327,8 +1531,12 @@ def test_create_url_verification_use_case_flags_shortener_redirects_to_questiona
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
-    assert any(signal.signal_type == "questionable_destination_tld" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals
+    )
+    assert any(
+        signal.signal_type == "questionable_destination_tld" for signal in dto.signals
+    )
     assert any(
         signal.signal_type == "suspicious_redirect_chain"
         and "Final destination uses a questionable TLD: .top." in signal.evidence
@@ -1336,7 +1544,9 @@ def test_create_url_verification_use_case_flags_shortener_redirects_to_questiona
     )
 
 
-def test_create_url_verification_use_case_strengthens_redirects_to_thin_questionable_destinations() -> None:
+def test_create_url_verification_use_case_strengthens_redirects_to_thin_questionable_destinations() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1371,7 +1581,9 @@ def test_create_url_verification_use_case_strengthens_redirects_to_thin_question
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "MEDIUM"
     assert dto.risk_assessment.score < 55
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals
+    )
     assert any(signal.signal_type == "low_information_page" for signal in dto.signals)
 
 
@@ -1404,14 +1616,20 @@ def test_create_url_verification_use_case_surfaces_supporting_trust_context() ->
     assert "Supporting trust context" in dto.risk_assessment.summary
     assert dto.risk_assessment.explanation is not None
     assert "supported by" in dto.risk_assessment.explanation.headline.lower()
-    assert {signal.signal_type for signal in dto.signals} == {"recognized_reputable_domain"}
+    assert {signal.signal_type for signal in dto.signals} == {
+        "recognized_reputable_domain"
+    }
 
 
-def test_create_url_verification_use_case_uses_primary_reason_explanation_for_suspicious_urls() -> None:
+def test_create_url_verification_use_case_uses_primary_reason_explanation_for_suspicious_urls() -> (
+    None
+):
     use_case = _build_use_case()
 
     dto = use_case.execute(
-        CreateVerificationCommand(url="https://paypal-login-security-check.example.xyz/verify")
+        CreateVerificationCommand(
+            url="https://paypal-login-security-check.example.xyz/verify"
+        )
     )
 
     assert dto.risk_assessment is not None
@@ -1427,20 +1645,30 @@ def test_create_url_verification_use_case_uses_primary_reason_explanation_for_su
     assert "content_behavior=" not in dto.risk_assessment.explanation.decision_basis
 
 
-def test_create_url_verification_use_case_does_not_let_reputable_domains_override_risky_signals() -> None:
+def test_create_url_verification_use_case_does_not_let_reputable_domains_override_risky_signals() -> (
+    None
+):
     use_case = _build_use_case()
 
-    dto = use_case.execute(CreateVerificationCommand(url="http://openai.com:8080/reset"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="http://openai.com:8080/reset")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
-    assert any(signal.signal_type == "recognized_reputable_domain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "recognized_reputable_domain" for signal in dto.signals
+    )
     assert any(signal.signal_type == "insecure_transport" for signal in dto.signals)
-    assert any(signal.signal_type == "non_standard_port_usage" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "non_standard_port_usage" for signal in dto.signals
+    )
     assert "recognized_reputable_domain_bonus" not in dto.risk_assessment.summary
 
 
-def test_create_url_verification_use_case_strengthens_shortener_redirected_lures() -> None:
+def test_create_url_verification_use_case_strengthens_shortener_redirected_lures() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1465,10 +1693,14 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_lures
     assert dto.risk_assessment.summary.startswith(
         "Primary concern: brand or institution impersonation cues."
     )
-    assert "Additional risk indicators were also detected." in dto.risk_assessment.summary
+    assert (
+        "Additional risk indicators were also detected." in dto.risk_assessment.summary
+    )
     assert "Compound pattern adjustments applied:" in dto.risk_assessment.summary
     assert "shortened_redirected_lure_pattern" not in dto.risk_assessment.summary
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals
+    )
     assert any(
         signal.signal_type == "brand_impersonation"
         and signal.title == "Institution-style payment or penalty lure"
@@ -1476,7 +1708,9 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_lures
     )
 
 
-def test_create_url_verification_use_case_strengthens_shortener_redirected_session_lures() -> None:
+def test_create_url_verification_use_case_strengthens_shortener_redirected_session_lures() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1495,21 +1729,35 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_sessi
 
     dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/session"))
     destination_signals = [
-        signal for signal in dto.signals if signal.source == "resolved-destination-url-analyzer"
+        signal
+        for signal in dto.signals
+        if signal.source == "resolved-destination-url-analyzer"
     ]
-    redirect_signals = [signal for signal in dto.signals if signal.source == "redirect-chain-analyzer"]
+    redirect_signals = [
+        signal for signal in dto.signals if signal.source == "redirect-chain-analyzer"
+    ]
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"MEDIUM", "HIGH", "CRITICAL"}
     assert dto.risk_assessment.verdict in {"SUSPICIOUS", "LIKELY_MALICIOUS"}
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in redirect_signals)
-    assert any(signal.signal_type == "phishing_keywords" for signal in destination_signals)
-    assert any(signal.signal_type == "brand_impersonation" for signal in destination_signals)
-    assert any(signal.signal_type == "tactical_email_staging" for signal in destination_signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in redirect_signals
+    )
+    assert any(
+        signal.signal_type == "phishing_keywords" for signal in destination_signals
+    )
+    assert any(
+        signal.signal_type == "brand_impersonation" for signal in destination_signals
+    )
+    assert any(
+        signal.signal_type == "tactical_email_staging" for signal in destination_signals
+    )
 
 
-def test_create_url_verification_use_case_strengthens_shortener_redirected_reauth_lures() -> None:
+def test_create_url_verification_use_case_strengthens_shortener_redirected_reauth_lures() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1526,9 +1774,13 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_reaut
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/google-reauth"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://bit.ly/google-reauth")
+    )
     destination_signals = [
-        signal for signal in dto.signals if signal.source == "resolved-destination-url-analyzer"
+        signal
+        for signal in dto.signals
+        if signal.source == "resolved-destination-url-analyzer"
     ]
     redirect_signals = [
         signal for signal in dto.signals if signal.source == "redirect-chain-analyzer"
@@ -1538,13 +1790,24 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_reaut
     assert dto.risk_assessment.risk_level in {"HIGH", "CRITICAL"}
     assert dto.risk_assessment.verdict == "LIKELY_MALICIOUS"
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in redirect_signals)
-    assert any(signal.signal_type == "phishing_keywords" for signal in destination_signals)
-    assert any(signal.signal_type == "brand_impersonation" for signal in destination_signals)
-    assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in destination_signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in redirect_signals
+    )
+    assert any(
+        signal.signal_type == "phishing_keywords" for signal in destination_signals
+    )
+    assert any(
+        signal.signal_type == "brand_impersonation" for signal in destination_signals
+    )
+    assert any(
+        signal.signal_type == "deceptive_brand_subdomain"
+        for signal in destination_signals
+    )
 
 
-def test_create_url_verification_use_case_strengthens_shortener_redirected_approve_lures() -> None:
+def test_create_url_verification_use_case_strengthens_shortener_redirected_approve_lures() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1561,9 +1824,13 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_appro
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/google-approve"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://bit.ly/google-approve")
+    )
     destination_signals = [
-        signal for signal in dto.signals if signal.source == "resolved-destination-url-analyzer"
+        signal
+        for signal in dto.signals
+        if signal.source == "resolved-destination-url-analyzer"
     ]
     redirect_signals = [
         signal for signal in dto.signals if signal.source == "redirect-chain-analyzer"
@@ -1573,13 +1840,24 @@ def test_create_url_verification_use_case_strengthens_shortener_redirected_appro
     assert dto.risk_assessment.risk_level in {"HIGH", "CRITICAL"}
     assert dto.risk_assessment.verdict == "LIKELY_MALICIOUS"
     assert any(signal.signal_type == "shortened_url" for signal in dto.signals)
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in redirect_signals)
-    assert any(signal.signal_type == "phishing_keywords" for signal in destination_signals)
-    assert any(signal.signal_type == "brand_impersonation" for signal in destination_signals)
-    assert any(signal.signal_type == "deceptive_brand_subdomain" for signal in destination_signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in redirect_signals
+    )
+    assert any(
+        signal.signal_type == "phishing_keywords" for signal in destination_signals
+    )
+    assert any(
+        signal.signal_type == "brand_impersonation" for signal in destination_signals
+    )
+    assert any(
+        signal.signal_type == "deceptive_brand_subdomain"
+        for signal in destination_signals
+    )
 
 
-def test_create_url_verification_use_case_keeps_shortener_redirected_official_challenge_flows_safe() -> None:
+def test_create_url_verification_use_case_keeps_shortener_redirected_official_challenge_flows_safe() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1596,7 +1874,9 @@ def test_create_url_verification_use_case_keeps_shortener_redirected_official_ch
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://bit.ly/official-google"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://bit.ly/official-google")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "SAFE"
@@ -1624,19 +1904,29 @@ def test_create_url_verification_use_case_analyzes_resolved_destination_url() ->
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link/123")
+    )
 
     destination_signals = [
-        signal for signal in dto.signals if signal.source == "resolved-destination-url-analyzer"
+        signal
+        for signal in dto.signals
+        if signal.source == "resolved-destination-url-analyzer"
     ]
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
-    assert any(signal.signal_type == "brand_impersonation" for signal in destination_signals)
-    assert any(signal.signal_type == "phishing_keywords" for signal in destination_signals)
+    assert any(
+        signal.signal_type == "brand_impersonation" for signal in destination_signals
+    )
+    assert any(
+        signal.signal_type == "phishing_keywords" for signal in destination_signals
+    )
 
 
-def test_create_url_verification_use_case_marks_redirected_login_style_destination_as_caution() -> None:
+def test_create_url_verification_use_case_marks_redirected_login_style_destination_as_caution() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1653,12 +1943,16 @@ def test_create_url_verification_use_case_marks_redirected_login_style_destinati
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link/123")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "LOW"
     assert dto.risk_assessment.verdict == "CAUTION"
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals
+    )
     assert any(
         signal.signal_type == "phishing_keywords"
         and signal.source == "resolved-destination-url-analyzer"
@@ -1666,7 +1960,9 @@ def test_create_url_verification_use_case_marks_redirected_login_style_destinati
     )
 
 
-def test_create_url_verification_use_case_marks_redirected_reset_destinations_as_caution() -> None:
+def test_create_url_verification_use_case_marks_redirected_reset_destinations_as_caution() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1683,12 +1979,16 @@ def test_create_url_verification_use_case_marks_redirected_reset_destinations_as
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link/123")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "LOW"
     assert dto.risk_assessment.verdict == "CAUTION"
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals
+    )
     assert any(
         signal.signal_type == "phishing_keywords"
         and signal.source == "resolved-destination-url-analyzer"
@@ -1696,7 +1996,9 @@ def test_create_url_verification_use_case_marks_redirected_reset_destinations_as
     )
 
 
-def test_create_url_verification_use_case_marks_redirected_recovery_destinations_as_caution() -> None:
+def test_create_url_verification_use_case_marks_redirected_recovery_destinations_as_caution() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1713,12 +2015,16 @@ def test_create_url_verification_use_case_marks_redirected_recovery_destinations
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link/123")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "LOW"
     assert dto.risk_assessment.verdict == "CAUTION"
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals
+    )
     assert any(
         signal.signal_type == "phishing_keywords"
         and signal.source == "resolved-destination-url-analyzer"
@@ -1761,7 +2067,9 @@ def test_create_url_verification_use_case_analyzes_resolved_destination_html() -
         ),
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link/123")
+    )
 
     assert any(
         signal.signal_type == "credential_harvest_form"
@@ -1770,7 +2078,9 @@ def test_create_url_verification_use_case_analyzes_resolved_destination_html() -
     )
 
 
-def test_create_url_verification_use_case_analyzes_resolved_destination_challenge_html() -> None:
+def test_create_url_verification_use_case_analyzes_resolved_destination_challenge_html() -> (
+    None
+):
     class FinalChallengeHtmlFetcher(HtmlFetcherPort):
         def fetch(
             self,
@@ -1814,7 +2124,9 @@ def test_create_url_verification_use_case_analyzes_resolved_destination_challeng
         html_fetcher=FinalChallengeHtmlFetcher(),
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/456"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link/456")
+    )
 
     assert any(
         signal.signal_type == "suspicious_login_interface"
@@ -1823,7 +2135,9 @@ def test_create_url_verification_use_case_analyzes_resolved_destination_challeng
     )
 
 
-def test_create_url_verification_use_case_skips_benign_redirect_interstitial_html() -> None:
+def test_create_url_verification_use_case_skips_benign_redirect_interstitial_html() -> (
+    None
+):
     class FinalOnlyHtmlFetcher(HtmlFetcherPort):
         def fetch(
             self,
@@ -1870,15 +2184,21 @@ def test_create_url_verification_use_case_skips_benign_redirect_interstitial_htm
     dto = use_case.execute(CreateVerificationCommand(url="https://sl1nk.com/7k3qpqd"))
 
     assert dto.risk_assessment is not None
-    assert all(signal.signal_type != "credential_harvest_form" for signal in dto.signals)
-    assert all(signal.signal_type != "suspicious_redirect_chain" for signal in dto.signals)
+    assert all(
+        signal.signal_type != "credential_harvest_form" for signal in dto.signals
+    )
+    assert all(
+        signal.signal_type != "suspicious_redirect_chain" for signal in dto.signals
+    )
     assert dto.risk_assessment.risk_level == "SAFE"
     assert dto.trace is not None
     assert dto.trace.total_signals == len(dto.signals) == 0
     assert dto.risk_assessment.summary.startswith("Detected 0 risk signal(s)")
 
 
-def test_create_url_verification_use_case_keeps_safe_redirect_mismatch_summaries_non_alarmist() -> None:
+def test_create_url_verification_use_case_keeps_safe_redirect_mismatch_summaries_non_alarmist() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1895,7 +2215,9 @@ def test_create_url_verification_use_case_keeps_safe_redirect_mismatch_summaries
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link/123")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "SAFE"
@@ -1903,7 +2225,9 @@ def test_create_url_verification_use_case_keeps_safe_redirect_mismatch_summaries
     assert "Primary concern:" not in dto.risk_assessment.summary
 
 
-def test_create_url_verification_use_case_marks_redirects_to_questionable_tlds_as_caution() -> None:
+def test_create_url_verification_use_case_marks_redirects_to_questionable_tlds_as_caution() -> (
+    None
+):
     use_case = _build_use_case(
         redirect_resolver=FakeRedirectResolver(
             RedirectResolution(
@@ -1920,13 +2244,19 @@ def test_create_url_verification_use_case_marks_redirects_to_questionable_tlds_a
         )
     )
 
-    dto = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+    dto = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link/123")
+    )
 
     assert dto.risk_assessment is not None
     assert dto.risk_assessment.risk_level == "LOW"
     assert dto.risk_assessment.verdict == "CAUTION"
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals)
-    assert any(signal.signal_type == "questionable_destination_tld" for signal in dto.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in dto.signals
+    )
+    assert any(
+        signal.signal_type == "questionable_destination_tld" for signal in dto.signals
+    )
 
 
 class RecordingDetonation(HeadlessDetonationPort):
@@ -1954,7 +2284,9 @@ def _offsite_credential_detonation(url: str) -> DetonationResult:
         requested_url=url,
         final_url=url,
         forms=(
-            DetonationForm(has_password_field=True, action_host="harvest.evil-collector.com"),
+            DetonationForm(
+                has_password_field=True, action_host="harvest.evil-collector.com"
+            ),
         ),
     )
 

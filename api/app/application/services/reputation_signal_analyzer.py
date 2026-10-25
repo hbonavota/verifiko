@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from app.application.ports.redirect_resolver import RedirectResolution
 from app.application.ports.reputation_lookup import (
@@ -8,11 +7,17 @@ from app.application.ports.reputation_lookup import (
     ReputationMatch,
 )
 from app.application.services.analysis_result import SignalAnalysisResult
-from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
-from app.domain.entities.analysis_signal import AnalysisSignal
+from app.application.services.message_resolver import (
+    build_localized_signal,
+    evidence_ref,
+    resolve_message,
+)
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
-from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
+from app.domain.services.scoring_policies import (
+    BASE_SIGNAL_WEIGHTS,
+    SIGNAL_CATEGORY_MAP,
+)
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
@@ -35,7 +40,9 @@ class ReputationSignalAnalyzer:
             try:
                 match = self.reputation_lookup.lookup(candidate_value)
             except ReputationLookupError:
-                warnings.append(resolve_message("warning.blacklist_reputation_unavailable"))
+                warnings.append(
+                    resolve_message("warning.blacklist_reputation_unavailable")
+                )
                 continue
 
             if match is not None:

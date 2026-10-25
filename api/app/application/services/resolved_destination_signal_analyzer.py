@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 
-from app.application.ports.html_fetcher import HtmlFetchError, HtmlFetcherPort
+from app.application.ports.html_fetcher import HtmlFetcherPort, HtmlFetchError
 from app.application.ports.redirect_resolver import RedirectResolution
 from app.application.services.analysis_result import SignalAnalysisResult
-from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.html_credential_signal_analyzer import (
+    HtmlCredentialSignalAnalyzer,
+)
 from app.application.services.message_resolver import (
     evidence_ref,
     normalize_warning_message,
@@ -61,7 +63,9 @@ class ResolvedDestinationSignalAnalyzer:
     ) -> bool:
         return final_url.registered_domain != original_url.registered_domain
 
-    def _clone_url_signals(self, final_url: NormalizedUrl) -> tuple[AnalysisSignal, ...]:
+    def _clone_url_signals(
+        self, final_url: NormalizedUrl
+    ) -> tuple[AnalysisSignal, ...]:
         return tuple(
             self._copy_signal(
                 signal,
@@ -84,7 +88,9 @@ class ResolvedDestinationSignalAnalyzer:
                 final_url=final_url.normalized,
                 tag_prefix="resolved-destination",
             )
-            for signal in self.html_credential_signal_analyzer.analyze(final_url, fetched_document)
+            for signal in self.html_credential_signal_analyzer.analyze(
+                final_url, fetched_document
+            )
         )
 
     def _copy_signal(

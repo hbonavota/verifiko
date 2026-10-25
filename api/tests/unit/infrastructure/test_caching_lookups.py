@@ -1,14 +1,22 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from app.application.ports.domain_age_lookup import DomainAgeLookupPort, DomainRegistrationInfo
+from app.application.ports.domain_age_lookup import (
+    DomainAgeLookupPort,
+    DomainRegistrationInfo,
+)
 from app.application.ports.infrastructure_lookup import (
     InfrastructureLookupPort,
     InfrastructureProfile,
     ResolvedAddress,
 )
-from app.application.ports.reputation_lookup import ReputationLookupPort, ReputationMatch
+from app.application.ports.reputation_lookup import (
+    ReputationLookupPort,
+    ReputationMatch,
+)
 from app.infrastructure.cache.caching_domain_age_lookup import CachingDomainAgeLookup
-from app.infrastructure.cache.caching_infrastructure_lookup import CachingInfrastructureLookup
+from app.infrastructure.cache.caching_infrastructure_lookup import (
+    CachingInfrastructureLookup,
+)
 from app.infrastructure.cache.caching_reputation_lookup import CachingReputationLookup
 from app.infrastructure.cache.json_redis_cache import JsonRedisCache
 
@@ -57,7 +65,9 @@ class CountingInfrastructure(InfrastructureLookupPort):
 
 
 def _cache(redis) -> JsonRedisCache:
-    return JsonRedisCache(redis_client=redis, key_prefix="verifiko:analysis", ttl_seconds=100)
+    return JsonRedisCache(
+        redis_client=redis, key_prefix="verifiko:analysis", ttl_seconds=100
+    )
 
 
 def test_reputation_match_round_trips_and_caches() -> None:
@@ -93,7 +103,7 @@ def test_reputation_negative_is_cached() -> None:
 
 def test_domain_age_round_trips_with_datetime() -> None:
     info = DomainRegistrationInfo(
-        registered_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        registered_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
         provider_name="rdap",
     )
     inner = CountingDomainAge(info)

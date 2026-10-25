@@ -1,11 +1,13 @@
+from _fake_redis import FakeRedis
+
 from app.infrastructure.security.redis_fixed_window_rate_limiter import (
     RedisFixedWindowRateLimiter,
 )
 
-from _fake_redis import FakeRedis
 
-
-def test_redis_fixed_window_rate_limiter_blocks_after_limit_and_returns_retry_after() -> None:
+def test_redis_fixed_window_rate_limiter_blocks_after_limit_and_returns_retry_after() -> (
+    None
+):
     clock = {"now": 100.0}
     limiter = RedisFixedWindowRateLimiter(
         redis_client=FakeRedis(clock=lambda: clock["now"]),

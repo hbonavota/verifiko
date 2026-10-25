@@ -4,32 +4,34 @@ Shared by every daily-quota limiter (Redis, SQLAlchemy, in-memory) so the status
 maths and midnight/timezone handling live in exactly one place.
 """
 
-from datetime import datetime, time, timedelta, timezone
 import math
+from datetime import UTC, datetime, time, timedelta
 
 from app.infrastructure.security.utc_day_quota_status import UtcDayQuotaStatus
 
 
 def as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def seconds_until_next_midnight(now: datetime) -> int:
     next_midnight = datetime.combine(
         now.date() + timedelta(days=1),
         time.min,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
     return max(1, math.ceil((next_midnight - now).total_seconds()))
 
 
-def status_for_used(*, used_today: int, daily_limit: int, now: datetime) -> UtcDayQuotaStatus:
+def status_for_used(
+    *, used_today: int, daily_limit: int, now: datetime
+) -> UtcDayQuotaStatus:
     next_midnight = datetime.combine(
         now.date() + timedelta(days=1),
         time.min,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
     return UtcDayQuotaStatus(
         daily_limit=daily_limit,

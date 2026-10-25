@@ -1,4 +1,6 @@
-from app.infrastructure.external_services.outbound_target_guard import SafeOutboundResolution
+from app.infrastructure.external_services.outbound_target_guard import (
+    SafeOutboundResolution,
+)
 from app.infrastructure.external_services.pinned_http_client import (
     PinnedHttpResponse,
     send_pinned_get_request,
@@ -52,11 +54,15 @@ def test_pinned_http_client_uses_validated_ip_for_actual_connection(
     )
 
     fake_connection = _FakeConnection(
-        _FakeResponse(200, {"Content-Type": "text/html; charset=utf-8"}, b"<html>ok</html>")
+        _FakeResponse(
+            200, {"Content-Type": "text/html; charset=utf-8"}, b"<html>ok</html>"
+        )
     )
 
     def fake_build_connection(*, parsed, resolution, destination_ip, timeout_seconds):
-        observed.append((resolution.hostname, destination_ip, resolution.port, timeout_seconds))
+        observed.append(
+            (resolution.hostname, destination_ip, resolution.port, timeout_seconds)
+        )
         return fake_connection
 
     monkeypatch.setattr(
@@ -139,7 +145,9 @@ def test_pinned_post_request_pins_ip_and_does_not_follow_redirects(monkeypatch) 
 
     assert response.status_code == 302  # returned, not followed
     assert observed_destinations == ["203.0.113.10"]
-    assert fake_connection.getresponse_calls == 1  # exactly one request, no redirect hop
+    assert (
+        fake_connection.getresponse_calls == 1
+    )  # exactly one request, no redirect hop
     assert fake_connection.request_args == (
         "POST",
         "/verifiko",

@@ -1,11 +1,15 @@
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Callable
+from datetime import UTC, datetime
 
-from app.application.commands.create_verification_command import CreateVerificationCommand
+from app.application.commands.create_verification_command import (
+    CreateVerificationCommand,
+)
 from app.application.ports.scan_webhook_notifier import ScanWebhookNotifierPort
-from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
+from app.application.use_cases.create_url_verification import (
+    CreateURLVerificationUseCase,
+)
 from app.domain.exceptions.domain_exception import DomainException
 from app.domain.ports.verification_job_store import VerificationJobStore
 from app.domain.value_objects.user_id import UserId
@@ -27,7 +31,7 @@ class VerificationScanProcessor:
     job_store: VerificationJobStore
     create_use_case: CreateURLVerificationUseCase
     webhook_notifier: ScanWebhookNotifierPort | None = None
-    current_time_provider: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    current_time_provider: Callable[[], datetime] = lambda: datetime.now(UTC)
 
     def process(self, job_id: str) -> None:
         job = self.job_store.get(job_id)

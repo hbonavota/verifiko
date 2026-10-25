@@ -17,7 +17,9 @@ import json
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from starlette.concurrency import run_in_threadpool
 
-from app.application.services.verification_scan_processor import VerificationScanProcessor
+from app.application.services.verification_scan_processor import (
+    VerificationScanProcessor,
+)
 from app.entrypoints.api.dependencies.container import (
     get_qstash_signature_verifier,
     get_verification_scan_processor,

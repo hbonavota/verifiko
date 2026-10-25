@@ -1,6 +1,12 @@
-from app.application.ports.html_fetcher import FetchedHtmlDocument, HtmlFetchError, HtmlFetcherPort
+from app.application.ports.html_fetcher import (
+    FetchedHtmlDocument,
+    HtmlFetcherPort,
+    HtmlFetchError,
+)
 from app.application.ports.redirect_resolver import RedirectHop, RedirectResolution
-from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.html_credential_signal_analyzer import (
+    HtmlCredentialSignalAnalyzer,
+)
 from app.application.services.resolved_destination_signal_analyzer import (
     ResolvedDestinationSignalAnalyzer,
 )
@@ -28,7 +34,9 @@ class FakeHtmlFetcher(HtmlFetcherPort):
         return self._document
 
 
-def _build_analyzer(html_fetcher: HtmlFetcherPort | None = None) -> ResolvedDestinationSignalAnalyzer:
+def _build_analyzer(
+    html_fetcher: HtmlFetcherPort | None = None,
+) -> ResolvedDestinationSignalAnalyzer:
     return ResolvedDestinationSignalAnalyzer(
         url_signal_analyzer=DeterministicUrlSignalAnalyzer(),
         html_fetcher=html_fetcher or FakeHtmlFetcher(),
@@ -82,7 +90,9 @@ def test_resolved_destination_signal_analyzer_skips_same_domain_redirects() -> N
     assert result.warnings == ()
 
 
-def test_resolved_destination_signal_analyzer_adds_url_signals_for_cross_domain_target() -> None:
+def test_resolved_destination_signal_analyzer_adds_url_signals_for_cross_domain_target() -> (
+    None
+):
     analyzer = _build_analyzer()
     resolution = RedirectResolution(
         final_url="https://paypal-login-security-check.example.xyz/verify",
@@ -101,15 +111,25 @@ def test_resolved_destination_signal_analyzer_adds_url_signals_for_cross_domain_
         redirect_resolution=resolution,
     )
 
-    assert any(signal.signal_type.value == "brand_impersonation" for signal in result.signals)
-    assert any(signal.source == "resolved-destination-url-analyzer" for signal in result.signals)
+    assert any(
+        signal.signal_type.value == "brand_impersonation" for signal in result.signals
+    )
+    assert any(
+        signal.source == "resolved-destination-url-analyzer"
+        for signal in result.signals
+    )
     assert result.signals[0].evidence[0] == (
         "Resolved final URL: https://paypal-login-security-check.example.xyz/verify."
     )
-    assert result.signals[0].message_params["evidence"][0]["key"] == "evidence.resolved_final_url"
+    assert (
+        result.signals[0].message_params["evidence"][0]["key"]
+        == "evidence.resolved_final_url"
+    )
 
 
-def test_resolved_destination_signal_analyzer_adds_html_signals_for_cross_domain_target() -> None:
+def test_resolved_destination_signal_analyzer_adds_html_signals_for_cross_domain_target() -> (
+    None
+):
     analyzer = _build_analyzer(
         html_fetcher=FakeHtmlFetcher(
             FetchedHtmlDocument(
@@ -147,11 +167,19 @@ def test_resolved_destination_signal_analyzer_adds_html_signals_for_cross_domain
         redirect_resolution=resolution,
     )
 
-    assert any(signal.signal_type.value == "credential_harvest_form" for signal in result.signals)
-    assert any(signal.source == "resolved-destination-html-analyzer" for signal in result.signals)
+    assert any(
+        signal.signal_type.value == "credential_harvest_form"
+        for signal in result.signals
+    )
+    assert any(
+        signal.source == "resolved-destination-html-analyzer"
+        for signal in result.signals
+    )
 
 
-def test_resolved_destination_signal_analyzer_records_warning_on_fetch_failure() -> None:
+def test_resolved_destination_signal_analyzer_records_warning_on_fetch_failure() -> (
+    None
+):
     analyzer = _build_analyzer(html_fetcher=FakeHtmlFetcher(fail=True))
     resolution = RedirectResolution(
         final_url="https://collector.bad.example/login",
@@ -170,10 +198,14 @@ def test_resolved_destination_signal_analyzer_records_warning_on_fetch_failure()
         redirect_resolution=resolution,
     )
 
-    assert result.warnings == ("Resolved destination HTML inspection could not be completed.",)
+    assert result.warnings == (
+        "Resolved destination HTML inspection could not be completed.",
+    )
 
 
-def test_resolved_destination_signal_analyzer_skips_benign_redirect_interstitial_html() -> None:
+def test_resolved_destination_signal_analyzer_skips_benign_redirect_interstitial_html() -> (
+    None
+):
     analyzer = _build_analyzer(
         html_fetcher=FakeHtmlFetcher(
             FetchedHtmlDocument(
@@ -211,7 +243,10 @@ def test_resolved_destination_signal_analyzer_skips_benign_redirect_interstitial
         redirect_resolution=resolution,
     )
 
-    assert all(signal.signal_type.value != "credential_harvest_form" for signal in result.signals)
+    assert all(
+        signal.signal_type.value != "credential_harvest_form"
+        for signal in result.signals
+    )
 
 
 def test_resolved_destination_signal_analyzer_keeps_single_fetch_behavior() -> None:
@@ -245,6 +280,9 @@ def test_resolved_destination_signal_analyzer_keeps_single_fetch_behavior() -> N
         redirect_resolution=resolution,
     )
 
-    assert all(signal.source != "resolved-destination-html-analyzer" for signal in result.signals)
+    assert all(
+        signal.source != "resolved-destination-html-analyzer"
+        for signal in result.signals
+    )
     assert result.warnings == ()
     assert observed_calls == [("https://collector.bad.example/login", None)]

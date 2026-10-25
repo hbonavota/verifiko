@@ -12,7 +12,9 @@ class _RecordingPoster:
         self.body = body
         self.calls: list[tuple[str, dict[str, str], bytes]] = []
 
-    def __call__(self, url: str, headers: dict[str, str], body: bytes) -> tuple[int, str]:
+    def __call__(
+        self, url: str, headers: dict[str, str], body: bytes
+    ) -> tuple[int, str]:
         self.calls.append((url, headers, body))
         return self.status_code, self.body
 

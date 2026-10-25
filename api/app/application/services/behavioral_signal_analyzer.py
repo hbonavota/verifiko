@@ -3,11 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.application.ports.headless_detonation import DetonationResult
-from app.application.services.message_resolver import build_localized_signal, evidence_ref
+from app.application.services.message_resolver import (
+    build_localized_signal,
+    evidence_ref,
+)
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
-from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
+from app.domain.services.scoring_policies import (
+    BASE_SIGNAL_WEIGHTS,
+    SIGNAL_CATEGORY_MAP,
+)
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
@@ -69,7 +75,8 @@ class BehavioralSignalAnalyzer:
                     message_params={
                         "evidence": [
                             evidence_ref(
-                                "evidence.detonation_final_url", final_url=result.final_url
+                                "evidence.detonation_final_url",
+                                final_url=result.final_url,
                             )
                         ]
                     },
@@ -119,7 +126,8 @@ class BehavioralSignalAnalyzer:
                     message_params={
                         "evidence": [
                             evidence_ref(
-                                "evidence.detonation_redirect_domain", domain=final_domain
+                                "evidence.detonation_redirect_domain",
+                                domain=final_domain,
                             )
                         ]
                     },

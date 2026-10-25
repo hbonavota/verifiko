@@ -1,15 +1,15 @@
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
+import app.entrypoints.api.dependencies.container as container
 from app.application.ports.google_identity_verifier import (
     GoogleIdentity,
     GoogleIdentityVerificationError,
 )
-from app.domain.enums.user_plan import UserPlan
 from app.application.ports.infrastructure_lookup import (
     InfrastructureLookupPort,
     InfrastructureProfile,
@@ -20,10 +20,12 @@ from app.application.ports.redirect_resolver import (
     RedirectResolverPort,
 )
 from app.application.ports.reputation_lookup import ReputationLookupPort
-from app.application.services.infrastructure_signal_analyzer import InfrastructureSignalAnalyzer
+from app.application.services.infrastructure_signal_analyzer import (
+    InfrastructureSignalAnalyzer,
+)
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
-import app.entrypoints.api.dependencies.container as container
+from app.domain.enums.user_plan import UserPlan
 from app.entrypoints.api.dependencies.container import (
     get_create_verification_burst_rate_limiter,
     get_create_verification_rate_limiter,
@@ -32,8 +34,14 @@ from app.entrypoints.api.dependencies.container import (
 )
 from app.entrypoints.api.main import app
 from app.infrastructure.config.settings import get_settings
-from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
-from app.infrastructure.persistence.database import drop_db, get_engine, get_session_factory
+from app.infrastructure.external_services.outbound_target_guard import (
+    UnsafeOutboundTargetError,
+)
+from app.infrastructure.persistence.database import (
+    drop_db,
+    get_engine,
+    get_session_factory,
+)
 from tests.integration.alembic_helpers import upgrade_to_head
 
 
@@ -72,7 +80,9 @@ class FakeGoogleIdentityVerifier:
                 display_name="Bob Example",
                 avatar_url=None,
             )
-        raise GoogleIdentityVerificationError("Google identity token could not be verified.")
+        raise GoogleIdentityVerificationError(
+            "Google identity token could not be verified."
+        )
 
 
 def _test_public_target_validator(url: str) -> None:
@@ -99,7 +109,9 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     database_url = f"sqlite+pysqlite:///{database_path}"
 
     monkeypatch.setenv("DATABASE_URL", database_url)
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "google-client-id.apps.googleusercontent.com")
+    monkeypatch.setenv(
+        "GOOGLE_CLIENT_ID", "google-client-id.apps.googleusercontent.com"
+    )
     monkeypatch.setenv("AUTH_TOKEN_SECRET", "test-auth-secret")
 
     get_settings.cache_clear()
@@ -144,9 +156,13 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setattr(
         container,
         "get_infrastructure_signal_analyzer",
-        lambda: InfrastructureSignalAnalyzer(infrastructure_lookup=NoopInfrastructureLookup()),
+        lambda: InfrastructureSignalAnalyzer(
+            infrastructure_lookup=NoopInfrastructureLookup()
+        ),
     )
-    monkeypatch.setattr(container, "assert_safe_outbound_url", _test_public_target_validator)
+    monkeypatch.setattr(
+        container, "assert_safe_outbound_url", _test_public_target_validator
+    )
 
     upgrade_to_head(database_url)
 
@@ -250,7 +266,9 @@ def _login_local(
     )
 
 
-def test_google_login_success_returns_backend_session_and_user(client: TestClient) -> None:
+def test_google_login_success_returns_backend_session_and_user(
+    client: TestClient,
+) -> None:
     response = client.post("/api/auth/google", json={"id_token": "valid-alice"})
 
     assert response.status_code == 200
@@ -262,7 +280,9 @@ def test_google_login_success_returns_backend_session_and_user(client: TestClien
     assert body["user"]["plan"] == "FREE"
 
 
-def test_local_registration_success_returns_backend_session_and_user(client: TestClient) -> None:
+def test_local_registration_success_returns_backend_session_and_user(
+    client: TestClient,
+) -> None:
     response = _register_local(client)
 
     assert response.status_code == 201
@@ -296,7 +316,9 @@ def test_local_registration_validates_password_policy(client: TestClient) -> Non
     assert response.status_code == 422
 
 
-def test_local_login_success_returns_backend_session_and_current_user(client: TestClient) -> None:
+def test_local_login_success_returns_backend_session_and_current_user(
+    client: TestClient,
+) -> None:
     _register_local(client)
 
     response = _login_local(client)
@@ -306,12 +328,16 @@ def test_local_login_success_returns_backend_session_and_current_user(client: Te
     assert body["token_type"] == "Bearer"
     assert body["user"]["email"] == "local@example.com"
 
-    current_user = client.get("/api/me", headers=_authorization_header(body["access_token"]))
+    current_user = client.get(
+        "/api/me", headers=_authorization_header(body["access_token"])
+    )
     assert current_user.status_code == 200
     assert current_user.json()["email"] == "local@example.com"
 
 
-def test_local_login_rejects_invalid_credentials_without_user_enumeration(client: TestClient) -> None:
+def test_local_login_rejects_invalid_credentials_without_user_enumeration(
+    client: TestClient,
+) -> None:
     _register_local(client)
 
     wrong_password = _login_local(client, password="WrongPass123")
@@ -343,10 +369,14 @@ def test_google_login_rejects_invalid_identity_token(client: TestClient) -> None
     assert response.json()["detail"] == "Google identity token could not be verified."
 
 
-def test_current_user_resolution_requires_valid_bearer_token(client: TestClient) -> None:
+def test_current_user_resolution_requires_valid_bearer_token(
+    client: TestClient,
+) -> None:
     session = _login(client, "valid-alice")
 
-    success = client.get("/api/me", headers=_authorization_header(session["access_token"]))
+    success = client.get(
+        "/api/me", headers=_authorization_header(session["access_token"])
+    )
     assert success.status_code == 200
     assert success.json()["email"] == "alice@example.com"
     assert success.json()["plan"] == "FREE"
@@ -516,7 +546,9 @@ def test_my_verifications_returns_only_owned_records(client: TestClient) -> None
     assert bob_ids == {bob_only.json()["id"]}
 
 
-def test_authenticated_create_is_not_subject_to_anonymous_rate_limit(client: TestClient) -> None:
+def test_authenticated_create_is_not_subject_to_anonymous_rate_limit(
+    client: TestClient,
+) -> None:
     session = _login(client, "valid-alice")
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
@@ -540,7 +572,9 @@ def test_authenticated_create_is_not_subject_to_anonymous_rate_limit(client: Tes
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
 
 
-def test_authenticated_create_is_not_subject_to_anonymous_burst_limit(client: TestClient) -> None:
+def test_authenticated_create_is_not_subject_to_anonymous_burst_limit(
+    client: TestClient,
+) -> None:
     session = _login(client, "valid-alice")
     limiter = get_create_verification_burst_rate_limiter()
     limiter.reset()
@@ -568,7 +602,7 @@ def test_authenticated_user_hits_daily_limit(client: TestClient) -> None:
     policy = container.get_user_quota_policy()
     limiter = container.get_authenticated_verification_rate_limiter()
     policy.free_daily_limit = 2
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
     limiter.reset()
 
     first = client.post(
@@ -590,7 +624,10 @@ def test_authenticated_user_hits_daily_limit(client: TestClient) -> None:
     assert first.status_code == 201
     assert second.status_code == 201
     assert third.status_code == 429
-    assert third.json()["detail"] == "You’ve reached your daily verification limit. Upgrade to continue."
+    assert (
+        third.json()["detail"]
+        == "You’ve reached your daily verification limit. Upgrade to continue."
+    )
     assert third.headers["retry-after"] == "43200"
     assert third.headers["x-ratelimit-limit"] == "2"
     assert third.headers["x-ratelimit-remaining"] == "0"
@@ -604,7 +641,7 @@ def test_limit_resets_next_day(client: TestClient) -> None:
     session = _login(client, "valid-alice")
     policy = container.get_user_quota_policy()
     limiter = container.get_authenticated_verification_rate_limiter()
-    current_time = datetime(2026, 3, 28, 23, 59, 50, tzinfo=timezone.utc)
+    current_time = datetime(2026, 3, 28, 23, 59, 50, tzinfo=UTC)
     policy.free_daily_limit = 1
     limiter.current_time_provider = lambda: current_time
     limiter.reset()
@@ -624,7 +661,7 @@ def test_limit_resets_next_day(client: TestClient) -> None:
     assert blocked.status_code == 429
     assert blocked.headers["retry-after"] == "10"
 
-    current_time = datetime(2026, 3, 29, 0, 0, 5, tzinfo=timezone.utc)
+    current_time = datetime(2026, 3, 29, 0, 0, 5, tzinfo=UTC)
     allowed_after_reset = client.post(
         "/api/verifications",
         json={"url": "https://example.com"},
@@ -643,7 +680,7 @@ def test_different_users_have_isolated_quotas(client: TestClient) -> None:
     policy = container.get_user_quota_policy()
     limiter = container.get_authenticated_verification_rate_limiter()
     policy.free_daily_limit = 1
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
     limiter.reset()
 
     alice_first = client.post(
@@ -682,7 +719,7 @@ def test_pro_user_has_higher_limit(client: TestClient) -> None:
     limiter = container.get_authenticated_verification_rate_limiter()
     policy.free_daily_limit = 1
     policy.pro_daily_limit = 2
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
     limiter.reset()
 
     first = client.post(
@@ -710,11 +747,13 @@ def test_pro_user_has_higher_limit(client: TestClient) -> None:
     limiter.reset()
 
 
-def test_authenticated_quota_status_reports_remaining_usage_truthfully(client: TestClient) -> None:
+def test_authenticated_quota_status_reports_remaining_usage_truthfully(
+    client: TestClient,
+) -> None:
     session = _login(client, "valid-alice")
     limiter = container.get_authenticated_verification_rate_limiter()
     limiter.reset()
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     created = client.post(
         "/api/verifications",
@@ -752,7 +791,7 @@ def test_pro_quota_status_reports_paid_limit_truthfully(client: TestClient) -> N
 
     limiter = container.get_authenticated_verification_rate_limiter()
     limiter.reset()
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     status_response = client.get(
         "/api/verifications/quota-status",

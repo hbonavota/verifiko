@@ -1,5 +1,5 @@
-from dataclasses import replace
 import re
+from dataclasses import replace
 from typing import Literal
 
 from app.application.dto.verification_dto import (
@@ -210,13 +210,18 @@ _DOMINANT_SUMMARY_REASON_KEYS = {
 }
 _NON_DEGRADING_WARNING_VALUES = {
     resolve_message("warning.multi_user_agent_fetch_partially_unavailable"),
-    resolve_message("warning.multi_user_agent_fetch_partially_unavailable", language="es"),
+    resolve_message(
+        "warning.multi_user_agent_fetch_partially_unavailable", language="es"
+    ),
 }
 _DOMINANT_EXPLANATION_CATEGORIES = _DOMINANT_SUMMARY_CATEGORIES
 _DOMINANT_EXPLANATION_REASON_KEYS = _DOMINANT_SUMMARY_REASON_KEYS
 
 _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"^Host resolves to raw IP (.+)\.$"), "El host apunta directamente a la IP {0}."),
+    (
+        re.compile(r"^Host resolves to raw IP (.+)\.$"),
+        "El host apunta directamente a la IP {0}.",
+    ),
     (re.compile(r"^Rendered host: (.+)\.$"), "Host mostrado: {0}."),
     (
         re.compile(r"^ASCII host contains punycode label\(s\): (.+)\.$"),
@@ -227,7 +232,10 @@ _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
         re.compile(r"^Host contains zero-width characters: (.+)\.$"),
         "El host contiene caracteres de ancho cero: {0}.",
     ),
-    (re.compile(r"^Observed explicit port (.+)\.$"), "Puerto explícito observado: {0}."),
+    (
+        re.compile(r"^Observed explicit port (.+)\.$"),
+        "Puerto explícito observado: {0}.",
+    ),
     (
         re.compile(r"^Registered domain (.+) is a shortener\.$"),
         "El dominio registrado {0} es un acortador.",
@@ -244,8 +252,14 @@ _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
         re.compile(r"^Query parameter (.+) embeds a nested URL destination\.$"),
         "El parámetro de consulta {0} incrusta un destino URL anidado.",
     ),
-    (re.compile(r"^Matched URL keywords: (.+)\.$"), "Palabras clave de URL coincidentes: {0}."),
-    (re.compile(r"^Matched brand terms: (.+)\.$"), "Términos de marca coincidentes: {0}."),
+    (
+        re.compile(r"^Matched URL keywords: (.+)\.$"),
+        "Palabras clave de URL coincidentes: {0}.",
+    ),
+    (
+        re.compile(r"^Matched brand terms: (.+)\.$"),
+        "Términos de marca coincidentes: {0}.",
+    ),
     (
         re.compile(r"^Registered domain under review: (.+)\.$"),
         "Dominio registrado bajo revisión: {0}.",
@@ -254,8 +268,14 @@ _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
         re.compile(r"^Matched institution terms: (.+)\.$"),
         "Términos institucionales coincidentes: {0}.",
     ),
-    (re.compile(r"^Matched demand terms: (.+)\.$"), "Términos de exigencia coincidentes: {0}."),
-    (re.compile(r"^Matched mailbox terms: (.+)\.$"), "Términos de buzón coincidentes: {0}."),
+    (
+        re.compile(r"^Matched demand terms: (.+)\.$"),
+        "Términos de exigencia coincidentes: {0}.",
+    ),
+    (
+        re.compile(r"^Matched mailbox terms: (.+)\.$"),
+        "Términos de buzón coincidentes: {0}.",
+    ),
     (
         re.compile(r"^Observed deceptive fragment: (.+)\.$"),
         "Fragmento engañoso observado: {0}.",
@@ -269,9 +289,15 @@ _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^Observed TLD: (.+)\.$"), "TLD observado: {0}."),
     (re.compile(r"^Observed domain: (.+)\.$"), "Dominio observado: {0}."),
     (re.compile(r"^Registration date: (.+)\.$"), "Fecha de registro: {0}."),
-    (re.compile(r"^Computed domain age: (\d+) day\(s\)\.$"), "Antigüedad calculada del dominio: {0} día(s)."),
+    (
+        re.compile(r"^Computed domain age: (\d+) day\(s\)\.$"),
+        "Antigüedad calculada del dominio: {0} día(s).",
+    ),
     (re.compile(r"^Lookup provider: (.+)\.$"), "Proveedor de consulta: {0}."),
-    (re.compile(r"^Redirect hops observed: (\d+)\.$"), "Saltos de redirección observados: {0}."),
+    (
+        re.compile(r"^Redirect hops observed: (\d+)\.$"),
+        "Saltos de redirección observados: {0}.",
+    ),
     (
         re.compile(r"^Final URL after redirects: (.+)\.$"),
         "URL final tras las redirecciones: {0}.",
@@ -289,12 +315,20 @@ _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^Reputation provider: (.+)\.$"), "Proveedor de reputación: {0}."),
     (re.compile(r"^Provider references: (\d+)\.$"), "Referencias del proveedor: {0}."),
     (
-        re.compile(r"^URLhaus returned (\d+) malicious URL record\(s\) for the queried host\.$"),
+        re.compile(
+            r"^URLhaus returned (\d+) malicious URL record\(s\) for the queried host\.$"
+        ),
         "URLhaus devolvió {0} registro(s) de URL maliciosa para el host consultado.",
     ),
-    (re.compile(r"^Final redirect target: (.+)\.$"), "Destino final de la redirección: {0}."),
+    (
+        re.compile(r"^Final redirect target: (.+)\.$"),
+        "Destino final de la redirección: {0}.",
+    ),
     (re.compile(r"^Effective target host: (.+)\.$"), "Host del destino efectivo: {0}."),
-    (re.compile(r"^Infrastructure provider: (.+)\.$"), "Proveedor de infraestructura: {0}."),
+    (
+        re.compile(r"^Infrastructure provider: (.+)\.$"),
+        "Proveedor de infraestructura: {0}.",
+    ),
     (re.compile(r"^Resolved addresses: (.+)\.$"), "Direcciones resueltas: {0}."),
     (
         re.compile(r"^Matched infrastructure patterns: (.+)\.$"),
@@ -315,7 +349,10 @@ _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^Validation provider: (.+)\.$"), "Proveedor de validación: {0}."),
     (re.compile(r"^TLS failure reason: (.+)\.$"), "Motivo del fallo TLS: {0}."),
     (re.compile(r"^HTML forms found: (\d+)\.$"), "Formularios HTML encontrados: {0}."),
-    (re.compile(r"^Password fields found: (\d+)\.$"), "Campos de contraseña encontrados: {0}."),
+    (
+        re.compile(r"^Password fields found: (\d+)\.$"),
+        "Campos de contraseña encontrados: {0}.",
+    ),
     (
         re.compile(r"^Matched account input hints: (.+)\.$"),
         "Indicadores coincidentes de campos de cuenta: {0}.",
@@ -324,12 +361,18 @@ _EVIDENCE_REGEX_ES: tuple[tuple[re.Pattern[str], str], ...] = (
         re.compile(r"^Matched login wording: (.+)\.$"),
         "Texto coincidente de inicio de sesión: {0}.",
     ),
-    (re.compile(r"^Observed form action: (.+)\.$"), "Acción de formulario observada: {0}."),
+    (
+        re.compile(r"^Observed form action: (.+)\.$"),
+        "Acción de formulario observada: {0}.",
+    ),
     (
         re.compile(r"^Suspicious form action: (.+)\.$"),
         "Acción de formulario sospechosa: {0}.",
     ),
-    (re.compile(r"^Visible text tokens found: (\d+)\.$"), "Tokens de texto visible encontrados: {0}."),
+    (
+        re.compile(r"^Visible text tokens found: (\d+)\.$"),
+        "Tokens de texto visible encontrados: {0}.",
+    ),
     (
         re.compile(r"^Matched placeholder markers: (.+)\.$"),
         "Marcadores coincidentes de página provisional: {0}.",
@@ -351,7 +394,9 @@ def localize_verification_dto(
     if locale == "en":
         return verification
 
-    localized_signals = tuple(_localize_signal(signal) for signal in verification.signals)
+    localized_signals = tuple(
+        _localize_signal(signal) for signal in verification.signals
+    )
     localized_signals_by_id = {signal.id: signal for signal in localized_signals}
     localized_trace = _localize_trace(verification.trace, localized_signals_by_id)
     localized_assessment = _localize_assessment(
@@ -394,11 +439,15 @@ def _localize_assessment(
     if assessment is None:
         return None
 
-    localized_analysis_warnings = tuple(_localize_warning(item) for item in assessment.analysis_warnings)
+    localized_analysis_warnings = tuple(
+        _localize_warning(item) for item in assessment.analysis_warnings
+    )
     localized_analysis_trace = tuple(
         _localize_stage_trace(stage) for stage in assessment.analysis_trace
     )
-    localized_top_signals = tuple(_localize_title(item) for item in assessment.top_signals)
+    localized_top_signals = tuple(
+        _localize_title(item) for item in assessment.top_signals
+    )
     localized_explanation = _localize_explanation(
         assessment,
         assessment.explanation,
@@ -421,11 +470,14 @@ def _localize_explanation(
     localized_signals: tuple[AnalysisSignalDTO, ...],
 ) -> RiskExplanationDTO:
     localized_primary_factors = tuple(
-        _localize_factor(factor)
-        for factor in explanation.primary_factors
+        _localize_factor(factor) for factor in explanation.primary_factors
     )
-    localized_trace = tuple(_localize_stage_trace(stage) for stage in explanation.analysis_trace)
-    localized_coverage_warnings = tuple(_localize_warning(item) for item in explanation.coverage_warnings)
+    localized_trace = tuple(
+        _localize_stage_trace(stage) for stage in explanation.analysis_trace
+    )
+    localized_coverage_warnings = tuple(
+        _localize_warning(item) for item in explanation.coverage_warnings
+    )
 
     return replace(
         explanation,
@@ -501,21 +553,29 @@ def _build_spanish_summary(
     score_breakdown: ScoreBreakdownDTO | None,
 ) -> str:
     degrading_warnings = tuple(
-        warning for warning in localized_analysis_warnings if warning not in _NON_DEGRADING_WARNING_VALUES
+        warning
+        for warning in localized_analysis_warnings
+        if warning not in _NON_DEGRADING_WARNING_VALUES
     )
     if assessment.terminal_override:
         summary = resolve_message("summary.terminal_blacklist_override", language="es")
     else:
         risk_signals = [
-            signal for signal in localized_signals if signal.detected and signal.score_contribution > 0
+            signal
+            for signal in localized_signals
+            if signal.detected and signal.score_contribution > 0
         ]
         informational_signals = [
-            signal for signal in localized_signals if signal.detected and signal.score_contribution == 0
+            signal
+            for signal in localized_signals
+            if signal.detected and signal.score_contribution == 0
         ]
         category_total_penalty = sum(assessment.category_breakdown.values())
         compound_penalty = sum(
             entry.delta
-            for entry in (score_breakdown.compound_rules_applied if score_breakdown else ())
+            for entry in (
+                score_breakdown.compound_rules_applied if score_breakdown else ()
+            )
         )
         summary = resolve_message(
             "summary.risk_detected",
@@ -563,7 +623,9 @@ def _build_spanish_summary(
                 "summary.supporting_trust_context",
                 {
                     "summary": summary,
-                    "trust_context": ", ".join(signal.title for signal in informational_signals[:2]),
+                    "trust_context": ", ".join(
+                        signal.title for signal in informational_signals[:2]
+                    ),
                 },
                 language="es",
             )
@@ -668,7 +730,9 @@ def _build_spanish_decision_basis(
         if penalty > 0
     )
     if not category_summary:
-        category_summary = resolve_message("phrase.no_category_penalties_recorded", language="es")
+        category_summary = resolve_message(
+            "phrase.no_category_penalties_recorded", language="es"
+        )
 
     if trust_context_factors and category_summary == resolve_message(
         "phrase.no_category_penalties_recorded",
@@ -680,7 +744,9 @@ def _build_spanish_decision_basis(
                 "score": assessment.score,
                 "risk_level": _risk_level_lower(assessment.risk_level),
                 "category_summary": category_summary,
-                "drivers": ", ".join(factor.title for factor in trust_context_factors[:2]),
+                "drivers": ", ".join(
+                    factor.title for factor in trust_context_factors[:2]
+                ),
             },
             language="es",
         )
@@ -730,7 +796,8 @@ def _select_dominant_explanation_signal_dto(
         signal
         for signal in signals
         if signal.detected
-        and signal.severity in {SignalSeverity.HIGH.value, SignalSeverity.CRITICAL.value}
+        and signal.severity
+        in {SignalSeverity.HIGH.value, SignalSeverity.CRITICAL.value}
         and signal.confidence > 80
         and signal.category in _DOMINANT_EXPLANATION_CATEGORIES
         and signal.signal_type in _DOMINANT_EXPLANATION_REASON_KEYS
@@ -746,7 +813,11 @@ def _localized_top_signal_titles(
     max_items: int = 3,
 ) -> tuple[str, ...]:
     risk_signals = sorted(
-        [signal for signal in signals if signal.detected and signal.score_contribution > 0],
+        [
+            signal
+            for signal in signals
+            if signal.detected and signal.score_contribution > 0
+        ],
         key=lambda signal: signal.score_contribution,
         reverse=True,
     )

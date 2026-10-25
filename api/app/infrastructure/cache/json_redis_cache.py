@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -57,7 +59,5 @@ class JsonRedisCache:
             return None
 
     def _safe_setex(self, full_key: str, serialized: str) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.redis_client.setex(full_key, self.ttl_seconds, serialized)
-        except Exception:
-            pass

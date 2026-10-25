@@ -1,15 +1,14 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import app.infrastructure.persistence.models  # noqa: F401 - register ORM models
 from app.domain.entities.user import User
 from app.domain.enums.user_plan import UserPlan
 from app.domain.services.user_quota_policy import UserQuotaPolicy
 from app.infrastructure.persistence.database import Base
-import app.infrastructure.persistence.models  # noqa: F401 - register ORM models
 from app.infrastructure.security.sqlalchemy_utc_day_quota_limiter import (
     SqlAlchemyAuthenticatedUtcDayQuotaLimiter,
     SqlAlchemyUtcDayQuotaLimiter,
@@ -50,7 +49,7 @@ def test_counts_each_request_and_status_reflects_usage() -> None:
     limiter = SqlAlchemyUtcDayQuotaLimiter(
         session_factory=_memory_session_factory(),
         daily_limit=3,
-        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc),
+        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC),
     )
 
     assert limiter.check("client-1") is None
@@ -66,7 +65,7 @@ def test_blocks_at_the_limit_with_retry_after() -> None:
     limiter = SqlAlchemyUtcDayQuotaLimiter(
         session_factory=_memory_session_factory(),
         daily_limit=2,
-        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc),
+        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC),
     )
 
     assert limiter.check("client-1") is None
@@ -81,7 +80,7 @@ def test_separate_identities_do_not_share_a_counter() -> None:
     limiter = SqlAlchemyUtcDayQuotaLimiter(
         session_factory=_memory_session_factory(),
         daily_limit=1,
-        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc),
+        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC),
     )
 
     assert limiter.check("client-1") is None
@@ -90,7 +89,7 @@ def test_separate_identities_do_not_share_a_counter() -> None:
 
 
 def test_counter_rolls_over_to_a_fresh_day() -> None:
-    clock = _Clock(datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc))
+    clock = _Clock(datetime(2026, 3, 28, 12, 0, tzinfo=UTC))
     limiter = SqlAlchemyUtcDayQuotaLimiter(
         session_factory=_memory_session_factory(),
         daily_limit=1,
@@ -100,7 +99,7 @@ def test_counter_rolls_over_to_a_fresh_day() -> None:
     assert limiter.check("client-1") is None
     assert limiter.check("client-1") == 43200
 
-    clock.value = datetime(2026, 3, 29, 9, 0, tzinfo=timezone.utc)
+    clock.value = datetime(2026, 3, 29, 9, 0, tzinfo=UTC)
     # A new quota_day means a fresh counter.
     assert limiter.check("client-1") is None
     assert limiter.get_status("client-1").used_today == 1
@@ -111,7 +110,7 @@ def test_authenticated_limiter_uses_plan_limit() -> None:
     limiter = SqlAlchemyAuthenticatedUtcDayQuotaLimiter(
         session_factory=factory,
         quota_policy=UserQuotaPolicy(free_daily_limit=1, pro_daily_limit=3),
-        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc),
+        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC),
     )
 
     free_user = _user(UserPlan.FREE)
@@ -136,7 +135,7 @@ def test_check_fails_open_on_database_error() -> None:
     limiter = SqlAlchemyUtcDayQuotaLimiter(
         session_factory=_boom_factory(),
         daily_limit=1,
-        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc),
+        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC),
     )
 
     # A DB outage must not raise or block; the request is allowed.
@@ -147,7 +146,7 @@ def test_status_reports_permissive_on_database_error() -> None:
     limiter = SqlAlchemyUtcDayQuotaLimiter(
         session_factory=_boom_factory(),
         daily_limit=10,
-        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc),
+        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC),
     )
 
     status = limiter.get_status("client-1")

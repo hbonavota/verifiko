@@ -27,7 +27,9 @@ https://phish.evil.example/second-path
 
 
 def test_extract_hosts_dedupes_and_lowercases() -> None:
-    hosts = _extract_hosts("https://A.EXAMPLE/x\nhttps://a.example/y\nhttps://b.example/")
+    hosts = _extract_hosts(
+        "https://A.EXAMPLE/x\nhttps://a.example/y\nhttps://b.example/"
+    )
     assert hosts == frozenset({"a.example", "b.example"})
 
 

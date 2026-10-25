@@ -16,7 +16,10 @@ from app.application.services.message_resolver import (
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
-from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
+from app.domain.services.scoring_policies import (
+    BASE_SIGNAL_WEIGHTS,
+    SIGNAL_CATEGORY_MAP,
+)
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
@@ -47,12 +50,16 @@ class TransportSecuritySignalAnalyzer:
     def analyze(self, normalized_url: NormalizedUrl) -> list[AnalysisSignal]:
         return list(self.analyze_with_context(normalized_url).signals)
 
-    def analyze_with_context(self, normalized_url: NormalizedUrl) -> SignalAnalysisResult:
+    def analyze_with_context(
+        self, normalized_url: NormalizedUrl
+    ) -> SignalAnalysisResult:
         signals: list[AnalysisSignal] = []
         sensitive_terms = self._sensitive_terms(normalized_url)
 
         if normalized_url.scheme == "http":
-            signals.append(self._insecure_transport_signal(normalized_url, sensitive_terms))
+            signals.append(
+                self._insecure_transport_signal(normalized_url, sensitive_terms)
+            )
             return SignalAnalysisResult(signals=tuple(signals))
 
         if normalized_url.scheme != "https" or normalized_url.is_ip_address:
@@ -99,7 +106,9 @@ class TransportSecuritySignalAnalyzer:
 
         return self._signal(
             signal_type=SignalType.INSECURE_TRANSPORT,
-            severity=SignalSeverity.HIGH if is_sensitive_target else SignalSeverity.MEDIUM,
+            severity=(
+                SignalSeverity.HIGH if is_sensitive_target else SignalSeverity.MEDIUM
+            ),
             confidence=92 if is_sensitive_target else 80,
             message_key=(
                 "signal.insecure_transport_scheme_sensitive"
@@ -128,7 +137,9 @@ class TransportSecuritySignalAnalyzer:
             evidence.append(
                 evidence_ref(
                     "evidence.tls_failure_reason",
-                    failure_reason=normalize_tls_failure_reason(validation_result.failure_reason),
+                    failure_reason=normalize_tls_failure_reason(
+                        validation_result.failure_reason
+                    ),
                 )
             )
         if sensitive_terms:

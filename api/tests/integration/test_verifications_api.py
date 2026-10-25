@@ -1,12 +1,13 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
-from typing import Iterator
 from urllib.parse import urlsplit
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
+import app.entrypoints.api.dependencies.container as container
 from app.application.ports.infrastructure_lookup import (
     InfrastructureLookupPort,
     InfrastructureProfile,
@@ -17,22 +18,27 @@ from app.application.ports.redirect_resolver import (
     RedirectResolverPort,
 )
 from app.application.ports.reputation_lookup import ReputationLookupPort
-from app.application.services.infrastructure_signal_analyzer import InfrastructureSignalAnalyzer
+from app.application.services.infrastructure_signal_analyzer import (
+    InfrastructureSignalAnalyzer,
+)
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
-import app.entrypoints.api.dependencies.container as container
 from app.entrypoints.api.dependencies.container import (
-    get_auth_token_service,
     get_create_verification_burst_rate_limiter,
     get_create_verification_rate_limiter,
-    get_google_identity_verifier,
     get_user_repository,
     get_verification_repository,
 )
 from app.entrypoints.api.main import app
 from app.infrastructure.config.settings import get_settings
-from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
-from app.infrastructure.persistence.database import drop_db, get_engine, get_session_factory
+from app.infrastructure.external_services.outbound_target_guard import (
+    UnsafeOutboundTargetError,
+)
+from app.infrastructure.persistence.database import (
+    drop_db,
+    get_engine,
+    get_session_factory,
+)
 from tests.integration.alembic_helpers import upgrade_to_head
 
 
@@ -158,7 +164,9 @@ class FakeRedisClient:
     def zremrangebyscore(self, key: str, minimum, maximum) -> int:
         members = self._sorted_sets.get(key, {})
         max_score = float(maximum)
-        keys_to_remove = [member for member, score in members.items() if score <= max_score]
+        keys_to_remove = [
+            member for member, score in members.items() if score <= max_score
+        ]
         for member in keys_to_remove:
             members.pop(member, None)
         if not members:
@@ -169,11 +177,10 @@ class FakeRedisClient:
         return len(self._sorted_sets.get(key, {}))
 
     def zrange(self, key: str, start: int, stop: int, *, withscores: bool = False):
-        members = sorted(self._sorted_sets.get(key, {}).items(), key=lambda item: item[1])
-        if stop == -1:
-            selection = members[start:]
-        else:
-            selection = members[start : stop + 1]
+        members = sorted(
+            self._sorted_sets.get(key, {}).items(), key=lambda item: item[1]
+        )
+        selection = members[start:] if stop == -1 else members[start : stop + 1]
         if withscores:
             return selection
         return [member for member, _ in selection]
@@ -265,9 +272,13 @@ def _test_client_context(
     monkeypatch.setattr(
         container,
         "get_infrastructure_signal_analyzer",
-        lambda: InfrastructureSignalAnalyzer(infrastructure_lookup=NoopInfrastructureLookup()),
+        lambda: InfrastructureSignalAnalyzer(
+            infrastructure_lookup=NoopInfrastructureLookup()
+        ),
     )
-    monkeypatch.setattr(container, "assert_safe_outbound_url", _test_public_target_validator)
+    monkeypatch.setattr(
+        container, "assert_safe_outbound_url", _test_public_target_validator
+    )
 
     upgrade_to_head(database_url)
 
@@ -296,7 +307,9 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         yield test_client
 
 
-def test_verification_api_create_disables_public_list_and_get(client: TestClient) -> None:
+def test_verification_api_create_disables_public_list_and_get(
+    client: TestClient,
+) -> None:
     create_response = client.post(
         "/api/verifications",
         json={
@@ -353,16 +366,27 @@ def test_verification_api_redacts_sensitive_url_parts_before_persistence_and_exp
 
     assert create_response.status_code == 201
     created_body = create_response.json()
-    assert created_body["original_input"] == "https://secure-paypal-login.example.xyz/verify"
-    assert created_body["normalized_input"] == "https://secure-paypal-login.example.xyz/verify"
+    assert (
+        created_body["original_input"]
+        == "https://secure-paypal-login.example.xyz/verify"
+    )
+    assert (
+        created_body["normalized_input"]
+        == "https://secure-paypal-login.example.xyz/verify"
+    )
 
     repository = get_verification_repository()
     stored = repository.list(limit=1)[0]
     assert stored.original_input == "https://secure-paypal-login.example.xyz/verify"
-    assert stored.normalized_input.normalized == "https://secure-paypal-login.example.xyz/verify"
+    assert (
+        stored.normalized_input.normalized
+        == "https://secure-paypal-login.example.xyz/verify"
+    )
 
 
-def test_verification_api_preserves_clean_urls_without_sensitive_parts(client: TestClient) -> None:
+def test_verification_api_preserves_clean_urls_without_sensitive_parts(
+    client: TestClient,
+) -> None:
     create_response = client.post(
         "/api/verifications",
         json={"url": "verifiko.es/login"},
@@ -374,11 +398,13 @@ def test_verification_api_preserves_clean_urls_without_sensitive_parts(client: T
     assert created_body["normalized_input"] == "https://verifiko.es/login"
 
 
-def test_verification_api_rate_limits_anonymous_create_requests(client: TestClient) -> None:
+def test_verification_api_rate_limits_anonymous_create_requests(
+    client: TestClient,
+) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
     limiter.daily_limit = 2
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     first = client.post("/api/verifications", json={"url": "https://example.org"})
     second = client.post("/api/verifications", json={"url": "https://example.net"})
@@ -399,11 +425,13 @@ def test_verification_api_rate_limits_anonymous_create_requests(client: TestClie
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
 
 
-def test_verification_api_decrements_anonymous_quota_status_remaining(client: TestClient) -> None:
+def test_verification_api_decrements_anonymous_quota_status_remaining(
+    client: TestClient,
+) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
     limiter.daily_limit = 5
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     before = client.get("/api/verifications/quota-status").json()
     posted = client.post("/api/verifications", json={"url": "https://example.org"})
@@ -426,11 +454,19 @@ def test_verification_api_exposes_retry_after_to_allowed_cross_origin_callers(
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
     limiter.daily_limit = 1
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
     allowed_origin = {"Origin": "http://localhost:5173"}
 
-    first = client.post("/api/verifications", json={"url": "https://example.org"}, headers=allowed_origin)
-    blocked = client.post("/api/verifications", json={"url": "https://example.net"}, headers=allowed_origin)
+    first = client.post(
+        "/api/verifications",
+        json={"url": "https://example.org"},
+        headers=allowed_origin,
+    )
+    blocked = client.post(
+        "/api/verifications",
+        json={"url": "https://example.net"},
+        headers=allowed_origin,
+    )
     foreign = client.post(
         "/api/verifications",
         json={"url": "https://example.com"},
@@ -450,10 +486,12 @@ def test_verification_api_exposes_retry_after_to_allowed_cross_origin_callers(
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
 
 
-def test_verification_api_resets_anonymous_daily_limit_at_utc_midnight(client: TestClient) -> None:
+def test_verification_api_resets_anonymous_daily_limit_at_utc_midnight(
+    client: TestClient,
+) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
-    current_time = datetime(2026, 3, 28, 23, 59, 50, tzinfo=timezone.utc)
+    current_time = datetime(2026, 3, 28, 23, 59, 50, tzinfo=UTC)
     limiter.daily_limit = 1
     limiter.current_time_provider = lambda: current_time
 
@@ -464,8 +502,10 @@ def test_verification_api_resets_anonymous_daily_limit_at_utc_midnight(client: T
     assert blocked.status_code == 429
     assert blocked.headers["retry-after"] == "10"
 
-    current_time = datetime(2026, 3, 29, 0, 0, 5, tzinfo=timezone.utc)
-    allowed_after_reset = client.post("/api/verifications", json={"url": "https://example.com"})
+    current_time = datetime(2026, 3, 29, 0, 0, 5, tzinfo=UTC)
+    allowed_after_reset = client.post(
+        "/api/verifications", json={"url": "https://example.com"}
+    )
 
     assert allowed_after_reset.status_code == 201
 
@@ -473,7 +513,9 @@ def test_verification_api_resets_anonymous_daily_limit_at_utc_midnight(client: T
     limiter.daily_limit = get_settings().anonymous_daily_verification_limit
 
 
-def test_verification_api_applies_burst_limit_before_daily_quota(client: TestClient) -> None:
+def test_verification_api_applies_burst_limit_before_daily_quota(
+    client: TestClient,
+) -> None:
     burst_limiter = get_create_verification_burst_rate_limiter()
     daily_limiter = get_create_verification_rate_limiter()
     burst_limiter.reset()
@@ -481,7 +523,9 @@ def test_verification_api_applies_burst_limit_before_daily_quota(client: TestCli
     burst_limiter.max_requests = 1
     burst_limiter.window_seconds = 10
     burst_limiter.now_provider = lambda: 100.0
-    daily_limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    daily_limiter.current_time_provider = lambda: datetime(
+        2026, 3, 28, 12, 0, tzinfo=UTC
+    )
 
     first = client.post("/api/verifications", json={"url": "https://example.org"})
     second = client.post("/api/verifications", json={"url": "https://example.net"})
@@ -500,8 +544,10 @@ def test_verification_api_applies_burst_limit_before_daily_quota(client: TestCli
     burst_limiter.reset()
     daily_limiter.reset()
     burst_limiter.max_requests = get_settings().verification_burst_limit_requests
-    burst_limiter.window_seconds = get_settings().verification_burst_limit_window_seconds
-    daily_limiter.current_time_provider = lambda: datetime.now(tz=timezone.utc)
+    burst_limiter.window_seconds = (
+        get_settings().verification_burst_limit_window_seconds
+    )
+    daily_limiter.current_time_provider = lambda: datetime.now(tz=UTC)
 
 
 def test_verification_api_uses_trusted_proxy_client_ip_for_quota_status(
@@ -518,7 +564,7 @@ def test_verification_api_uses_trusted_proxy_client_ip_for_quota_status(
         limiter = get_create_verification_rate_limiter()
         limiter.reset()
         limiter.daily_limit = 1
-        limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+        limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
         first = proxied_client.post(
             "/api/verifications",
@@ -558,7 +604,7 @@ def test_verification_api_falls_back_to_proxy_peer_host_for_invalid_forwarded_fo
         limiter = get_create_verification_rate_limiter()
         limiter.reset()
         limiter.daily_limit = 1
-        limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+        limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
         first = proxied_client.post(
             "/api/verifications",
@@ -597,7 +643,9 @@ def test_verification_api_uses_same_resolved_ip_for_anonymous_burst_and_daily_li
         burst_limiter.max_requests = 1
         burst_limiter.window_seconds = 10
         burst_limiter.now_provider = lambda: 100.0
-        daily_limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+        daily_limiter.current_time_provider = lambda: datetime(
+            2026, 3, 28, 12, 0, tzinfo=UTC
+        )
 
         first = proxied_client.post(
             "/api/verifications",
@@ -633,14 +681,18 @@ def test_verification_api_uses_same_resolved_ip_for_anonymous_burst_and_daily_li
         burst_limiter.reset()
         daily_limiter.reset()
         burst_limiter.max_requests = get_settings().verification_burst_limit_requests
-        burst_limiter.window_seconds = get_settings().verification_burst_limit_window_seconds
-        daily_limiter.current_time_provider = lambda: datetime.now(tz=timezone.utc)
+        burst_limiter.window_seconds = (
+            get_settings().verification_burst_limit_window_seconds
+        )
+        daily_limiter.current_time_provider = lambda: datetime.now(tz=UTC)
 
 
-def test_verification_api_quota_status_reports_anonymous_remaining_usage(client: TestClient) -> None:
+def test_verification_api_quota_status_reports_anonymous_remaining_usage(
+    client: TestClient,
+) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     first = client.post("/api/verifications", json={"url": "https://example.org"})
     status_response = client.get("/api/verifications/quota-status")
@@ -666,7 +718,7 @@ def test_verification_api_quota_status_reports_anonymous_blocked_when_limit_is_e
 ) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     for url in ("https://example.org", "https://example.net", "https://example.com"):
         response = client.post("/api/verifications", json={"url": url})
@@ -700,7 +752,7 @@ def test_verification_api_uses_sqlalchemy_backed_daily_quota_even_with_redis(
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
     limiter.daily_limit = 1
-    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc)
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     first = client.post("/api/verifications", json={"url": "https://example.org"})
     second = client.post("/api/verifications", json={"url": "https://example.net"})
@@ -771,7 +823,9 @@ def test_health_endpoint_applies_security_headers(client: TestClient) -> None:
     )
 
 
-def test_verification_api_can_generate_signals_from_url_only(client: TestClient) -> None:
+def test_verification_api_can_generate_signals_from_url_only(
+    client: TestClient,
+) -> None:
     create_response = client.post(
         "/api/verifications",
         json={
@@ -801,7 +855,9 @@ def test_verification_api_localizes_backend_generated_text_with_accept_language(
     signal_titles = {signal["title"] for signal in created_body["signals"]}
     assert "Cebo de credenciales en la URL" in signal_titles
     assert created_body["risk_assessment"]["summary"].strip() != ""
-    assert created_body["risk_assessment"]["explanation"]["headline"].startswith("El motor produjo")
+    assert created_body["risk_assessment"]["explanation"]["headline"].startswith(
+        "El motor produjo"
+    )
 
     list_response = client.get(
         "/api/verifications",
@@ -813,7 +869,9 @@ def test_verification_api_localizes_backend_generated_text_with_accept_language(
     )
 
 
-def test_verification_api_returns_404_for_missing_verification(client: TestClient) -> None:
+def test_verification_api_returns_404_for_missing_verification(
+    client: TestClient,
+) -> None:
     response = client.get("/api/verifications/550e8400-e29b-41d4-a716-446655440099")
 
     assert response.status_code == 401

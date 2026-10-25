@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -32,7 +32,13 @@ class UrlhausReputationClient(ReputationLookupPort):
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 payload = json.load(response)
-        except (HTTPError, URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+        except (
+            HTTPError,
+            URLError,
+            TimeoutError,
+            OSError,
+            json.JSONDecodeError,
+        ) as exc:
             raise ReputationLookupError(str(exc)) from exc
 
         if payload.get("query_status") != "ok":
@@ -42,11 +48,14 @@ class UrlhausReputationClient(ReputationLookupPort):
         if not urls:
             return None
 
-        online_urls = [item for item in urls if str(item.get("url_status", "")).lower() == "online"]
+        online_urls = [
+            item for item in urls if str(item.get("url_status", "")).lower() == "online"
+        ]
         reference_count = len(urls)
         confidence = 99.0 if online_urls else 96.0
         description = (
-            f"URLhaus returned {reference_count} malicious URL record(s) for the queried host."
+            f"URLhaus returned {reference_count} malicious URL record(s) "
+            "for the queried host."
         )
 
         return ReputationMatch(

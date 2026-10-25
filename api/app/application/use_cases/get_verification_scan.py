@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
-from app.application.exceptions.application_exception import VerificationScanNotFoundError
+from app.application.exceptions.application_exception import (
+    VerificationScanNotFoundError,
+)
 from app.domain.entities.verification_job import VerificationJob
 from app.domain.ports.verification_job_store import VerificationJobStore
 

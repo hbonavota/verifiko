@@ -5,13 +5,14 @@ from app.application.ports.domain_age_lookup import (
 )
 from app.application.ports.html_fetcher import (
     FetchedHtmlDocument,
-    HtmlFetchError,
     HtmlFetcherPort,
+    HtmlFetchError,
 )
-from app.application.ports.tls_validator import (
-    TlsValidationError,
-    TlsValidationResult,
-    TlsValidatorPort,
+from app.application.ports.infrastructure_lookup import (
+    InfrastructureLookupError,
+    InfrastructureLookupPort,
+    InfrastructureProfile,
+    ResolvedAddress,
 )
 from app.application.ports.redirect_resolver import (
     RedirectHop,
@@ -24,11 +25,10 @@ from app.application.ports.reputation_lookup import (
     ReputationLookupPort,
     ReputationMatch,
 )
-from app.application.ports.infrastructure_lookup import (
-    InfrastructureLookupError,
-    InfrastructureLookupPort,
-    InfrastructureProfile,
-    ResolvedAddress,
+from app.application.ports.tls_validator import (
+    TlsValidationError,
+    TlsValidationResult,
+    TlsValidatorPort,
 )
 
 __all__ = [

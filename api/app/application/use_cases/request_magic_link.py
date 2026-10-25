@@ -1,7 +1,8 @@
 import logging
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
-from typing import Callable
 
 from app.application.ports.email_sender import EmailMessage, EmailSenderPort
 from app.application.ports.magic_link_store import MagicLinkStorePort
@@ -53,7 +54,9 @@ class RequestMagicLinkUseCase:
         except FuturesTimeoutError:
             logger.warning("Magic-link email delivery timed out for %s", email)
         except Exception:
-            logger.warning("Magic-link email delivery failed for %s", email, exc_info=True)
+            logger.warning(
+                "Magic-link email delivery failed for %s", email, exc_info=True
+            )
         finally:
             # Never block the request on a hanging send; abandon the worker.
             executor.shutdown(wait=False, cancel_futures=True)

@@ -1,7 +1,7 @@
 from app.application.dto.verification_dto import (
     AnalysisSignalDTO,
-    AnalysisTraceDTO,
     AnalysisStageTraceDTO,
+    AnalysisTraceDTO,
     CompoundRuleDeltaDTO,
     ExplanationFactorDTO,
     RiskAssessmentDTO,
@@ -42,7 +42,9 @@ class VerificationMapper:
                 source=signal.source,
                 base_weight=signal.base_weight,
                 score_contribution=round(
-                    signal.base_weight * SEVERITY_MULTIPLIERS[signal.severity] * signal.confidence.as_ratio,
+                    signal.base_weight
+                    * SEVERITY_MULTIPLIERS[signal.severity]
+                    * signal.confidence.as_ratio,
                     2,
                 ),
                 tags=signal.tags,
@@ -56,7 +58,9 @@ class VerificationMapper:
         if verification.risk_assessment is not None:
             explanation = RiskExplanationBuilder.build(verification)
             if explanation is None:
-                raise ValueError("Risk explanation must be available when risk assessment exists.")
+                raise ValueError(
+                    "Risk explanation must be available when risk assessment exists."
+                )
             score_breakdown = verification.risk_assessment.score_breakdown
             if score_breakdown is None:
                 engine = RiskScoringEngine()
@@ -66,7 +70,9 @@ class VerificationMapper:
                     final_score=verification.risk_assessment.score.value,
                 )
             if score_breakdown is None:
-                raise ValueError("Score breakdown must be available when risk assessment exists.")
+                raise ValueError(
+                    "Score breakdown must be available when risk assessment exists."
+                )
             risk_assessment_dto = RiskAssessmentDTO(
                 score=verification.risk_assessment.score.rounded(),
                 risk_level=verification.risk_assessment.risk_level.value,
@@ -141,7 +147,9 @@ class VerificationMapper:
                 final_score=score_breakdown.final_score,
             )
 
-        resolved_trace = trace or AnalysisTraceBuilder.from_signals(verification.signals)
+        resolved_trace = trace or AnalysisTraceBuilder.from_signals(
+            verification.signals
+        )
         signals_by_source = {
             source: tuple(dto for dto in signal_dtos if dto.source == source)
             for source in resolved_trace.layers_executed
@@ -166,7 +174,11 @@ class VerificationMapper:
             score_breakdown=score_breakdown_dto,
             created_at=verification.created_at.isoformat(),
             updated_at=verification.updated_at.isoformat(),
-            completed_at=verification.completed_at.isoformat() if verification.completed_at else None,
+            completed_at=(
+                verification.completed_at.isoformat()
+                if verification.completed_at
+                else None
+            ),
             calculation_version=verification.calculation_version,
             screenshot_ref=screenshot_ref,
         )

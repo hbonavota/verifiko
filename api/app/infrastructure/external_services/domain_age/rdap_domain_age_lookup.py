@@ -1,6 +1,6 @@
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import json
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -19,9 +19,17 @@ class RdapDomainAgeLookup(DomainAgeLookupPort):
 
     def lookup(self, domain: str) -> DomainRegistrationInfo | None:
         try:
-            with urlopen(f"{self.base_url}{domain}", timeout=self.timeout_seconds) as response:
+            with urlopen(
+                f"{self.base_url}{domain}", timeout=self.timeout_seconds
+            ) as response:
                 payload = json.load(response)
-        except (HTTPError, URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+        except (
+            HTTPError,
+            URLError,
+            TimeoutError,
+            OSError,
+            json.JSONDecodeError,
+        ) as exc:
             raise DomainRegistrationLookupError(str(exc)) from exc
 
         registered_at = _extract_registration_date(payload)
@@ -66,6 +74,6 @@ def _parse_rdap_datetime(value: object) -> datetime | None:
         return None
 
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
+        return parsed.replace(tzinfo=UTC)
 
-    return parsed.astimezone(timezone.utc)
+    return parsed.astimezone(UTC)

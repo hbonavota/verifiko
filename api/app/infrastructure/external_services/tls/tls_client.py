@@ -26,15 +26,17 @@ class SocketTlsValidator(TlsValidatorPort):
             resolution = resolve_safe_outbound_host(hostname, port)
             for ip_address in resolution.ip_addresses:
                 try:
-                    with socket.create_connection(
-                        (ip_address, resolution.port),
-                        timeout=self.timeout_seconds,
-                    ) as sock:
-                        with context.wrap_socket(sock, server_hostname=resolution.hostname):
-                            return TlsValidationResult(
-                                is_valid=True,
-                                provider_name=self.provider_name,
-                            )
+                    with (
+                        socket.create_connection(
+                            (ip_address, resolution.port),
+                            timeout=self.timeout_seconds,
+                        ) as sock,
+                        context.wrap_socket(sock, server_hostname=resolution.hostname),
+                    ):
+                        return TlsValidationResult(
+                            is_valid=True,
+                            provider_name=self.provider_name,
+                        )
                 except ssl.SSLCertVerificationError as exc:
                     return TlsValidationResult(
                         is_valid=False,
@@ -47,7 +49,7 @@ class SocketTlsValidator(TlsValidatorPort):
                         provider_name=self.provider_name,
                         failure_reason=str(exc),
                     )
-                except (socket.timeout, socket.gaierror, OSError) as exc:
+                except (TimeoutError, socket.gaierror, OSError) as exc:
                     last_network_error = exc
         except ssl.SSLCertVerificationError as exc:
             return TlsValidationResult(

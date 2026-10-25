@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import threading
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.domain.entities.verification_job import VerificationJob
@@ -48,7 +48,9 @@ class RedisVerificationJobStore(VerificationJobStore):
         self._ttl_seconds = ttl_seconds
 
     def save(self, job: VerificationJob) -> None:
-        self._redis.setex(self._key(job.id), self._ttl_seconds, json.dumps(_encode(job)))
+        self._redis.setex(
+            self._key(job.id), self._ttl_seconds, json.dumps(_encode(job))
+        )
 
     def get(self, job_id: str) -> VerificationJob | None:
         raw = self._redis.get(self._key(job_id))
@@ -98,4 +100,4 @@ def _decode(payload: dict) -> VerificationJob:
 
 def _parse_dt(value: str) -> datetime:
     parsed = datetime.fromisoformat(value)
-    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from app.application.commands.create_verification_command import CreateVerificationCommand
+from app.application.commands.create_verification_command import (
+    CreateVerificationCommand,
+)
 from app.application.ports.domain_age_lookup import DomainAgeLookupPort
 from app.application.ports.headless_detonation import (
     DetonationForm,
@@ -23,9 +25,15 @@ from app.application.ports.redirect_resolver import (
 )
 from app.application.ports.reputation_lookup import ReputationLookupPort
 from app.application.ports.tls_validator import TlsValidationResult, TlsValidatorPort
-from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
-from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
-from app.application.services.infrastructure_signal_analyzer import InfrastructureSignalAnalyzer
+from app.application.services.domain_recency_signal_analyzer import (
+    DomainRecencySignalAnalyzer,
+)
+from app.application.services.html_credential_signal_analyzer import (
+    HtmlCredentialSignalAnalyzer,
+)
+from app.application.services.infrastructure_signal_analyzer import (
+    InfrastructureSignalAnalyzer,
+)
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 from app.application.services.resolved_destination_signal_analyzer import (
@@ -35,14 +43,16 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
-from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
+from app.application.use_cases.create_url_verification import (
+    CreateURLVerificationUseCase,
+)
 from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
 from app.domain.value_objects.verification_id import VerificationId
 from evaluation.corpus import CorpusSample
 
-_FROZEN_NOW = datetime(2026, 7, 23, tzinfo=timezone.utc)
+_FROZEN_NOW = datetime(2026, 7, 23, tzinfo=UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +98,9 @@ class _StaticHtmlFetcher(HtmlFetcherPort):
         self._content = content
 
     def fetch(self, url: str, *, user_agent: str | None = None):
-        return FetchedHtmlDocument(content=self._content, source_url=url, content_type="text/html")
+        return FetchedHtmlDocument(
+            content=self._content, source_url=url, content_type="text/html"
+        )
 
 
 class _ValidTlsValidator(TlsValidatorPort):
@@ -171,7 +183,9 @@ class OfflineDeterministicClassifier:
         )
         assessment = dto.risk_assessment
         if assessment is None:
-            raise RuntimeError(f"Verification produced no risk assessment for {sample.url!r}")
+            raise RuntimeError(
+                f"Verification produced no risk assessment for {sample.url!r}"
+            )
         return ClassifiedResult(
             risk_level=assessment.risk_level,
             score=assessment.score,
@@ -183,7 +197,9 @@ class OfflineDeterministicClassifier:
 
     def _build_use_case(self, sample: CorpusSample) -> CreateURLVerificationUseCase:
         html_fetcher: HtmlFetcherPort = (
-            _StaticHtmlFetcher(sample.html) if sample.html is not None else _NullHtmlFetcher()
+            _StaticHtmlFetcher(sample.html)
+            if sample.html is not None
+            else _NullHtmlFetcher()
         )
         redirect_resolver = self._redirect_resolver(sample)
         return CreateURLVerificationUseCase(
@@ -195,7 +211,9 @@ class OfflineDeterministicClassifier:
                 domain_age_lookup=_NullDomainAgeLookup(),
                 current_time_provider=lambda: _FROZEN_NOW,
             ),
-            redirect_signal_analyzer=RedirectSignalAnalyzer(redirect_resolver=redirect_resolver),
+            redirect_signal_analyzer=RedirectSignalAnalyzer(
+                redirect_resolver=redirect_resolver
+            ),
             reputation_signal_analyzer=ReputationSignalAnalyzer(
                 reputation_lookup=_NoopReputationLookup()
             ),
@@ -231,4 +249,6 @@ class OfflineDeterministicClassifier:
             )
             for step in sample.redirect_hops
         )
-        return _ScriptedRedirectResolver(final_url=sample.redirect_final_url or sample.url, hops=hops)
+        return _ScriptedRedirectResolver(
+            final_url=sample.redirect_final_url or sample.url, hops=hops
+        )

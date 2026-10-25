@@ -1,14 +1,20 @@
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
-from typing import Iterable
 from urllib.parse import urljoin, urlsplit
 
 from app.application.ports.html_fetcher import FetchedHtmlDocument
-from app.application.services.message_resolver import build_localized_signal, evidence_ref
+from app.application.services.message_resolver import (
+    build_localized_signal,
+    evidence_ref,
+)
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
-from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
+from app.domain.services.scoring_policies import (
+    BASE_SIGNAL_WEIGHTS,
+    SIGNAL_CATEGORY_MAP,
+)
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
@@ -70,7 +76,9 @@ class HtmlCredentialSignalAnalyzer:
     ) -> list[AnalysisSignal]:
         parsed_page = _LoginHtmlParser.parse(fetched_document.content)
         form_count = len(parsed_page.forms)
-        password_field_count = sum(form.password_field_count for form in parsed_page.forms)
+        password_field_count = sum(
+            form.password_field_count for form in parsed_page.forms
+        )
         account_hints = sorted(
             {hint for form in parsed_page.forms for hint in form.account_hints}
         )
@@ -79,7 +87,9 @@ class HtmlCredentialSignalAnalyzer:
         )
         matched_login_terms = _match_login_terms(parsed_page.visible_text)
         visible_token_count = _visible_token_count(parsed_page.visible_text)
-        low_information_markers = _match_low_information_markers(parsed_page.visible_text)
+        low_information_markers = _match_low_information_markers(
+            parsed_page.visible_text
+        )
         suspicious_host_context = _has_suspicious_host_context(normalized_url)
         suspicious_actions = [
             action
@@ -137,8 +147,14 @@ class HtmlCredentialSignalAnalyzer:
         has_suspicious_login_interface = (
             form_count > 0
             and len(matched_login_terms) >= 2
-            and (password_field_count > 0 or bool(auth_hints) or bool(suspicious_actions))
-            and (bool(suspicious_actions) or suspicious_host_context or auth_challenge_surface)
+            and (
+                password_field_count > 0 or bool(auth_hints) or bool(suspicious_actions)
+            )
+            and (
+                bool(suspicious_actions)
+                or suspicious_host_context
+                or auth_challenge_surface
+            )
             and not official_same_site_auth_surface
         )
 
@@ -452,7 +468,10 @@ def _visible_token_count(text_fragments: Iterable[str]) -> int:
 
 def _has_suspicious_host_context(normalized_url: NormalizedUrl) -> bool:
     host_tokens = _tokenize_host(normalized_url.host)
-    return bool(_LOGIN_TERMS.intersection(host_tokens) or {"mail", "outlook", "paypal"}.intersection(host_tokens))
+    return bool(
+        _LOGIN_TERMS.intersection(host_tokens)
+        or {"mail", "outlook", "paypal"}.intersection(host_tokens)
+    )
 
 
 def _is_official_same_site_auth_surface(
@@ -468,11 +487,16 @@ def _is_official_same_site_auth_surface(
         "microsoftonline.com",
         "paypal.com",
     }
-    return normalized_url.registered_domain in official_auth_domains and not suspicious_actions
+    return (
+        normalized_url.registered_domain in official_auth_domains
+        and not suspicious_actions
+    )
 
 
 def _tokenize_host(value: str) -> set[str]:
-    return {fragment for fragment in value.replace(".", "-").lower().split("-") if fragment}
+    return {
+        fragment for fragment in value.replace(".", "-").lower().split("-") if fragment
+    }
 
 
 def _normalize_action(action: str, source_url: str) -> str:

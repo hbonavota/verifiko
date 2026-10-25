@@ -30,7 +30,9 @@ class AuthenticateWithEmailPasswordUseCase:
         if user is None or user.password_hash is None:
             raise InvalidEmailPasswordCredentialsError
 
-        if not self.password_hasher.verify_password(command.password, user.password_hash):
+        if not self.password_hasher.verify_password(
+            command.password, user.password_hash
+        ):
             raise InvalidEmailPasswordCredentialsError
 
         return AuthSessionDTO(

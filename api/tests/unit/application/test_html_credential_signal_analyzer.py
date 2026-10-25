@@ -1,5 +1,7 @@
 from app.application.ports.html_fetcher import FetchedHtmlDocument
-from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.html_credential_signal_analyzer import (
+    HtmlCredentialSignalAnalyzer,
+)
 from app.domain.enums.signal_type import SignalType
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
@@ -34,7 +36,10 @@ def test_html_credential_signal_analyzer_emits_signal_for_login_form() -> None:
     assert "Password fields found: 1." in signal.evidence
     assert "Matched account input hints: email." in signal.evidence
     assert "Matched login wording: account, sign in, verify." in signal.evidence
-    assert "Suspicious form action: https://collector.bad.example/submit." in signal.evidence
+    assert (
+        "Suspicious form action: https://collector.bad.example/submit."
+        in signal.evidence
+    )
 
 
 def test_html_credential_signal_analyzer_skips_pages_without_login_patterns() -> None:
@@ -60,7 +65,9 @@ def test_html_credential_signal_analyzer_skips_pages_without_login_patterns() ->
     assert signals == []
 
 
-def test_html_credential_signal_analyzer_skips_generic_legitimate_login_surface() -> None:
+def test_html_credential_signal_analyzer_skips_generic_legitimate_login_surface() -> (
+    None
+):
     analyzer = HtmlCredentialSignalAnalyzer()
 
     signals = analyzer.analyze(
@@ -85,7 +92,10 @@ def test_html_credential_signal_analyzer_skips_generic_legitimate_login_surface(
         ),
     )
 
-    assert all(signal.signal_type != SignalType.SUSPICIOUS_LOGIN_INTERFACE for signal in signals)
+    assert all(
+        signal.signal_type != SignalType.SUSPICIOUS_LOGIN_INTERFACE
+        for signal in signals
+    )
 
 
 def test_html_credential_signal_analyzer_emits_signal_for_suspicious_login_ui() -> None:
@@ -114,7 +124,9 @@ def test_html_credential_signal_analyzer_emits_signal_for_suspicious_login_ui() 
     assert signals[0].signal_type == SignalType.SUSPICIOUS_LOGIN_INTERFACE
 
 
-def test_html_credential_signal_analyzer_emits_signal_for_challenge_approval_surface() -> None:
+def test_html_credential_signal_analyzer_emits_signal_for_challenge_approval_surface() -> (
+    None
+):
     analyzer = HtmlCredentialSignalAnalyzer()
 
     signals = analyzer.analyze(
@@ -141,11 +153,19 @@ def test_html_credential_signal_analyzer_emits_signal_for_challenge_approval_sur
     signal = signals[0]
     assert signal.signal_type == SignalType.SUSPICIOUS_LOGIN_INTERFACE
     assert "Matched authentication input hints: otp." in signal.evidence
-    assert "Matched login wording: account, approve, challenge, security." in signal.evidence
-    assert "Observed form action: https://secure-login.bad-example.test/checkpoint." in signal.evidence
+    assert (
+        "Matched login wording: account, approve, challenge, security."
+        in signal.evidence
+    )
+    assert (
+        "Observed form action: https://secure-login.bad-example.test/checkpoint."
+        in signal.evidence
+    )
 
 
-def test_html_credential_signal_analyzer_skips_official_same_site_challenge_surface() -> None:
+def test_html_credential_signal_analyzer_skips_official_same_site_challenge_surface() -> (
+    None
+):
     analyzer = HtmlCredentialSignalAnalyzer()
 
     signals = analyzer.analyze(
@@ -171,7 +191,9 @@ def test_html_credential_signal_analyzer_skips_official_same_site_challenge_surf
     assert signals == []
 
 
-def test_html_credential_signal_analyzer_skips_same_site_redirect_interstitial_with_weak_terms() -> None:
+def test_html_credential_signal_analyzer_skips_same_site_redirect_interstitial_with_weak_terms() -> (
+    None
+):
     analyzer = HtmlCredentialSignalAnalyzer()
 
     signals = analyzer.analyze(
@@ -219,10 +241,15 @@ def test_html_credential_signal_analyzer_flags_parked_placeholder_pages() -> Non
     assert len(signals) == 1
     assert signals[0].signal_type == SignalType.LOW_INFORMATION_PAGE
     assert signals[0].title == "Parked or placeholder landing page"
-    assert "Matched placeholder markers: buy this domain, sedo, this domain is for sale." in signals[0].evidence
+    assert (
+        "Matched placeholder markers: buy this domain, sedo, this domain is for sale."
+        in signals[0].evidence
+    )
 
 
-def test_html_credential_signal_analyzer_flags_extremely_low_information_root_pages() -> None:
+def test_html_credential_signal_analyzer_flags_extremely_low_information_root_pages() -> (
+    None
+):
     analyzer = HtmlCredentialSignalAnalyzer()
 
     signals = analyzer.analyze(

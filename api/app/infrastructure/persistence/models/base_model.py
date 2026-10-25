@@ -28,9 +28,15 @@ class VerificationModel(Base):
     original_input: Mapped[str] = mapped_column(Text, nullable=False)
     normalized_input: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
-    completed_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    completed_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     calculation_version: Mapped[str] = mapped_column(String(32), nullable=False)
 
     signals: Mapped[list["SignalModel"]] = relationship(
@@ -50,7 +56,9 @@ class UserModel(Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True, index=True)
+    email: Mapped[str] = mapped_column(
+        String(320), nullable=False, unique=True, index=True
+    )
     google_subject: Mapped[str | None] = mapped_column(
         String(255), nullable=True, unique=True, index=True
     )
@@ -58,8 +66,12 @@ class UserModel(Base):
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     plan: Mapped[str] = mapped_column(String(32), nullable=False, default="FREE")
-    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     verifications: Mapped[list[VerificationModel]] = relationship(back_populates="user")
     api_keys: Mapped[list["ApiKeyModel"]] = relationship(
@@ -79,10 +91,18 @@ class ApiKeyModel(Base):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     token_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
-    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
-    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    last_used_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    last_used_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revoked_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     user: Mapped["UserModel"] = relationship(back_populates="api_keys")
 
@@ -110,9 +130,15 @@ class VerificationJobModel(Base):
     owner_user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     url: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
-    result_verification_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    result_verification_id: Mapped[str | None] = mapped_column(
+        String(36), nullable=True
+    )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     screenshot_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -159,7 +185,9 @@ class SignalModel(Base):
     source: Mapped[str] = mapped_column(String(255), nullable=False)
     base_weight: Mapped[float] = mapped_column(Float, nullable=False)
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     verification: Mapped[VerificationModel] = relationship(back_populates="signals")
 
@@ -176,10 +204,16 @@ class RiskAssessmentModel(Base):
     verdict: Mapped[str] = mapped_column(String(32), nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     top_signals: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    category_breakdown: Mapped[dict[str, float]] = mapped_column(JSON, nullable=False, default=dict)
+    category_breakdown: Mapped[dict[str, float]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
     terminal_override: Mapped[bool] = mapped_column(Boolean, nullable=False)
     terminal_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     calculation_version: Mapped[str] = mapped_column(String(32), nullable=False)
-    calculated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    calculated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
-    verification: Mapped[VerificationModel] = relationship(back_populates="risk_assessment")
+    verification: Mapped[VerificationModel] = relationship(
+        back_populates="risk_assessment"
+    )

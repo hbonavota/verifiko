@@ -1,13 +1,15 @@
 import hashlib
 import hmac
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from app.domain.entities.verification_job import VerificationJob
 from app.domain.enums.verification_job_status import VerificationJobStatus
-from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
+from app.infrastructure.external_services.outbound_target_guard import (
+    UnsafeOutboundTargetError,
+)
 from app.infrastructure.external_services.pinned_http_client import PinnedHttpResponse
 from app.infrastructure.webhooks.http_scan_webhook_notifier import (
     HttpScanWebhookNotifier,
@@ -16,7 +18,7 @@ from app.infrastructure.webhooks.http_scan_webhook_notifier import (
 )
 
 _SECRET = "test-webhook-secret"
-_NOW = datetime(2026, 7, 23, 12, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
 
 
 class RecordingPoster:
@@ -29,7 +31,9 @@ class RecordingPoster:
         return self._statuses[min(len(self.calls) - 1, len(self._statuses) - 1)]
 
 
-def _job(status=VerificationJobStatus.COMPLETED, webhook_url="https://hooks.example/verifiko"):
+def _job(
+    status=VerificationJobStatus.COMPLETED, webhook_url="https://hooks.example/verifiko"
+):
     return VerificationJob(
         id="scan-1",
         owner_user_id="owner-1",
@@ -37,7 +41,9 @@ def _job(status=VerificationJobStatus.COMPLETED, webhook_url="https://hooks.exam
         status=status,
         created_at=_NOW,
         updated_at=_NOW,
-        result_verification_id="ver-1" if status is VerificationJobStatus.COMPLETED else None,
+        result_verification_id=(
+            "ver-1" if status is VerificationJobStatus.COMPLETED else None
+        ),
         error_message=None if status is VerificationJobStatus.COMPLETED else "boom",
         webhook_url=webhook_url,
     )
@@ -117,14 +123,18 @@ def test_gives_up_after_max_attempts_without_raising() -> None:
     assert len(poster.calls) == 3
 
 
-_PINNED = "app.infrastructure.webhooks.http_scan_webhook_notifier.send_pinned_post_request"
+_PINNED = (
+    "app.infrastructure.webhooks.http_scan_webhook_notifier.send_pinned_post_request"
+)
 
 
 def test_pinned_webhook_poster_delivers_via_pinned_client(monkeypatch) -> None:
     observed: dict[str, object] = {}
 
     def fake_send(url, *, headers, body, timeout_seconds):
-        observed.update(url=url, headers=headers, body=body, timeout_seconds=timeout_seconds)
+        observed.update(
+            url=url, headers=headers, body=body, timeout_seconds=timeout_seconds
+        )
         return PinnedHttpResponse(status_code=200, headers={}, body=b"")
 
     monkeypatch.setattr(_PINNED, fake_send)
@@ -141,7 +151,9 @@ def test_pinned_webhook_poster_delivers_via_pinned_client(monkeypatch) -> None:
     assert observed["timeout_seconds"] == 4.0
 
 
-def test_pinned_webhook_poster_returns_redirect_status_without_following(monkeypatch) -> None:
+def test_pinned_webhook_poster_returns_redirect_status_without_following(
+    monkeypatch,
+) -> None:
     # http.client does not follow redirects, so a 3xx comes back as the status.
     # The notifier treats it as a non-2xx failure and never chases the Location.
     monkeypatch.setattr(

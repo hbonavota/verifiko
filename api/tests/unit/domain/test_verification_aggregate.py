@@ -47,7 +47,9 @@ def test_verification_redacts_sensitive_url_parts_before_persistence() -> None:
     assert verification.normalized_input.has_userinfo is False
 
 
-def test_verification_keeps_clean_urls_unchanged_when_no_sensitive_parts_exist() -> None:
+def test_verification_keeps_clean_urls_unchanged_when_no_sensitive_parts_exist() -> (
+    None
+):
     verification = Verification.create_url("verifiko.es/login")
     original_updated_at = verification.updated_at
 

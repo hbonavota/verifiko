@@ -13,10 +13,12 @@ from app.application.services.message_resolver import (
     message_ref,
     resolve_message,
 )
-from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
-from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
+from app.domain.services.scoring_policies import (
+    BASE_SIGNAL_WEIGHTS,
+    SIGNAL_CATEGORY_MAP,
+)
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
@@ -93,7 +95,8 @@ class InfrastructureSignalAnalyzer:
         try:
             profile = self.infrastructure_lookup.lookup(
                 effective_target.ascii_host,
-                effective_target.port or (443 if effective_target.scheme == "https" else 80),
+                effective_target.port
+                or (443 if effective_target.scheme == "https" else 80),
             )
         except InfrastructureLookupError:
             return SignalAnalysisResult(
@@ -111,20 +114,23 @@ class InfrastructureSignalAnalyzer:
             68 + len(matched_patterns) * 8 + (6 if sensitive_terms else 0),
         )
         evidence = [
-            evidence_ref("evidence.effective_target_host", host=effective_target.ascii_host),
+            evidence_ref(
+                "evidence.effective_target_host", host=effective_target.ascii_host
+            ),
             evidence_ref(
                 "evidence.infrastructure_provider",
                 provider_name=profile.provider_name,
             ),
             evidence_ref(
                 "evidence.resolved_addresses",
-                addresses=", ".join(address.ip_address for address in profile.resolved_addresses[:3]),
+                addresses=", ".join(
+                    address.ip_address for address in profile.resolved_addresses[:3]
+                ),
             ),
             evidence_ref(
                 "evidence.matched_infrastructure_patterns",
                 patterns=[
-                    _pattern_message_ref(pattern)
-                    for pattern in matched_patterns
+                    _pattern_message_ref(pattern) for pattern in matched_patterns
                 ],
             ),
         ]
@@ -135,7 +141,9 @@ class InfrastructureSignalAnalyzer:
         ]
         if reverse_samples:
             evidence.append(
-                evidence_ref("evidence.reverse_dns_sample", reverse_hostname=reverse_samples[0])
+                evidence_ref(
+                    "evidence.reverse_dns_sample", reverse_hostname=reverse_samples[0]
+                )
             )
         if sensitive_terms:
             evidence.append(
@@ -156,11 +164,15 @@ class InfrastructureSignalAnalyzer:
             signals=(
                 build_localized_signal(
                     signal_type=SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN,
-                    category=SIGNAL_CATEGORY_MAP[SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN],
+                    category=SIGNAL_CATEGORY_MAP[
+                        SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN
+                    ],
                     severity=severity,
                     confidence=ConfidenceScore(confidence),
                     source=self.source,
-                    base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN],
+                    base_weight=BASE_SIGNAL_WEIGHTS[
+                        SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN
+                    ],
                     message_key="signal.suspicious_infrastructure_pattern",
                     message_params={"evidence": evidence},
                     tags=("infrastructure", *matched_patterns[:3]),
@@ -187,7 +199,10 @@ class InfrastructureSignalAnalyzer:
                 continue
             if reverse_hostname.endswith(_DYNAMIC_DNS_SUFFIXES):
                 matches.add("dynamic-dns")
-            reverse_tokens = {match.group(0).lower() for match in _TOKEN_PATTERN.finditer(reverse_hostname)}
+            reverse_tokens = {
+                match.group(0).lower()
+                for match in _TOKEN_PATTERN.finditer(reverse_hostname)
+            }
             if reverse_tokens.intersection(_RESIDENTIAL_PTR_TOKENS):
                 matches.add("residential-ptr")
         return sorted(matches)

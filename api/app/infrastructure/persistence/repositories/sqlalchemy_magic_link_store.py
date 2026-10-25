@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete
 from sqlalchemy.orm import sessionmaker
@@ -20,7 +20,7 @@ class SqlAlchemyMagicLinkStore(MagicLinkStorePort):
     def __init__(
         self,
         session_factory: sessionmaker,
-        current_time_provider: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        current_time_provider: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._session_factory = session_factory
         self._now = current_time_provider
@@ -59,4 +59,4 @@ class SqlAlchemyMagicLinkStore(MagicLinkStorePort):
 
 
 def _as_utc(value: datetime) -> datetime:
-    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)

@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Callable
+from datetime import UTC, datetime
 
 from app.application.exceptions.application_exception import ApiKeyNotFoundError
 from app.domain.ports.api_key_repository import ApiKeyRepository
@@ -17,7 +17,7 @@ class RevokeApiKeyCommand:
 @dataclass(slots=True)
 class RevokeApiKeyUseCase:
     api_key_repository: ApiKeyRepository
-    current_time_provider: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    current_time_provider: Callable[[], datetime] = lambda: datetime.now(UTC)
 
     def execute(self, command: RevokeApiKeyCommand) -> None:
         try:

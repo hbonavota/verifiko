@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlunsplit
 
 from app.domain.entities.analysis_signal import AnalysisSignal
@@ -34,7 +34,7 @@ class Verification:
         user_id: UserId | None = None,
         calculation_version: str = "v1",
     ) -> "Verification":
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return Verification(
             id=verification_id or VerificationId.new(),
             user_id=user_id,
@@ -52,19 +52,19 @@ class Verification:
 
     def set_analyzing(self) -> None:
         self.status = VerificationStatus.ANALYZING
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def add_signal(self, signal: AnalysisSignal) -> None:
         self.signals.append(signal)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def add_signals(self, signals: list[AnalysisSignal]) -> None:
         self.signals.extend(signals)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def complete(self, scoring_service: ScoringService) -> RiskAssessment:
         assessment = scoring_service.calculate(self.signals, self.calculation_version)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.risk_assessment = assessment
         self.status = VerificationStatus.COMPLETED
         self.updated_at = now
@@ -73,7 +73,7 @@ class Verification:
 
     def fail(self) -> None:
         self.status = VerificationStatus.FAILED
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def redact_sensitive_input(self) -> None:
         if not (
@@ -98,4 +98,4 @@ class Verification:
         )
         self.original_input = redacted_url
         self.normalized_input = NormalizedUrl.from_raw(redacted_url)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)

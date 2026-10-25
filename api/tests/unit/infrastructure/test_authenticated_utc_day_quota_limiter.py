@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.entities.user import User
 from app.domain.enums.user_plan import UserPlan
@@ -11,7 +11,7 @@ from app.infrastructure.security.authenticated_utc_day_quota_limiter import (
 def test_authenticated_utc_day_quota_limiter_tracks_each_user_separately() -> None:
     limiter = AuthenticatedUtcDayQuotaLimiter(
         quota_policy=UserQuotaPolicy(free_daily_limit=1, pro_daily_limit=2),
-        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc),
+        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC),
     )
     alice = User.create_google_user(
         email="alice@example.com",
@@ -34,7 +34,7 @@ def test_authenticated_utc_day_quota_limiter_tracks_each_user_separately() -> No
 def test_authenticated_utc_day_quota_limiter_uses_higher_pro_limit() -> None:
     limiter = AuthenticatedUtcDayQuotaLimiter(
         quota_policy=UserQuotaPolicy(free_daily_limit=1, pro_daily_limit=2),
-        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=timezone.utc),
+        current_time_provider=lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC),
     )
     user = User.create_google_user(
         email="alice@example.com",

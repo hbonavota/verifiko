@@ -20,14 +20,21 @@ def test_confusion_matrix_counts_each_quadrant() -> None:
 
     matrix = confusion_matrix(pairs)
 
-    assert (matrix.true_positive, matrix.false_positive, matrix.true_negative, matrix.false_negative) == (3, 1, 4, 2)
+    assert (
+        matrix.true_positive,
+        matrix.false_positive,
+        matrix.true_negative,
+        matrix.false_negative,
+    ) == (3, 1, 4, 2)
     assert matrix.total == 10
     assert matrix.positives == 5
     assert matrix.negatives == 5
 
 
 def test_confusion_matrix_derived_metrics() -> None:
-    matrix = ConfusionMatrix(true_positive=3, false_positive=1, true_negative=4, false_negative=2)
+    matrix = ConfusionMatrix(
+        true_positive=3, false_positive=1, true_negative=4, false_negative=2
+    )
 
     assert math.isclose(matrix.precision, 0.75)
     assert math.isclose(matrix.recall, 0.6)

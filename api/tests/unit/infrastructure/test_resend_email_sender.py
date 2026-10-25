@@ -18,7 +18,9 @@ class RecordingPoster:
 
 
 def _message() -> EmailMessage:
-    return EmailMessage(to="user@example.com", subject="Hi", html="<p>Hi</p>", text="Hi")
+    return EmailMessage(
+        to="user@example.com", subject="Hi", html="<p>Hi</p>", text="Hi"
+    )
 
 
 def test_sends_expected_payload_and_auth_header() -> None:
@@ -50,7 +52,9 @@ def test_non_2xx_raises_delivery_error() -> None:
 
 
 def test_error_includes_resend_response_body() -> None:
-    poster = RecordingPoster(403, detail='{"message":"The verifiko.es domain is not verified."}')
+    poster = RecordingPoster(
+        403, detail='{"message":"The verifiko.es domain is not verified."}'
+    )
     sender = ResendEmailSender(
         api_key="re_test_key", from_email="login@verifiko.es", http_poster=poster
     )

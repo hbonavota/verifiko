@@ -5,7 +5,10 @@ import json
 import time
 from dataclasses import dataclass
 
-from app.application.ports.auth_token_service import AuthTokenError, AuthTokenServicePort
+from app.application.ports.auth_token_service import (
+    AuthTokenError,
+    AuthTokenServicePort,
+)
 from app.domain.value_objects.user_id import UserId
 
 
@@ -25,7 +28,9 @@ class SignedAuthTokenService(AuthTokenServicePort):
             "exp": now + self.ttl_seconds,
             "typ": "verifiko-auth",
         }
-        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        payload_bytes = json.dumps(
+            payload, separators=(",", ":"), sort_keys=True
+        ).encode("utf-8")
         encoded_payload = self._b64encode(payload_bytes)
         signature = self._sign(encoded_payload.encode("ascii"))
         return f"{encoded_payload}.{self._b64encode(signature)}"

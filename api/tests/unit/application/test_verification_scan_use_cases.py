@@ -1,21 +1,30 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
 
-from app.application.exceptions.application_exception import VerificationScanNotFoundError
+from app.application.exceptions.application_exception import (
+    VerificationScanNotFoundError,
+)
 from app.application.ports.verification_job_dispatcher import VerificationJobDispatcher
-from app.application.services.verification_scan_processor import VerificationScanProcessor
+from app.application.services.verification_scan_processor import (
+    VerificationScanProcessor,
+)
 from app.application.use_cases.get_verification_scan import GetVerificationScanUseCase
-from app.application.use_cases.submit_verification_scan import SubmitVerificationScanUseCase
+from app.application.use_cases.submit_verification_scan import (
+    SubmitVerificationScanUseCase,
+)
 from app.domain.entities.verification_job import VerificationJob
 from app.domain.enums.verification_job_status import VerificationJobStatus
 from app.domain.exceptions.domain_exception import DomainException
 from app.infrastructure.jobs.verification_job_stores import InMemoryVerificationJobStore
 
 _OWNER = str(uuid.uuid4())
-_NOW = lambda: datetime(2026, 7, 23, tzinfo=timezone.utc)
+
+
+def _NOW():
+    return datetime(2026, 7, 23, tzinfo=UTC)
 
 
 class RecordingDispatcher(VerificationJobDispatcher):
@@ -50,7 +59,9 @@ class FakeCreateUseCase:
 def test_submit_queues_saves_and_dispatches() -> None:
     store = InMemoryVerificationJobStore()
     dispatcher = RecordingDispatcher()
-    use_case = SubmitVerificationScanUseCase(store, dispatcher, current_time_provider=_NOW)
+    use_case = SubmitVerificationScanUseCase(
+        store, dispatcher, current_time_provider=_NOW
+    )
 
     job = use_case.execute(owner_user_id=_OWNER, url="https://example.com")
 
@@ -63,7 +74,9 @@ def test_submit_queues_saves_and_dispatches() -> None:
 def test_submit_batch_creates_one_job_per_url() -> None:
     store = InMemoryVerificationJobStore()
     dispatcher = RecordingDispatcher()
-    use_case = SubmitVerificationScanUseCase(store, dispatcher, current_time_provider=_NOW)
+    use_case = SubmitVerificationScanUseCase(
+        store, dispatcher, current_time_provider=_NOW
+    )
 
     jobs = use_case.execute_batch(_OWNER, ["https://a.example", "https://b.example"])
 
@@ -75,7 +88,9 @@ def test_submit_batch_creates_one_job_per_url() -> None:
 def test_get_scan_is_owner_scoped() -> None:
     store = InMemoryVerificationJobStore()
     dispatcher = RecordingDispatcher()
-    submit = SubmitVerificationScanUseCase(store, dispatcher, current_time_provider=_NOW)
+    submit = SubmitVerificationScanUseCase(
+        store, dispatcher, current_time_provider=_NOW
+    )
     job = submit.execute(_OWNER, "https://example.com")
 
     get = GetVerificationScanUseCase(store)
@@ -149,7 +164,9 @@ def test_processor_marks_failed_on_domain_exception() -> None:
     _queued_job(store)
     processor = VerificationScanProcessor(
         job_store=store,
-        create_use_case=FakeCreateUseCase(error=DomainException("Only HTTP and HTTPS URLs are supported.")),
+        create_use_case=FakeCreateUseCase(
+            error=DomainException("Only HTTP and HTTPS URLs are supported.")
+        ),
         current_time_provider=_NOW,
     )
 

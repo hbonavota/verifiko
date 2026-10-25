@@ -10,7 +10,9 @@ from app.application.dto.verification_dto import (
     SignalContributionDTO,
     VerificationDTO,
 )
-from app.application.services.verification_text_localizer import localize_verification_dto
+from app.application.services.verification_text_localizer import (
+    localize_verification_dto,
+)
 
 
 def test_verification_text_localizer_returns_english_response_unchanged() -> None:
@@ -34,7 +36,9 @@ def test_verification_text_localizer_returns_english_response_unchanged() -> Non
     assert localize_verification_dto(dto, locale="en") is dto
 
 
-def test_verification_text_localizer_translates_backend_generated_text_to_spanish() -> None:
+def test_verification_text_localizer_translates_backend_generated_text_to_spanish() -> (
+    None
+):
     signal = AnalysisSignalDTO(
         id="signal-1",
         signal_type="recent_domain_registration",
@@ -59,10 +63,22 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
         message_params={
             "threshold_days": 7,
             "evidence": [
-                {"key": "evidence.observed_domain", "params": {"observed_domain": "fresh-example.test"}},
-                {"key": "evidence.registration_date", "params": {"registration_date": "2026-03-15"}},
-                {"key": "evidence.computed_domain_age_days", "params": {"age_in_days": 2}},
-                {"key": "evidence.lookup_provider", "params": {"provider_name": "stub-rdap"}},
+                {
+                    "key": "evidence.observed_domain",
+                    "params": {"observed_domain": "fresh-example.test"},
+                },
+                {
+                    "key": "evidence.registration_date",
+                    "params": {"registration_date": "2026-03-15"},
+                },
+                {
+                    "key": "evidence.computed_domain_age_days",
+                    "params": {"age_in_days": 2},
+                },
+                {
+                    "key": "evidence.lookup_provider",
+                    "params": {"provider_name": "stub-rdap"},
+                },
             ],
         },
     )
@@ -90,7 +106,9 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
             ),
         ),
         analysis_trace=(stage_trace,),
-        coverage_warnings=("Domain registration intelligence was unavailable for this run.",),
+        coverage_warnings=(
+            "Domain registration intelligence was unavailable for this run.",
+        ),
     )
     assessment = RiskAssessmentDTO(
         score=74.89,
@@ -102,7 +120,9 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
         terminal_override=False,
         terminal_reason=None,
         calculation_version="v1",
-        analysis_warnings=("Domain registration intelligence was unavailable for this run.",),
+        analysis_warnings=(
+            "Domain registration intelligence was unavailable for this run.",
+        ),
         analysis_trace=(stage_trace,),
         explanation=explanation,
         calculated_at="2026-03-27T10:00:00+00:00",
@@ -154,7 +174,9 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
     )
     assert localized.risk_assessment is not None
     assert localized.risk_assessment.summary == assessment.summary
-    assert localized.risk_assessment.top_signals == ("Registro de dominio muy reciente",)
+    assert localized.risk_assessment.top_signals == (
+        "Registro de dominio muy reciente",
+    )
     assert localized.risk_assessment.analysis_warnings == (
         "La inteligencia de registro del dominio no estuvo disponible en esta ejecución.",
     )
@@ -174,7 +196,9 @@ def test_verification_text_localizer_translates_backend_generated_text_to_spanis
     )
 
 
-def test_verification_text_localizer_summarizes_compound_rules_without_internal_ids() -> None:
+def test_verification_text_localizer_summarizes_compound_rules_without_internal_ids() -> (
+    None
+):
     assessment = RiskAssessmentDTO(
         score=98,
         risk_level="SAFE",
@@ -213,7 +237,9 @@ def test_verification_text_localizer_summarizes_compound_rules_without_internal_
             base_score=100.0,
             signal_contributions=(),
             compound_rules_applied=(
-                CompoundRuleDeltaDTO(rule_name="evidence_light_clean_result", delta=2.0),
+                CompoundRuleDeltaDTO(
+                    rule_name="evidence_light_clean_result", delta=2.0
+                ),
             ),
             final_score=98.0,
         ),
@@ -229,7 +255,9 @@ def test_verification_text_localizer_summarizes_compound_rules_without_internal_
     assert localized.risk_assessment.summary == assessment.summary
 
 
-def test_verification_text_localizer_leads_with_primary_concern_for_risky_results() -> None:
+def test_verification_text_localizer_leads_with_primary_concern_for_risky_results() -> (
+    None
+):
     signal = AnalysisSignalDTO(
         id="signal-brand-1",
         signal_type="brand_impersonation",
@@ -311,7 +339,9 @@ def test_verification_text_localizer_leads_with_primary_concern_for_risky_result
     )
 
 
-def test_verification_text_localizer_translates_nested_tls_failure_reason_params() -> None:
+def test_verification_text_localizer_translates_nested_tls_failure_reason_params() -> (
+    None
+):
     signal = AnalysisSignalDTO(
         id="signal-tls-1",
         signal_type="tls_validation_failure",
@@ -336,8 +366,14 @@ def test_verification_text_localizer_translates_nested_tls_failure_reason_params
         message_params={
             "evidence": [
                 {"key": "evidence.observed_url_scheme", "params": {"scheme": "https"}},
-                {"key": "evidence.validated_host", "params": {"host": "portal-example.test"}},
-                {"key": "evidence.validation_provider", "params": {"provider_name": "stub-tls"}},
+                {
+                    "key": "evidence.validated_host",
+                    "params": {"host": "portal-example.test"},
+                },
+                {
+                    "key": "evidence.validation_provider",
+                    "params": {"provider_name": "stub-tls"},
+                },
                 {
                     "key": "evidence.tls_failure_reason",
                     "params": {

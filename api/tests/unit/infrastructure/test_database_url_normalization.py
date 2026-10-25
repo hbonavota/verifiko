@@ -33,7 +33,9 @@ from app.infrastructure.persistence.database import normalize_database_url
         ),
     ],
 )
-def test_normalize_database_url_forces_psycopg_v3_driver(raw: str, expected: str) -> None:
+def test_normalize_database_url_forces_psycopg_v3_driver(
+    raw: str, expected: str
+) -> None:
     assert normalize_database_url(raw) == expected
 
 

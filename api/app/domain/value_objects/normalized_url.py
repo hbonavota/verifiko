@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import ipaddress
+from dataclasses import dataclass
 from urllib.parse import SplitResult, unquote, urlsplit, urlunsplit
 
 from app.domain.exceptions.domain_exception import DomainException
@@ -74,7 +74,9 @@ class NormalizedUrl:
 
         parsed = urlsplit(candidate)
         if parsed.scheme.lower() not in {"http", "https"}:
-            raise DomainException(resolve_message("error.only_http_https_urls_supported"))
+            raise DomainException(
+                resolve_message("error.only_http_https_urls_supported")
+            )
         if not parsed.hostname:
             raise DomainException(resolve_message("error.url_host_required"))
 
@@ -85,10 +87,14 @@ class NormalizedUrl:
         try:
             ascii_host = host.encode("idna").decode("ascii")
         except UnicodeError as exc:
-            raise DomainException(resolve_message("error.invalid_unicode_host_name")) from exc
+            raise DomainException(
+                resolve_message("error.invalid_unicode_host_name")
+            ) from exc
 
         is_ip_address = _is_ip_address(ascii_host)
-        contains_punycode = any(label.startswith("xn--") for label in ascii_host.split("."))
+        contains_punycode = any(
+            label.startswith("xn--") for label in ascii_host.split(".")
+        )
         has_userinfo = bool(parsed.username or parsed.password)
         registered_domain, subdomain = _extract_domain_parts(ascii_host, is_ip_address)
         decoded_path = _decode_component(parsed.path or "/")

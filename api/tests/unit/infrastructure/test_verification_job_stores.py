@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.entities.verification_job import VerificationJob
 from app.domain.enums.verification_job_status import VerificationJobStatus
@@ -26,7 +26,7 @@ def _job(job_id: str = "scan-1", owner: str = "owner-1") -> VerificationJob:
         job_id=job_id,
         owner_user_id=owner,
         url="https://example.com",
-        now=datetime(2026, 7, 23, tzinfo=timezone.utc),
+        now=datetime(2026, 7, 23, tzinfo=UTC),
     )
 
 
@@ -63,7 +63,7 @@ def test_redis_round_trips_all_fields() -> None:
     redis = FakeRedis()
     store = RedisVerificationJobStore(redis, key_prefix="verifiko:scan", ttl_seconds=99)
     job = _job()
-    job.mark_completed("ver-42", now=datetime(2026, 7, 23, 1, tzinfo=timezone.utc))
+    job.mark_completed("ver-42", now=datetime(2026, 7, 23, 1, tzinfo=UTC))
     store.save(job)
 
     assert redis.ttls["verifiko:scan:scan-1"] == 99
@@ -75,7 +75,9 @@ def test_redis_round_trips_all_fields() -> None:
 
 
 def test_redis_owner_scoping_and_missing() -> None:
-    store = RedisVerificationJobStore(FakeRedis(), key_prefix="verifiko:scan", ttl_seconds=99)
+    store = RedisVerificationJobStore(
+        FakeRedis(), key_prefix="verifiko:scan", ttl_seconds=99
+    )
     store.save(_job(owner="owner-1"))
 
     assert store.get_for_owner("scan-1", "owner-1") is not None
@@ -84,13 +86,15 @@ def test_redis_owner_scoping_and_missing() -> None:
 
 
 def test_redis_round_trips_webhook_url() -> None:
-    store = RedisVerificationJobStore(FakeRedis(), key_prefix="verifiko:scan", ttl_seconds=99)
+    store = RedisVerificationJobStore(
+        FakeRedis(), key_prefix="verifiko:scan", ttl_seconds=99
+    )
     job = VerificationJob.queue(
         job_id="scan-1",
         owner_user_id="owner-1",
         url="https://example.com",
         webhook_url="https://hooks.example/cb",
-        now=datetime(2026, 7, 23, tzinfo=timezone.utc),
+        now=datetime(2026, 7, 23, tzinfo=UTC),
     )
     store.save(job)
 

@@ -4,7 +4,11 @@ import re
 from typing import Any
 
 from app.domain.entities.analysis_signal import AnalysisSignal
-from app.domain.i18n.resolver import ResolvedSignalText, resolve_message, resolve_signal_text
+from app.domain.i18n.resolver import (
+    ResolvedSignalText,
+    resolve_message,
+    resolve_signal_text,
+)
 
 _KNOWN_WARNING_KEYS = {
     "HTML content fetch was blocked for a private or special-use target.": (
@@ -39,7 +43,9 @@ _KNOWN_ERROR_KEYS = {
     ),
 }
 
-_VERIFICATION_NOT_FOUND_RE = re.compile(r"^Verification not found: (?P<verification_id>.+)$")
+_VERIFICATION_NOT_FOUND_RE = re.compile(
+    r"^Verification not found: (?P<verification_id>.+)$"
+)
 
 
 def build_localized_signal(

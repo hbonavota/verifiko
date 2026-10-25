@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.enums.user_plan import UserPlan
 from app.domain.value_objects.user_id import UserId
@@ -27,7 +27,7 @@ class User:
         plan: UserPlan = UserPlan.FREE,
         user_id: UserId | None = None,
     ) -> "User":
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return User(
             id=user_id or UserId.new(),
             email=email,
@@ -49,7 +49,7 @@ class User:
         user_id: UserId | None = None,
     ) -> "User":
         """A passwordless account, e.g. created on first magic-link sign-in."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return User(
             id=user_id or UserId.new(),
             email=email,
@@ -71,7 +71,7 @@ class User:
         plan: UserPlan = UserPlan.FREE,
         user_id: UserId | None = None,
     ) -> "User":
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return User(
             id=user_id or UserId.new(),
             email=email,
@@ -96,12 +96,12 @@ class User:
         self.google_subject = google_subject
         self.display_name = display_name
         self.avatar_url = avatar_url
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def set_password_hash(self, password_hash: str) -> None:
         self.password_hash = password_hash
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def assign_plan(self, plan: UserPlan) -> None:
         self.plan = plan
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)

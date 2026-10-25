@@ -4,8 +4,9 @@ import base64
 import binascii
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -27,6 +28,7 @@ DetonationHttpPoster = Callable[[str, dict[str, str], bytes], tuple[int, str]]
 # /function endpoint. It loads the URL, lets scripts run, and returns ONLY the
 # observations our behavioral analyzer needs — never a verdict. The page content
 # is treated as data; nothing it returns is executed on our side.
+# The script is sent verbatim, so its long lines are left as-is (noqa E501 below).
 _DETONATION_SCRIPT = """
 export default async function ({ page, context }) {
   const { url, captureScreenshot } = context;
@@ -90,7 +92,7 @@ export default async function ({ page, context }) {
     type: 'application/json',
   };
 }
-"""
+"""  # noqa: E501
 
 
 @dataclass(slots=True)
@@ -135,15 +137,22 @@ class BrowserlessDetonationClient(HeadlessDetonationPort):
         or the upload fails, the detonation still succeeds with no reference — a
         screenshot is evidence, never a gate.
         """
-        if not screenshot_base64 or isinstance(self.screenshot_store, NullScreenshotStore):
+        if not screenshot_base64 or isinstance(
+            self.screenshot_store, NullScreenshotStore
+        ):
             return None
         try:
             image_bytes = base64.b64decode(screenshot_base64, validate=True)
         except (binascii.Error, ValueError):
-            logger.warning("Detonation screenshot was not valid base64; skipping upload.")
+            logger.warning(
+                "Detonation screenshot was not valid base64; skipping upload."
+            )
             return None
         try:
-            return self.screenshot_store.store(image_bytes, content_type="image/png") or None
+            return (
+                self.screenshot_store.store(image_bytes, content_type="image/png")
+                or None
+            )
         except Exception:  # noqa: BLE001 - storage failure must not fail detonation
             logger.warning("Failed to store detonation screenshot.", exc_info=True)
             return None
@@ -164,7 +173,11 @@ def _parse_detonation_data(body: str) -> dict:
         raise HeadlessDetonationError("Browserless returned a non-JSON body") from exc
 
     # Browserless may wrap the function's return under a "data" key; accept both.
-    data = payload.get("data") if isinstance(payload, dict) and "data" in payload else payload
+    data = (
+        payload.get("data")
+        if isinstance(payload, dict) and "data" in payload
+        else payload
+    )
     if not isinstance(data, dict):
         raise HeadlessDetonationError("Browserless response had no result object")
     return data
@@ -194,7 +207,9 @@ def _build_detonation_result(
     )
 
 
-def build_urllib_detonation_poster(timeout_seconds: float = 30.0) -> DetonationHttpPoster:
+def build_urllib_detonation_poster(
+    timeout_seconds: float = 30.0,
+) -> DetonationHttpPoster:
     def _post(url: str, headers: dict[str, str], body: bytes) -> tuple[int, str]:
         request = Request(url, data=body, headers=headers, method="POST")
         try:

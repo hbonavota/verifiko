@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from ipaddress import IPv4Network, IPv6Network, ip_address
-from typing import Sequence
 
 from fastapi import Request
 

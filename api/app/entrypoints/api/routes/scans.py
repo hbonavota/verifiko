@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 
@@ -6,12 +6,18 @@ from app.application.exceptions.application_exception import (
     VerificationNotFoundError,
     VerificationScanNotFoundError,
 )
-from app.application.queries.get_owned_verification_query import GetOwnedVerificationQuery
-from app.application.services.message_resolver import resolve_message
-from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
 from app.application.ports.screenshot_store import ScreenshotStorePort
+from app.application.queries.get_owned_verification_query import (
+    GetOwnedVerificationQuery,
+)
+from app.application.services.message_resolver import resolve_message
+from app.application.use_cases.get_owned_verification_result import (
+    GetOwnedVerificationResultUseCase,
+)
 from app.application.use_cases.get_verification_scan import GetVerificationScanUseCase
-from app.application.use_cases.submit_verification_scan import SubmitVerificationScanUseCase
+from app.application.use_cases.submit_verification_scan import (
+    SubmitVerificationScanUseCase,
+)
 from app.domain.entities.user import User
 from app.domain.entities.verification_job import VerificationJob
 from app.entrypoints.api.dependencies.auth import get_current_user
@@ -23,10 +29,6 @@ from app.entrypoints.api.dependencies.container import (
     get_screenshot_store,
     get_submit_verification_scan_use_case,
 )
-from app.infrastructure.security.authenticated_utc_day_quota_limiter import (
-    AuthenticatedUtcDayQuotaLimiter,
-)
-from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 from app.entrypoints.api.locale import select_response_locale
 from app.entrypoints.api.presenters.verification_presenter import VerificationPresenter
 from app.entrypoints.api.schemas.scan_schema import (
@@ -36,17 +38,25 @@ from app.entrypoints.api.schemas.scan_schema import (
     SubmitScanBatchRequest,
     SubmitScanRequest,
 )
+from app.infrastructure.security.authenticated_utc_day_quota_limiter import (
+    AuthenticatedUtcDayQuotaLimiter,
+)
+from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
 
-@router.post("", response_model=ScanAcceptedResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "", response_model=ScanAcceptedResponse, status_code=status.HTTP_202_ACCEPTED
+)
 def submit_scan(
     payload: SubmitScanRequest,
     response: Response,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
-    use_case: SubmitVerificationScanUseCase = Depends(get_submit_verification_scan_use_case),
+    use_case: SubmitVerificationScanUseCase = Depends(
+        get_submit_verification_scan_use_case
+    ),
     burst_rate_limiter: FixedWindowRateLimiter = Depends(
         get_create_verification_burst_rate_limiter
     ),
@@ -75,11 +85,17 @@ def submit_scan(
     return _accepted(job)
 
 
-@router.post("/batch", response_model=ScanBatchAcceptedResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/batch",
+    response_model=ScanBatchAcceptedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 def submit_scan_batch(
     payload: SubmitScanBatchRequest,
     current_user: User = Depends(get_current_user),
-    use_case: SubmitVerificationScanUseCase = Depends(get_submit_verification_scan_use_case),
+    use_case: SubmitVerificationScanUseCase = Depends(
+        get_submit_verification_scan_use_case
+    ),
 ) -> ScanBatchAcceptedResponse:
     jobs = use_case.execute_batch(
         owner_user_id=str(current_user.id),
@@ -106,7 +122,9 @@ def get_scan(
     except VerificationScanNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=resolve_message("error.verification_scan_not_found", language=locale),
+            detail=resolve_message(
+                "error.verification_scan_not_found", language=locale
+            ),
         ) from exc
 
     # Mint a short-lived presigned URL from the durable key at read time; it is
@@ -185,9 +203,11 @@ def _rate_limit_headers(quota_status) -> dict[str, str]:
 
 
 def _accepted(job: VerificationJob) -> ScanAcceptedResponse:
-    return ScanAcceptedResponse(scan_id=job.id, status=job.status.value.lower(), url=job.url)
+    return ScanAcceptedResponse(
+        scan_id=job.id, status=job.status.value.lower(), url=job.url
+    )
 
 
 def _iso(value: datetime) -> str:
-    normalized = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-    return normalized.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    normalized = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    return normalized.astimezone(UTC).isoformat().replace("+00:00", "Z")

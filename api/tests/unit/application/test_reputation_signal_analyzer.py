@@ -88,9 +88,13 @@ def test_reputation_signal_analyzer_checks_redirect_destination() -> None:
 
 
 def test_reputation_signal_analyzer_records_warning_when_lookup_fails() -> None:
-    analyzer = ReputationSignalAnalyzer(reputation_lookup=FakeReputationLookup(fail=True))
+    analyzer = ReputationSignalAnalyzer(
+        reputation_lookup=FakeReputationLookup(fail=True)
+    )
 
     result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://openai.com"))
 
     assert result.signals == ()
-    assert result.warnings == ("Blacklist reputation intelligence was unavailable for this run.",)
+    assert result.warnings == (
+        "Blacklist reputation intelligence was unavailable for this run.",
+    )
