@@ -5,7 +5,7 @@ explainable verdict in seconds. The same engine is available to developers throu
 REST API. It is built as a direct alternative to tools like URLert.
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-<!-- CI badge goes here once the test workflow exists. -->
+[![CI](https://github.com/hbonavota/verifiko/actions/workflows/ci.yml/badge.svg)](https://github.com/hbonavota/verifiko/actions/workflows/ci.yml)
 
 **Live:** https://www.verifiko.es · **API:** `https://api.verifiko.es/api/v1` ([reference](docs/API.md))
 
