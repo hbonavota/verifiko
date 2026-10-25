@@ -49,9 +49,11 @@ under `/api` for the existing web client, hidden from the OpenAPI schema.
 ```bash
 python -m pytest -q
 python -m evaluation.run_evaluation
+ruff check . && black --check .
 ```
 
-Both must stay green before a change is merged, and the evaluation must not regress precision.
+All must stay green before a change is merged, and the evaluation must not regress precision.
+Lint and format config live in `pyproject.toml`; `black .` and `ruff check --fix .` apply fixes.
 
 ## Deploy
 
