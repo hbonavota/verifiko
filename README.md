@@ -1,3 +1,5 @@
+**English** · [Español](README.es.md)
+
 # Verifiko
 
 **Is this link safe?** Verifiko detects phishing and malware links. You paste a URL and get an
@@ -53,7 +55,6 @@ explanation, so the verdict can be audited instead of trusted blindly.
 - Computer vision over deep-scan screenshots: brand-logo matching, visual fake-login detection.
 - Usage-based billing (credits), a domain-classification product, a public threat feed, a browser
   extension.
-- CI for the API and web test suites and the eval harness.
 
 ## Architecture
 
@@ -163,8 +164,9 @@ npm run test                             # Vitest + Testing Library (jsdom)
 npm run build                            # type-checks (tsc --noEmit), builds and prerenders
 ```
 
-Unit tests live next to the code they cover (`src/**/*.test.{ts,tsx}`). There is no CI yet; it
-is on the roadmap.
+Unit tests live next to the code they cover (`src/**/*.test.{ts,tsx}`). CI runs lint, tests and
+the build for both the API and the web app on every pull request (see the badge above), with the
+detection evaluation harness as a regression gate.
 
 The web app is also tested by hand in a real browser before and after each change, across
 viewports, both languages and the PWA. The process is described in [docs/QA.md](docs/QA.md).

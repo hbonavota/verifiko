@@ -79,7 +79,6 @@ password (Argon2), quotas/rate-limits. Also shipped:
 - **Phase C** — computer vision over screenshots (brand-logo match, visual fake-login).
 - **Business layer (later)** — usage-based billing (credits, per-request price), domain
   classification product, programmatic SEO (`/domains/*`, threat feed), Chrome extension.
-- A CI workflow for the API and web test suites and the eval harness.
 
 ## Conventions worth knowing
 
