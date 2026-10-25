@@ -158,6 +158,9 @@ positive rate 0.00**. Changes must not regress precision.
 Frontend: `cd web && npm run build` type-checks (`tsc --noEmit`), builds and prerenders. There
 are no frontend unit tests or CI yet. Both are on the roadmap.
 
+The web app is also tested by hand in a real browser before and after each change, across
+viewports, both languages and the PWA. The process is described in [docs/QA.md](docs/QA.md).
+
 ## Spec-driven changes
 
 Behavior changes go through [OpenSpec](https://github.com/Fission-AI/OpenSpec). Each one starts as

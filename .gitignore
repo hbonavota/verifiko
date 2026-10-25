@@ -22,8 +22,10 @@ web/dist-ssr/
 .env
 *.env.local
 
-# Local QA reports (not part of the repo)
+# QA working notes — internal, not for the public repo
 QA-informe-fase*.md
+/QA-informe-*.md
+/QA-login-*.md
 
 # Local scratch (Claude Cowork)
 Claude outputs/
