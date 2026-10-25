@@ -3988,8 +3988,26 @@
   position: relative;
 }
 
+/* Pairs with .landing__start: same font size and vertical padding, so both pills
+   come out the same height; a faint cyan edge keeps it secondary but visible. */
 .install-app__button {
+  min-height: 54px;
+  padding-inline: 1.4rem;
+  font-size: 1.02rem;
   white-space: nowrap;
+  border-color: rgba(0, 191, 255, 0.22);
+  background: rgba(17, 28, 54, 0.92);
+}
+
+.install-app__button:hover {
+  border-color: rgba(0, 191, 255, 0.42);
+  background: rgba(20, 34, 64, 0.96);
+}
+
+/* Without this the icon sits in a taller line box, above the label's center. */
+.install-app__button .button__icon {
+  display: inline-flex;
+  color: var(--color-primary);
 }
 
 /* iOS has no install prompt: the steps open over the page, never in the flow. */
@@ -4003,7 +4021,7 @@
   gap: 0.6rem;
   width: min(18rem, calc(100vw - 2rem));
   padding: 0.75rem 0.9rem;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(0, 191, 255, 0.18);
   border-radius: var(--radius-sm);
   background: rgba(13, 20, 38, 0.97);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
@@ -4067,13 +4085,26 @@
     grid-template-columns: 1fr;
   }
 
+  /* Labels never split; on the narrowest phones "Install app" drops to its own line
+     instead of squeezing "Start" into two lines or overflowing the gutter. */
   .landing__cta-actions {
     align-self: stretch;
+    flex-wrap: wrap;
   }
 
   /* Full width on its own; shares the row when "Install app" appears. */
   .landing__start {
     flex: 1 1 auto;
+    padding-inline: 1.3rem;
+    white-space: nowrap;
+  }
+
+  .install-app {
+    flex: 0 0 auto;
+  }
+
+  .install-app__button {
+    padding-inline: 1.15rem;
   }
 }
 
