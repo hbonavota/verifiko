@@ -19,15 +19,14 @@ interface VerificationProgressProps {
  */
 export function VerificationProgress({ deep = false }: VerificationProgressProps) {
   const { copy } = useI18n();
-  const stages: readonly string[] = deep
-    ? copy.home.deepProgressStages
-    : copy.home.progressStages;
+  const stages: readonly string[] = deep ? copy.home.deepProgressStages : copy.home.progressStages;
   const hint = deep ? copy.home.deepProgressTimeHint : copy.home.progressTimeHint;
   // Deep analysis loads the page live, so give each stage more breathing room.
   const stepMs = deep ? 3200 : 620;
   const [completed, setCompleted] = useState(0);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- restarts the stage sequence when the analysis mode changes
     setCompleted(0);
     const timers: number[] = [];
     // Tick each stage (except the last) to "done" in sequence; the last one

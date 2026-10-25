@@ -26,6 +26,7 @@ export function CookieBanner({ reopenKey = 0 }: CookieBannerProps) {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads stored consent after mount so the SSR markup matches the first render
     setIsVisible(true);
   }, []);
 

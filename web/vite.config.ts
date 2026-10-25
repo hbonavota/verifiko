@@ -12,10 +12,26 @@ function appleWebAppTags(): Plugin {
     name: "verifiko-apple-web-app-tags",
     transformIndexHtml() {
       return [
-        { tag: "link", attrs: { rel: "apple-touch-icon", href: "/apple-touch-icon-180x180.png" }, injectTo: "head" },
-        { tag: "meta", attrs: { name: "apple-mobile-web-app-capable", content: "yes" }, injectTo: "head" },
-        { tag: "meta", attrs: { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" }, injectTo: "head" },
-        { tag: "meta", attrs: { name: "apple-mobile-web-app-title", content: "Verifiko" }, injectTo: "head" },
+        {
+          tag: "link",
+          attrs: { rel: "apple-touch-icon", href: "/apple-touch-icon-180x180.png" },
+          injectTo: "head",
+        },
+        {
+          tag: "meta",
+          attrs: { name: "apple-mobile-web-app-capable", content: "yes" },
+          injectTo: "head",
+        },
+        {
+          tag: "meta",
+          attrs: { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+          injectTo: "head",
+        },
+        {
+          tag: "meta",
+          attrs: { name: "apple-mobile-web-app-title", content: "Verifiko" },
+          injectTo: "head",
+        },
       ];
     },
   };

@@ -92,7 +92,9 @@ export function Topbar() {
                 </Button>
                 {currentUser.plan === "FREE" ? (
                   <Button
-                    className={hasSubmittedUpgradeIntent ? "topbar-account__upgrade-button" : undefined}
+                    className={
+                      hasSubmittedUpgradeIntent ? "topbar-account__upgrade-button" : undefined
+                    }
                     onClick={() => {
                       trackUpgradeIntentClicked({
                         sourcePath: location.pathname,
@@ -171,10 +173,7 @@ export function Topbar() {
         onClose={() => setIsUpgradeModalOpen(false)}
         source="topbar"
       />
-      <EmailAuthModal
-        open={isEmailAuthModalOpen}
-        onClose={() => setIsEmailAuthModalOpen(false)}
-      />
+      <EmailAuthModal open={isEmailAuthModalOpen} onClose={() => setIsEmailAuthModalOpen(false)} />
     </>
   );
 }

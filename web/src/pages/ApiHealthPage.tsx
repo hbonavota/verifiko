@@ -20,10 +20,7 @@ export function ApiHealthPage() {
   const { copy, language, locale } = useI18n();
   const [healthState, setHealthState] = useState<HealthState>({ status: "idle" });
 
-  useDocumentMeta(
-    copy.health.metaTitle,
-    copy.health.metaDescription,
-  );
+  useDocumentMeta(copy.health.metaTitle, copy.health.metaDescription);
 
   async function runHealthCheck() {
     setHealthState({ status: "loading" });
@@ -40,6 +37,7 @@ export function ApiHealthPage() {
   // Check once on mount. The language only changes how the result is worded
   // (localized at render), so it must not trigger another request; Refresh does.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only health check; the request sets its own loading state
     void runHealthCheck();
   }, []);
 
@@ -81,7 +79,8 @@ export function ApiHealthPage() {
                 : copy.health.detailUnexpected}
             </p>
             <p className="api-health__timestamp">
-              {copy.common.lastChecked} {new Date(healthState.payload.checkedAt).toLocaleString(locale)}
+              {copy.common.lastChecked}{" "}
+              {new Date(healthState.payload.checkedAt).toLocaleString(locale)}
             </p>
           </div>
         ) : null}

@@ -7,10 +7,7 @@ import { PageShell } from "../layouts/PageShell";
 export function NotFoundPage() {
   const { copy } = useI18n();
 
-  useDocumentMeta(
-    copy.notFound.metaTitle,
-    copy.notFound.metaDescription,
-  );
+  useDocumentMeta(copy.notFound.metaTitle, copy.notFound.metaDescription);
   useNoIndex();
 
   return (

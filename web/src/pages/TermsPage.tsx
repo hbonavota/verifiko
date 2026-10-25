@@ -8,10 +8,7 @@ import { PageShell } from "../layouts/PageShell";
 export function TermsPage() {
   const { copy } = useI18n();
 
-  useDocumentMeta(
-    copy.termsPage.metaTitle,
-    copy.termsPage.metaDescription,
-  );
+  useDocumentMeta(copy.termsPage.metaTitle, copy.termsPage.metaDescription);
 
   return (
     <PageShell>

@@ -15,7 +15,9 @@ export function LanguageSwitcher({ className }: LanguageSwitcherProps) {
       {LANGUAGES.map((option) => (
         <button
           key={option}
-          aria-label={option === "en" ? copy.languageSwitcher.english : copy.languageSwitcher.spanish}
+          aria-label={
+            option === "en" ? copy.languageSwitcher.english : copy.languageSwitcher.spanish
+          }
           className={
             option === language
               ? "language-switcher__button language-switcher__button--active"

@@ -70,10 +70,17 @@ export function GoogleSignInButton({
   const [showPopupNotice, setShowPopupNotice] = useState(false);
   const busyState = busy || isAuthenticating;
   const variantClassName = variant === "quota" ? "google-sign-in--quota" : "";
-  const rootClassName = ["google-sign-in", variantClassName, busyState ? "google-sign-in--busy" : "", className]
+  const rootClassName = [
+    "google-sign-in",
+    variantClassName,
+    busyState ? "google-sign-in--busy" : "",
+    className,
+  ]
     .filter(Boolean)
     .join(" ");
-  const configurationErrorMessage = !GOOGLE_CLIENT_ID ? copy.topbar.googleSignInNotConfigured : null;
+  const configurationErrorMessage = !GOOGLE_CLIENT_ID
+    ? copy.topbar.googleSignInNotConfigured
+    : null;
   const errorMessage = configurationErrorMessage ?? runtimeErrorMessage;
 
   // Keep the credential-handling logic in a ref. Updating it (when auth or
@@ -183,8 +190,7 @@ export function GoogleSignInButton({
 
       // This button becomes the active credential target while it is mounted; it
       // routes to the ref, which always holds the latest handler.
-      activeGoogleCredentialHandler = (credential) =>
-        credentialHandlerRef.current?.(credential);
+      activeGoogleCredentialHandler = (credential) => credentialHandlerRef.current?.(credential);
       ensureGoogleIdentityInitialized();
       host.replaceChildren();
       window.google.accounts.id.renderButton(host, {
@@ -263,7 +269,9 @@ function ensureGoogleIdentityScript(): Promise<void> {
 
   if (!googleIdentityScriptPromise) {
     googleIdentityScriptPromise = new Promise<void>((resolve, reject) => {
-      const existingScript = document.querySelector<HTMLScriptElement>(GOOGLE_IDENTITY_SCRIPT_SELECTOR);
+      const existingScript = document.querySelector<HTMLScriptElement>(
+        GOOGLE_IDENTITY_SCRIPT_SELECTOR,
+      );
       const script = existingScript ?? document.createElement("script");
 
       if (!existingScript) {

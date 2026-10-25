@@ -8,10 +8,7 @@ import { PageShell } from "../layouts/PageShell";
 export function ContactPage() {
   const { copy } = useI18n();
 
-  useDocumentMeta(
-    copy.contactPage.metaTitle,
-    copy.contactPage.metaDescription,
-  );
+  useDocumentMeta(copy.contactPage.metaTitle, copy.contactPage.metaDescription);
 
   return (
     <PageShell>

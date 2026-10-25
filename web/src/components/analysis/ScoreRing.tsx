@@ -51,7 +51,6 @@ export function ScoreRing({
   size = "default",
   state = "ready",
   valueLabel,
-  riskLevel,
 }: ScoreRingProps) {
   const clampedScore = Math.max(0, Math.min(100, score));
   const isReadyNumeric = state === "ready" && valueLabel === undefined;
@@ -61,6 +60,7 @@ export function ScoreRing({
   const [animatedScore, setAnimatedScore] = useState(isReadyNumeric ? 0 : clampedScore);
   useEffect(() => {
     if (!isReadyNumeric) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- drives the count-up animation; moving it out of the effect changes render timing
       setAnimatedScore(clampedScore);
       return;
     }

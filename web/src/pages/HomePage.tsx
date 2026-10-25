@@ -30,13 +30,10 @@ export function HomePage() {
   const { authReady, currentUser, quotaReady, quotaStatus } = useAuth();
   const location = useLocation();
 
-  useDocumentMeta(
-    copy.home.metaTitle,
-    copy.home.metaDescription,
-  );
+  useDocumentMeta(copy.home.metaTitle, copy.home.metaDescription);
 
-  const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [, setVerifications] = useState<VerificationSummary[]>([]);
+  const [, setIsHistoryLoading] = useState(false);
   const [analysisState, setAnalysisState] = useState<"idle" | "submitting" | "error">("idle");
   const [deepAnalysisActive, setDeepAnalysisActive] = useState(false);
   const [inlineResult, setInlineResult] = useState<VerificationSummary | null>(null);
@@ -69,7 +66,9 @@ export function HomePage() {
           return;
         }
 
-        setVerifications(payload.map((verification) => adaptApiVerification(verification, language)));
+        setVerifications(
+          payload.map((verification) => adaptApiVerification(verification, language)),
+        );
       } catch {
         if (!isMounted) {
           return;
@@ -147,9 +146,7 @@ export function HomePage() {
 
   return (
     <PageShell>
-      <section
-        className={`analysis-hero${showActivityPanel ? " analysis-hero--active" : ""}`}
-      >
+      <section className={`analysis-hero${showActivityPanel ? " analysis-hero--active" : ""}`}>
         <div className="analysis-hero__content" id="analyze-url">
           <SectionTitle
             eyebrow={copy.home.eyebrow}

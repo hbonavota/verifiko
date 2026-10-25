@@ -121,7 +121,7 @@ export function trackPageView({ pagePath, pageTitle, language }: PageViewParams)
 
 export function trackNamedPageView({ eventName, ...context }: NamedPageViewParams): void {
   const trackingKey = `${eventName}|${context.sourcePath}|${context.language}`;
-  
+
   if (trackedNamedPageViewKeys.has(trackingKey)) {
     return;
   }
@@ -173,40 +173,28 @@ export function trackAnalysisCompleted({
   });
 }
 
-export function trackAnalysisFailed({
-  errorType,
-  ...context
-}: AnalysisFailedParams): void {
+export function trackAnalysisFailed({ errorType, ...context }: AnalysisFailedParams): void {
   trackEvent("analysis_failed", {
     ...buildAnalyticsContext(context),
     error_type: errorType,
   });
 }
 
-export function trackQuotaPromptShown({
-  promptType,
-  ...context
-}: QuotaPromptShownParams): void {
+export function trackQuotaPromptShown({ promptType, ...context }: QuotaPromptShownParams): void {
   trackEvent("quota_prompt_shown", {
     ...buildAnalyticsContext(context),
     prompt_type: promptType,
   });
 }
 
-export function trackQuotaBlocked({
-  retryAfterSeconds,
-  ...context
-}: QuotaBlockedParams): void {
+export function trackQuotaBlocked({ retryAfterSeconds, ...context }: QuotaBlockedParams): void {
   trackEvent("quota_blocked", {
     ...buildAnalyticsContext(context),
     retry_after_seconds: retryAfterSeconds ?? 0,
   });
 }
 
-export function trackAuthEntryClicked({
-  entryPoint,
-  ...context
-}: AuthEntryClickedParams): void {
+export function trackAuthEntryClicked({ entryPoint, ...context }: AuthEntryClickedParams): void {
   trackEvent("auth_entry_clicked", {
     ...buildAnalyticsContext(context),
     entry_point: entryPoint,

@@ -16,7 +16,8 @@ const STORAGE_KEY = "verifiko-language";
 const translations = {
   en: {
     document: {
-      defaultDescription: "Verifiko verifies links with clear risk scoring and evidence-led results.",
+      defaultDescription:
+        "Verifiko verifies links with clear risk scoring and evidence-led results.",
     },
     navigation: {
       verify: "Verify",
@@ -184,7 +185,8 @@ const translations = {
         clipboardBlocked: "Clipboard access was blocked.",
         enterUrl: "Enter a URL to verify.",
         invalidUrl: "That doesn't look like a valid link. Paste a full URL (e.g. example.com).",
-        analysisFailed: "We couldn't finish analyzing that link — it may be unreachable. Try again or check the URL.",
+        analysisFailed:
+          "We couldn't finish analyzing that link — it may be unreachable. Try again or check the URL.",
         verificationFailed: "Verification failed.",
       },
       quota: {
@@ -198,8 +200,7 @@ const translations = {
         retrying: "Signing you in and retrying this verification...",
         freeEyebrow: "Free plan",
         freeTitle: "You've reached today's Free plan limit",
-        freeDescription:
-          "PRO gives you 200 analyses per UTC day for heavier verification work.",
+        freeDescription: "PRO gives you 200 analyses per UTC day for heavier verification work.",
         freeNote: "Join the waitlist to hear when PRO access opens.",
         freeSavedNote: "Your PRO interest is already saved on this device.",
         freeValueCue: "PRO · 200/day",
@@ -294,8 +295,7 @@ const translations = {
       emailSubmitCta: "Email me a sign-in link",
       emailSubmitting: "Sending link…",
       linkSentTitle: "Check your email",
-      linkSentCopy:
-        "If that email is valid, we've sent a sign-in link. It expires in 15 minutes.",
+      linkSentCopy: "If that email is valid, we've sent a sign-in link. It expires in 15 minutes.",
       resend: "Send another link",
       magicLinkComingSoon: "Sign in with Google or an email link to continue.",
       errors: {
@@ -328,7 +328,8 @@ const translations = {
       description: "Get a clear security verdict.",
       startVerification: "Start verification",
       authPromptTitle: "Save results and keep going",
-      authPromptCopy: "Sign in or create an account to keep your verification history and unlock more daily analyses.",
+      authPromptCopy:
+        "Sign in or create an account to keep your verification history and unlock more daily analyses.",
       latestResult: "Latest result",
       result: "Result",
       readyToVerify: "Ready to verify",
@@ -414,7 +415,8 @@ const translations = {
       decisionTraceAppearsLater: "The decision trace appears after the first result is available.",
       caseRecommendation: "Case recommendation",
       suggestedNextAction: "Suggested next action",
-      recommendationAppearsLater: "A recommended action appears after the first result is available.",
+      recommendationAppearsLater:
+        "A recommended action appears after the first result is available.",
       recentAnalyses: "Recent analyses",
       latestResults: "Latest results",
       suggestedNextStep: "Suggested next step",
@@ -471,7 +473,8 @@ const translations = {
     },
     detail: {
       metaTitleFallback: "Verification Detail",
-      metaDescriptionLoaded: "Review the verification result for this target, including score, signals, and next action.",
+      metaDescriptionLoaded:
+        "Review the verification result for this target, including score, signals, and next action.",
       metaDescriptionFallback: "Review score, signals, and next action for a verification result.",
       eyebrow: "Verification Detail",
       title: "Verification result",
@@ -486,9 +489,11 @@ const translations = {
         "This verification is not available in your saved history. It may belong to another account or may no longer be available.",
       backToHistory: "Back to history",
       savedToAccount: "Saved to your account",
-      savedToAccountDescription: "This verification stays available from Review in your private history.",
+      savedToAccountDescription:
+        "This verification stays available from Review in your private history.",
       savedNow: "Saved just now",
-      savedNowDescription: "This result was added to your account and is now part of your private history.",
+      savedNowDescription:
+        "This result was added to your account and is now part of your private history.",
       openedFromHistory: "Opened from your history",
       openedFromHistoryDescription:
         "You're viewing a saved verification from your private history.",
@@ -498,7 +503,8 @@ const translations = {
       copiedAction: "Copied",
       copyLinkUnavailable: "Copying the verification link is not available in this browser.",
       shareAction: "Share",
-      shareFallbackCopied: "Share is not available here, so the verification link was copied instead.",
+      shareFallbackCopied:
+        "Share is not available here, so the verification link was copied instead.",
       target: "Target",
       result: "Result",
       screenshot: {
@@ -547,7 +553,8 @@ const translations = {
       assessmentNote: "Assessment note",
       scoreInterpretation: "Score interpretation",
       disclaimerTitle: "A clean result is still not a guarantee",
-      disclaimerDescription: "This verification reflects the checks completed at one moment in time.",
+      disclaimerDescription:
+        "This verification reflects the checks completed at one moment in time.",
       disclaimerCopy:
         "A stronger score means the completed checks did not retain major warning signals. It does not prove ownership, future safety, or that broader context is complete.",
       disclaimerFloat: "Analysis has limits. Learn more",
@@ -561,8 +568,10 @@ const translations = {
         low: "No strong warning signal was retained in this result.",
       },
       scoreGuide: {
-        highDanger: "This score falls in the highest-danger band and should not be treated as safe.",
-        strongCaution: "This score is in a dangerous range — review it carefully before trusting the link.",
+        highDanger:
+          "This score falls in the highest-danger band and should not be treated as safe.",
+        strongCaution:
+          "This score is in a dangerous range — review it carefully before trusting the link.",
         caution: "This score suggests caution. Check the flagged signals before you rely on it.",
         safe: "We didn't find strong signs of risk in this check — but no result is a full guarantee.",
         legend: [
@@ -575,23 +584,19 @@ const translations = {
       modalPoints: [
         {
           title: "This result is a technical snapshot",
-          copy:
-            "The score summarizes what the engine retained during this verification run. It does not represent the full history of the domain or every possible risk.",
+          copy: "The score summarizes what the engine retained during this verification run. It does not represent the full history of the domain or every possible risk.",
         },
         {
           title: "Some threats change behavior over time",
-          copy:
-            "A link can look clean during one check and behave differently later because the destination, payload, or infrastructure changes.",
+          copy: "A link can look clean during one check and behave differently later because the destination, payload, or infrastructure changes.",
         },
         {
           title: "Dynamic delivery can hide risk",
-          copy:
-            "Some pages use cloaking, conditional redirects, or dynamic content, so they may present differently to different users or at different times.",
+          copy: "Some pages use cloaking, conditional redirects, or dynamic content, so they may present differently to different users or at different times.",
         },
         {
           title: "Use the score to support judgment, not replace it",
-          copy:
-            "The most reliable interpretation comes from the score, retained signals, and confidence limits taken together with normal human review.",
+          copy: "The most reliable interpretation comes from the score, retained signals, and confidence limits taken together with normal human review.",
         },
       ],
     },
@@ -707,7 +712,8 @@ const translations = {
   },
   es: {
     document: {
-      defaultDescription: "Verifiko verifica enlaces con puntuación de riesgo clara y resultados guiados por evidencia.",
+      defaultDescription:
+        "Verifiko verifica enlaces con puntuación de riesgo clara y resultados guiados por evidencia.",
     },
     navigation: {
       verify: "Verificar",
@@ -763,7 +769,8 @@ const translations = {
         freeTitle: "Plan Free · te quedan {remaining} de {dailyLimit} análisis hoy",
         freeDetail: "PRO desbloquea 200 análisis al día para flujos de revisión más intensos.",
         freeBlockedTitle: "Has alcanzado el límite de hoy del plan Free",
-        freeBlockedDetail: "PRO desbloquea 200 análisis al día. El acceso a la mejora llegará pronto.",
+        freeBlockedDetail:
+          "PRO desbloquea 200 análisis al día. El acceso a la mejora llegará pronto.",
         proTitle: "Plan PRO · te quedan {remaining} de {dailyLimit} análisis hoy",
         proDetail: "La capacidad diaria más alta está activada para verificaciones repetidas.",
         proBlockedTitle: "Has alcanzado el límite de hoy del plan PRO",
@@ -876,7 +883,8 @@ const translations = {
         clipboardBlocked: "El acceso al portapapeles fue bloqueado.",
         enterUrl: "Introduce una URL para verificar.",
         invalidUrl: "Eso no parece un enlace válido. Pega una URL completa (ej.: ejemplo.com).",
-        analysisFailed: "No pudimos terminar de analizar ese enlace — puede estar inaccesible. Prueba de nuevo o revisa la URL.",
+        analysisFailed:
+          "No pudimos terminar de analizar ese enlace — puede estar inaccesible. Prueba de nuevo o revisa la URL.",
         verificationFailed: "La verificación falló.",
       },
       quota: {
@@ -885,7 +893,8 @@ const translations = {
         description:
           "Inicia sesión para continuar verificando. Tus resultados se guardarán y podrás acceder a ellos cuando quieras.",
         resetAtMidnight: "El acceso gratuito se restablece a medianoche UTC.",
-        resetCountdown: "El acceso gratuito se restablece en aproximadamente {timeRemaining}, a medianoche UTC.",
+        resetCountdown:
+          "El acceso gratuito se restablece en aproximadamente {timeRemaining}, a medianoche UTC.",
         cta: "Continuar con Google",
         retrying: "Iniciando sesión y reintentando esta verificación...",
         freeEyebrow: "Plan Free",
@@ -943,7 +952,8 @@ const translations = {
       default: {
         eyebrow: "Lista de espera PRO",
         title: "Mejorar a PRO",
-        description: "El acceso a PRO llegará pronto. Únete a la lista de espera para guardar tu interés.",
+        description:
+          "El acceso a PRO llegará pronto. Únete a la lista de espera para guardar tu interés.",
         intro: "PRO se está preparando para trabajos de verificación más exigentes:",
         points: [
           "200 análisis al día UTC",
@@ -1061,7 +1071,8 @@ const translations = {
     },
     dashboard: {
       metaTitle: "Revisar resultados",
-      metaDescription: "Revisa resultados recientes de Verifiko y abre el registro completo de verificación.",
+      metaDescription:
+        "Revisa resultados recientes de Verifiko y abre el registro completo de verificación.",
       eyebrow: "Revisión",
       title: "Revisar resultados",
       description: "Abre un resultado o verifica otro enlace.",
@@ -1101,18 +1112,22 @@ const translations = {
       observed: "Observado",
       sources: "Fuentes",
       unresolved: "No resuelto",
-      evidenceAppearsLater: "La evidencia aparece después de que el primer resultado esté disponible.",
+      evidenceAppearsLater:
+        "La evidencia aparece después de que el primer resultado esté disponible.",
       decisionTrace: "Traza de decisión",
       scoreGenerationSequence: "Secuencia de generación de la puntuación",
-      decisionTraceAppearsLater: "La traza de decisión aparece después de que el primer resultado esté disponible.",
+      decisionTraceAppearsLater:
+        "La traza de decisión aparece después de que el primer resultado esté disponible.",
       caseRecommendation: "Recomendación del caso",
       suggestedNextAction: "Siguiente acción sugerida",
-      recommendationAppearsLater: "La acción recomendada aparece después de que el primer resultado esté disponible.",
+      recommendationAppearsLater:
+        "La acción recomendada aparece después de que el primer resultado esté disponible.",
       recentAnalyses: "Análisis recientes",
       latestResults: "Últimos resultados",
       suggestedNextStep: "Siguiente paso sugerido",
       whatToDoNext: "Qué hacer ahora",
-      nextStepAppearsLater: "El siguiente paso aparece después de que el primer resultado esté disponible.",
+      nextStepAppearsLater:
+        "El siguiente paso aparece después de que el primer resultado esté disponible.",
       signalName: "Nombre de la señal",
       category: "Categoría",
       severity: "Severidad",
@@ -1142,7 +1157,8 @@ const translations = {
       openAction: "Abrir",
       copyLinkAction: "Copiar enlace",
       copiedAction: "Copiado",
-      copyLinkUnavailable: "Copiar el enlace del resultado guardado no está disponible en este navegador.",
+      copyLinkUnavailable:
+        "Copiar el enlace del resultado guardado no está disponible en este navegador.",
       exportTextAction: "Exportar resumen",
       exportTextCopied: "Resumen de la verificación copiado.",
       rerunAction: "Volver a verificar",
@@ -1150,9 +1166,11 @@ const translations = {
       rerunFailed: "No se pudo volver a ejecutar la verificación ahora mismo.",
       shareAction: "Compartir",
       sharedAction: "Compartido",
-      shareFallbackCopied: "Compartir no está disponible aquí, así que se copió el enlace del resultado.",
+      shareFallbackCopied:
+        "Compartir no está disponible aquí, así que se copió el enlace del resultado.",
       noVerificationsYetTitle: "Todavía no hay verificaciones",
-      noVerificationsYetCopy: "Verifica tu primer enlace para empezar a construir tu historial privado.",
+      noVerificationsYetCopy:
+        "Verifica tu primer enlace para empezar a construir tu historial privado.",
       privateLibraryEyebrow: "Biblioteca privada",
       privateLibraryTitle: "Tus verificaciones guardadas",
       privateLibraryDescription:
@@ -1164,8 +1182,10 @@ const translations = {
     },
     detail: {
       metaTitleFallback: "Detalle de verificación",
-      metaDescriptionLoaded: "Revisa el resultado de la verificación de este objetivo, incluida la puntuación, las señales y la siguiente acción.",
-      metaDescriptionFallback: "Revisa la puntuación, las señales y la siguiente acción de un resultado de verificación.",
+      metaDescriptionLoaded:
+        "Revisa el resultado de la verificación de este objetivo, incluida la puntuación, las señales y la siguiente acción.",
+      metaDescriptionFallback:
+        "Revisa la puntuación, las señales y la siguiente acción de un resultado de verificación.",
       eyebrow: "Detalle de verificación",
       title: "Resultado de la verificación",
       summaryCopy: "Primero el veredicto. Debajo, la evidencia.",
@@ -1179,9 +1199,11 @@ const translations = {
         "Esta verificación no está disponible en tu historial guardado. Puede pertenecer a otra cuenta o ya no estar disponible.",
       backToHistory: "Volver al historial",
       savedToAccount: "Guardado en tu cuenta",
-      savedToAccountDescription: "Esta verificación queda disponible desde Revisar en tu historial privado.",
+      savedToAccountDescription:
+        "Esta verificación queda disponible desde Revisar en tu historial privado.",
       savedNow: "Guardado ahora",
-      savedNowDescription: "Este resultado ya se ha añadido a tu cuenta y forma parte de tu historial privado.",
+      savedNowDescription:
+        "Este resultado ya se ha añadido a tu cuenta y forma parte de tu historial privado.",
       openedFromHistory: "Abierto desde tu historial",
       openedFromHistoryDescription:
         "Estás viendo una verificación guardada desde tu historial privado.",
@@ -1189,15 +1211,18 @@ const translations = {
       exportTextCopied: "Resumen de la verificación copiado.",
       copyLinkAction: "Copiar enlace",
       copiedAction: "Copiado",
-      copyLinkUnavailable: "Copiar el enlace de la verificación no está disponible en este navegador.",
+      copyLinkUnavailable:
+        "Copiar el enlace de la verificación no está disponible en este navegador.",
       shareAction: "Compartir",
-      shareFallbackCopied: "Compartir no está disponible aquí, así que se copió el enlace de la verificación.",
+      shareFallbackCopied:
+        "Compartir no está disponible aquí, así que se copió el enlace de la verificación.",
       target: "Objetivo",
       result: "Resultado",
       screenshot: {
         eyebrow: "Vista previa",
         title: "Captura del sitio",
-        description: "Lo que la página mostró cuando la abrimos por ti en un navegador aislado y seguro.",
+        description:
+          "Lo que la página mostró cuando la abrimos por ti en un navegador aislado y seguro.",
         caption: "Capturada sin que tengas que entrar al sitio",
         alt: "Captura tomada al abrir la página analizada",
         viewAction: "Ver captura",
@@ -1240,7 +1265,8 @@ const translations = {
       assessmentNote: "Nota de evaluación",
       scoreInterpretation: "Interpretación de la puntuación",
       disclaimerTitle: "Un resultado limpio sigue sin ser una garantía",
-      disclaimerDescription: "Esta verificación refleja las comprobaciones completadas en un momento concreto.",
+      disclaimerDescription:
+        "Esta verificación refleja las comprobaciones completadas en un momento concreto.",
       disclaimerCopy:
         "Una puntuación más alta significa que las comprobaciones completadas no retuvieron señales de alerta importantes. No demuestra propiedad, seguridad futura ni que el contexto más amplio esté completo.",
       disclaimerFloat: "El análisis tiene límites. Más información",
@@ -1254,9 +1280,12 @@ const translations = {
         low: "No se retuvo ninguna señal de alerta fuerte en este resultado.",
       },
       scoreGuide: {
-        highDanger: "Esta puntuación cae en la banda de mayor peligro y no debe tratarse como segura.",
-        strongCaution: "Esta puntuación está en una banda peligrosa: conviene revisarla con cuidado antes de confiar en el enlace.",
-        caution: "Esta puntuación sugiere cautela. Conviene revisar las señales detectadas antes de confiar.",
+        highDanger:
+          "Esta puntuación cae en la banda de mayor peligro y no debe tratarse como segura.",
+        strongCaution:
+          "Esta puntuación está en una banda peligrosa: conviene revisarla con cuidado antes de confiar en el enlace.",
+        caution:
+          "Esta puntuación sugiere cautela. Conviene revisar las señales detectadas antes de confiar.",
         safe: "No encontramos señales fuertes de riesgo en este análisis, pero ningún resultado es una garantía total.",
         legend: [
           { label: "Riesgo alto", range: "0-40", tone: "danger" },
@@ -1268,23 +1297,19 @@ const translations = {
       modalPoints: [
         {
           title: "Este resultado es una instantánea técnica",
-          copy:
-            "La puntuación resume lo que el motor retuvo durante esta ejecución de verificación. No representa el historial completo del dominio ni todos los riesgos posibles.",
+          copy: "La puntuación resume lo que el motor retuvo durante esta ejecución de verificación. No representa el historial completo del dominio ni todos los riesgos posibles.",
         },
         {
           title: "Algunas amenazas cambian de comportamiento con el tiempo",
-          copy:
-            "Un enlace puede parecer limpio en una comprobación y comportarse de forma distinta más tarde porque cambia el destino, la carga o la infraestructura.",
+          copy: "Un enlace puede parecer limpio en una comprobación y comportarse de forma distinta más tarde porque cambia el destino, la carga o la infraestructura.",
         },
         {
           title: "La entrega dinámica puede ocultar riesgo",
-          copy:
-            "Algunas páginas usan cloaking, redirecciones condicionales o contenido dinámico, por lo que pueden mostrarse de forma distinta a usuarios diferentes o en momentos distintos.",
+          copy: "Algunas páginas usan cloaking, redirecciones condicionales o contenido dinámico, por lo que pueden mostrarse de forma distinta a usuarios diferentes o en momentos distintos.",
         },
         {
           title: "Usa la puntuación para apoyar tu criterio, no para sustituirlo",
-          copy:
-            "La interpretación más fiable surge de la puntuación, las señales retenidas y los límites de confianza junto con una revisión humana normal.",
+          copy: "La interpretación más fiable surge de la puntuación, las señales retenidas y los límites de confianza junto con una revisión humana normal.",
         },
       ],
     },
@@ -1417,6 +1442,7 @@ const locales: Record<Language, string> = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components -- kept next to its provider; edits here full-reload instead of hot-swapping
 export function getStoredLanguage(): Language {
   if (typeof window === "undefined") {
     return "en";
@@ -1454,6 +1480,7 @@ export function I18nProvider({
     }
     const storedLanguage = getStoredLanguage();
     if (storedLanguage !== PRERENDER_LANGUAGE) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- stored language applies after hydration so the prerendered landing matches (#418/#423)
       setLanguage(storedLanguage);
     }
     setHasLoadedStoredLanguage(true);
@@ -1482,6 +1509,7 @@ export function I18nProvider({
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- kept next to its provider; edits here full-reload instead of hot-swapping
 export function useI18n() {
   const context = useContext(I18nContext);
 

@@ -28,6 +28,7 @@ export function MagicLinkPage() {
     startedRef.current = true;
 
     if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot token exchange on mount, guarded by startedRef
       setStatus("missing");
       return;
     }
@@ -72,7 +73,10 @@ export function MagicLinkPage() {
   return (
     <PageShell>
       <div className="auth-status" role="status" aria-live="polite">
-        <div className={`auth-status__indicator auth-status__indicator--${status}`} aria-hidden="true">
+        <div
+          className={`auth-status__indicator auth-status__indicator--${status}`}
+          aria-hidden="true"
+        >
           {status === "verifying" ? (
             <span className="auth-status__spinner" />
           ) : status === "success" ? (

@@ -3,10 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { useI18n } from "../../lib/i18n";
-import {
-  type UpgradeIntentSource,
-  useUpgradeIntent,
-} from "../../lib/upgradeIntentStorage";
+import { type UpgradeIntentSource, useUpgradeIntent } from "../../lib/upgradeIntentStorage";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -26,6 +23,7 @@ export function UpgradeModal({ open, onClose, source = "topbar" }: UpgradeModalP
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the modal view each time it opens
     setView(hasSubmittedUpgradeIntent ? "saved" : "default");
   }, [hasSubmittedUpgradeIntent, open]);
 

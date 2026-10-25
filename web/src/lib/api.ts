@@ -52,10 +52,7 @@ async function readJson<T>(path: string, init?: RequestInit): Promise<T> {
   headers.set("Accept-Language", language);
   const storedSession = readStoredAuthSession();
   if (storedSession?.access_token && !headers.has("Authorization")) {
-    headers.set(
-      "Authorization",
-      `${storedSession.token_type} ${storedSession.access_token}`,
-    );
+    headers.set("Authorization", `${storedSession.token_type} ${storedSession.access_token}`);
   }
 
   const response = await fetch(`${getRequiredApiBaseUrl()}${path}`, {
@@ -228,18 +225,14 @@ export function authenticateWithGoogle(idToken: string): Promise<ApiAuthSession>
   });
 }
 
-export function registerWithEmailPassword(
-  input: EmailRegistrationInput,
-): Promise<ApiAuthSession> {
+export function registerWithEmailPassword(input: EmailRegistrationInput): Promise<ApiAuthSession> {
   return readJson<ApiAuthSession>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(input),
   });
 }
 
-export function authenticateWithEmailPassword(
-  input: EmailLoginInput,
-): Promise<ApiAuthSession> {
+export function authenticateWithEmailPassword(input: EmailLoginInput): Promise<ApiAuthSession> {
   return readJson<ApiAuthSession>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(input),
