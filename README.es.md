@@ -136,8 +136,8 @@ uvicorn app.entrypoints.api.main:app --reload --port 8000
 
 `api/.env.example` lista cada setting por nombre. Sin configuración extra se obtiene una API local
 funcionando solo con Postgres. Redis, Google Sign-In (`GOOGLE_CLIENT_ID`), email
-(`RESEND_API_KEY`), deep scan (`DETONATION_ENABLED`, `BROWSERLESS_ENDPOINT`) y el almacenamiento de
-capturas (`SCREENSHOT_STORAGE_ENABLED`, `R2_*`) son opcionales. En producción, `AUTH_TOKEN_SECRET` y
+(`RESEND_API_KEY`), análisis profundo (`DETONATION_ENABLED`, `BROWSERLESS_ENDPOINT`) y el
+almacenamiento de capturas (`SCREENSHOT_STORAGE_ENABLED`, `R2_*`) son opcionales. En producción, `AUTH_TOKEN_SECRET` y
 `SCAN_WEBHOOK_SIGNING_SECRET` son obligatorios.
 
 **Web**
