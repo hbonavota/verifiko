@@ -24,7 +24,9 @@ dependencies = [
 dev = [
   "alembic>=1.14.0,<2.0.0",
   "pytest>=8.4.0,<9.0.0",
-  "httpx>=0.28.0,<1.0.0"
+  "httpx>=0.28.0,<1.0.0",
+  "ruff>=0.17.0,<0.18.0",
+  "black>=26.1.0,<27.0.0"
 ]
 
 [tool.setuptools.packages.find]
@@ -33,3 +35,34 @@ include = ["app*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+# Applied migrations are immutable; touching them also triggers the DB migrations workflow.
+extend-exclude = "^/alembic/versions/"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# E/F = pyflakes+pycodestyle, I = isort, UP = pyupgrade, B = bugbear, SIM = simplify.
+
+[tool.ruff.lint.per-file-ignores]
+# Black does not split string literals. The i18n catalogs hold full EN/ES sentences, and
+# tests use long descriptive names and expected strings.
+"app/domain/i18n/messages.py" = ["E501"]
+"app/application/services/verification_text_localizer.py" = ["E501"]
+"tests/**" = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency markers are meant to be called in argument defaults.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+# api/alembic/ (migrations dir) would otherwise make the alembic package look first-party.
+known-third-party = ["alembic"]
