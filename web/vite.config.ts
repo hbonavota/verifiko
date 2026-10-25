@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
@@ -117,6 +118,14 @@ export default defineConfig(({ mode, isSsrBuild }) => {
     },
     server: {
       port: 5173,
+    },
+    test: {
+      environment: "jsdom",
+      // Explicit imports from "vitest" in each test, so ESLint needs no test globals.
+      globals: false,
+      setupFiles: ["src/test/setup.ts"],
+      css: false,
+      include: ["src/**/*.test.{ts,tsx}"],
     },
   };
 });
