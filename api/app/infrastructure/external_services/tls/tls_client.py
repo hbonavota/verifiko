@@ -26,11 +26,12 @@ class SocketTlsValidator(TlsValidatorPort):
             resolution = resolve_safe_outbound_host(hostname, port)
             for ip_address in resolution.ip_addresses:
                 try:
-                    with socket.create_connection(
-                        (ip_address, resolution.port),
-                        timeout=self.timeout_seconds,
-                    ) as sock, context.wrap_socket(
-                        sock, server_hostname=resolution.hostname
+                    with (
+                        socket.create_connection(
+                            (ip_address, resolution.port),
+                            timeout=self.timeout_seconds,
+                        ) as sock,
+                        context.wrap_socket(sock, server_hostname=resolution.hostname),
                     ):
                         return TlsValidationResult(
                             is_valid=True,

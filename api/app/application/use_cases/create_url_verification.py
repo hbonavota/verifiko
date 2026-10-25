@@ -349,9 +349,7 @@ class CreateURLVerificationUseCase:
             result = self.headless_detonation.detonate(
                 verification.normalized_input.normalized
             )
-        except (
-            Exception
-        ):  # noqa: BLE001 - fail open; a browser error never fails the scan
+        except Exception:  # noqa: BLE001 - fail open on any browser error
             logger.warning(
                 "Headless detonation failed; continuing with the static verdict.",
                 exc_info=True,
@@ -387,15 +385,16 @@ class CreateURLVerificationUseCase:
         # Wave 1: analyzers that depend only on the input URL run concurrently.
         # Each performs blocking network I/O, so overlapping them turns the total
         # wait from a sum of latencies into a maximum.
+        # noqa E501 below: black does not split long lambda bodies.
         wave_one = self._run_stage_group(
             {
-                "domain_recency": lambda: self.domain_recency_signal_analyzer.analyze_with_context(
+                "domain_recency": lambda: self.domain_recency_signal_analyzer.analyze_with_context(  # noqa: E501
                     normalized_input
                 ),
                 "redirect": lambda: self.redirect_signal_analyzer.analyze_with_context(
                     normalized_input
                 ),
-                "transport": lambda: self.transport_security_signal_analyzer.analyze_with_context(
+                "transport": lambda: self.transport_security_signal_analyzer.analyze_with_context(  # noqa: E501
                     normalized_input
                 ),
                 "html": lambda: self._analyze_html_content(verification),
@@ -411,15 +410,16 @@ class CreateURLVerificationUseCase:
         # Wave 2: analyzers that additionally need the resolved redirect
         # destination. They only depend on wave 1's redirect result, so they run
         # concurrently with each other.
+        # noqa E501 below: black does not split long lambda bodies.
         wave_two = self._run_stage_group(
             {
-                "reputation": lambda: self.reputation_signal_analyzer.analyze_with_context(
+                "reputation": lambda: self.reputation_signal_analyzer.analyze_with_context(  # noqa: E501
                     normalized_input, redirect_resolution=redirect_resolution
                 ),
-                "infrastructure": lambda: self.infrastructure_signal_analyzer.analyze_with_context(
+                "infrastructure": lambda: self.infrastructure_signal_analyzer.analyze_with_context(  # noqa: E501
                     normalized_input, redirect_resolution=redirect_resolution
                 ),
-                "resolved_destination": lambda: self.resolved_destination_signal_analyzer.analyze_with_context(
+                "resolved_destination": lambda: self.resolved_destination_signal_analyzer.analyze_with_context(  # noqa: E501
                     normalized_input, redirect_resolution=redirect_resolution
                 ),
             }

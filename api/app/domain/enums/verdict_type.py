@@ -1,7 +1,8 @@
 from enum import Enum
 
 
-class VerdictType(str, Enum):
+# Kept as (str, Enum): StrEnum would change str()/format() of members.
+class VerdictType(str, Enum):  # noqa: UP042
     TRUSTED = "TRUSTED"
     CAUTION = "CAUTION"
     SUSPICIOUS = "SUSPICIOUS"

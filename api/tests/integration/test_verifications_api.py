@@ -180,10 +180,7 @@ class FakeRedisClient:
         members = sorted(
             self._sorted_sets.get(key, {}).items(), key=lambda item: item[1]
         )
-        if stop == -1:
-            selection = members[start:]
-        else:
-            selection = members[start : stop + 1]
+        selection = members[start:] if stop == -1 else members[start : stop + 1]
         if withscores:
             return selection
         return [member for member, _ in selection]
@@ -407,9 +404,7 @@ def test_verification_api_rate_limits_anonymous_create_requests(
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
     limiter.daily_limit = 2
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     first = client.post("/api/verifications", json={"url": "https://example.org"})
     second = client.post("/api/verifications", json={"url": "https://example.net"})
@@ -436,9 +431,7 @@ def test_verification_api_decrements_anonymous_quota_status_remaining(
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
     limiter.daily_limit = 5
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     before = client.get("/api/verifications/quota-status").json()
     posted = client.post("/api/verifications", json={"url": "https://example.org"})
@@ -461,9 +454,7 @@ def test_verification_api_exposes_retry_after_to_allowed_cross_origin_callers(
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
     limiter.daily_limit = 1
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
     allowed_origin = {"Origin": "http://localhost:5173"}
 
     first = client.post(
@@ -573,9 +564,7 @@ def test_verification_api_uses_trusted_proxy_client_ip_for_quota_status(
         limiter = get_create_verification_rate_limiter()
         limiter.reset()
         limiter.daily_limit = 1
-        limiter.current_time_provider = lambda: datetime(
-            2026, 3, 28, 12, 0, tzinfo=UTC
-        )
+        limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
         first = proxied_client.post(
             "/api/verifications",
@@ -615,9 +604,7 @@ def test_verification_api_falls_back_to_proxy_peer_host_for_invalid_forwarded_fo
         limiter = get_create_verification_rate_limiter()
         limiter.reset()
         limiter.daily_limit = 1
-        limiter.current_time_provider = lambda: datetime(
-            2026, 3, 28, 12, 0, tzinfo=UTC
-        )
+        limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
         first = proxied_client.post(
             "/api/verifications",
@@ -705,9 +692,7 @@ def test_verification_api_quota_status_reports_anonymous_remaining_usage(
 ) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     first = client.post("/api/verifications", json={"url": "https://example.org"})
     status_response = client.get("/api/verifications/quota-status")
@@ -733,9 +718,7 @@ def test_verification_api_quota_status_reports_anonymous_blocked_when_limit_is_e
 ) -> None:
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     for url in ("https://example.org", "https://example.net", "https://example.com"):
         response = client.post("/api/verifications", json={"url": url})
@@ -769,9 +752,7 @@ def test_verification_api_uses_sqlalchemy_backed_daily_quota_even_with_redis(
     limiter = get_create_verification_rate_limiter()
     limiter.reset()
     limiter.daily_limit = 1
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     first = client.post("/api/verifications", json={"url": "https://example.org"})
     second = client.post("/api/verifications", json={"url": "https://example.net"})

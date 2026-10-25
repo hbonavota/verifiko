@@ -54,9 +54,8 @@ class ThreadPoolVerificationJobDispatcher(VerificationJobDispatcher):
     @staticmethod
     def _log_failure(job_id: str, future) -> None:
         exception = future.exception()
-        if (
-            exception is not None
-        ):  # pragma: no cover - defensive; processor handles its own errors
+        # Defensive: the processor handles its own errors.
+        if exception is not None:  # pragma: no cover
             logger.exception(
                 "Scan job %s crashed in the worker", job_id, exc_info=exception
             )

@@ -188,7 +188,8 @@ class RedirectSignalAnalyzer:
         ]
         if domain_crossings:
             evidence.append(
-                f"Redirect chain crossed registered domains: {', '.join(domain_crossings[:3])}."
+                "Redirect chain crossed registered domains: "
+                f"{', '.join(domain_crossings[:3])}."
             )
 
         if scheme_downgrade:

@@ -209,7 +209,5 @@ def _accepted(job: VerificationJob) -> ScanAcceptedResponse:
 
 
 def _iso(value: datetime) -> str:
-    normalized = (
-        value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-    )
+    normalized = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
     return normalized.astimezone(UTC).isoformat().replace("+00:00", "Z")

@@ -1,4 +1,3 @@
-
 import pytest
 
 from app.application.ports.redirect_resolver import RedirectResolutionError

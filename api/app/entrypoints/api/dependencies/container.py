@@ -100,7 +100,7 @@ from app.infrastructure.external_services.dns.socket_infrastructure_lookup impor
 from app.infrastructure.external_services.domain_age.rdap_domain_age_lookup import (
     RdapDomainAgeLookup,
 )
-from app.infrastructure.external_services.google.google_tokeninfo_identity_verifier import (
+from app.infrastructure.external_services.google.google_tokeninfo_identity_verifier import (  # noqa: E501 (module path)
     GoogleTokeninfoIdentityVerifier,
 )
 from app.infrastructure.external_services.html.simple_html_fetcher import (
@@ -129,10 +129,10 @@ from app.infrastructure.persistence.repositories.sqlalchemy_magic_link_store imp
 from app.infrastructure.persistence.repositories.sqlalchemy_user_repository import (
     SQLAlchemyUserRepository,
 )
-from app.infrastructure.persistence.repositories.sqlalchemy_verification_job_store import (
+from app.infrastructure.persistence.repositories.sqlalchemy_verification_job_store import (  # noqa: E501 (module path)
     SqlAlchemyVerificationJobStore,
 )
-from app.infrastructure.persistence.repositories.sqlalchemy_verification_repository import (
+from app.infrastructure.persistence.repositories.sqlalchemy_verification_repository import (  # noqa: E501 (module path)
     SQLAlchemyVerificationRepository,
 )
 from app.infrastructure.reputation.aggregating_reputation_lookup import (

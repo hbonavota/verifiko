@@ -7,7 +7,7 @@ Usage (from the ``api`` directory):
     python -m evaluation.run_evaluation --min-precision 0.9 --min-recall 0.8 --max-fpr 0.1
 
 Exits non-zero when any provided threshold is not met, so it can gate CI.
-"""
+"""  # noqa: E501 (usage example)
 
 from __future__ import annotations
 

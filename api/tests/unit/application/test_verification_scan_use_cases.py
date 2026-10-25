@@ -21,7 +21,10 @@ from app.domain.exceptions.domain_exception import DomainException
 from app.infrastructure.jobs.verification_job_stores import InMemoryVerificationJobStore
 
 _OWNER = str(uuid.uuid4())
-_NOW = lambda: datetime(2026, 7, 23, tzinfo=UTC)
+
+
+def _NOW():
+    return datetime(2026, 7, 23, tzinfo=UTC)
 
 
 class RecordingDispatcher(VerificationJobDispatcher):

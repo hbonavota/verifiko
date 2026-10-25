@@ -53,7 +53,10 @@ class UrlhausReputationClient(ReputationLookupPort):
         ]
         reference_count = len(urls)
         confidence = 99.0 if online_urls else 96.0
-        description = f"URLhaus returned {reference_count} malicious URL record(s) for the queried host."
+        description = (
+            f"URLhaus returned {reference_count} malicious URL record(s) "
+            "for the queried host."
+        )
 
         return ReputationMatch(
             queried_value=hostname,

@@ -602,9 +602,7 @@ def test_authenticated_user_hits_daily_limit(client: TestClient) -> None:
     policy = container.get_user_quota_policy()
     limiter = container.get_authenticated_verification_rate_limiter()
     policy.free_daily_limit = 2
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
     limiter.reset()
 
     first = client.post(
@@ -682,9 +680,7 @@ def test_different_users_have_isolated_quotas(client: TestClient) -> None:
     policy = container.get_user_quota_policy()
     limiter = container.get_authenticated_verification_rate_limiter()
     policy.free_daily_limit = 1
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
     limiter.reset()
 
     alice_first = client.post(
@@ -723,9 +719,7 @@ def test_pro_user_has_higher_limit(client: TestClient) -> None:
     limiter = container.get_authenticated_verification_rate_limiter()
     policy.free_daily_limit = 1
     policy.pro_daily_limit = 2
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
     limiter.reset()
 
     first = client.post(
@@ -759,9 +753,7 @@ def test_authenticated_quota_status_reports_remaining_usage_truthfully(
     session = _login(client, "valid-alice")
     limiter = container.get_authenticated_verification_rate_limiter()
     limiter.reset()
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     created = client.post(
         "/api/verifications",
@@ -799,9 +791,7 @@ def test_pro_quota_status_reports_paid_limit_truthfully(client: TestClient) -> N
 
     limiter = container.get_authenticated_verification_rate_limiter()
     limiter.reset()
-    limiter.current_time_provider = lambda: datetime(
-        2026, 3, 28, 12, 0, tzinfo=UTC
-    )
+    limiter.current_time_provider = lambda: datetime(2026, 3, 28, 12, 0, tzinfo=UTC)
 
     status_response = client.get(
         "/api/verifications/quota-status",

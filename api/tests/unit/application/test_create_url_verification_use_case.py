@@ -256,9 +256,7 @@ def _build_use_case(
         signal_analyzer=DeterministicUrlSignalAnalyzer(),
         domain_recency_signal_analyzer=DomainRecencySignalAnalyzer(
             domain_age_lookup=domain_age_lookup or FakeDomainAgeLookup(),
-            current_time_provider=lambda: datetime(
-                2026, 3, 17, 12, 0, tzinfo=UTC
-            ),
+            current_time_provider=lambda: datetime(2026, 3, 17, 12, 0, tzinfo=UTC),
         ),
         redirect_signal_analyzer=RedirectSignalAnalyzer(
             redirect_resolver=redirect_resolver or FakeRedirectResolver()

@@ -28,6 +28,7 @@ DetonationHttpPoster = Callable[[str, dict[str, str], bytes], tuple[int, str]]
 # /function endpoint. It loads the URL, lets scripts run, and returns ONLY the
 # observations our behavioral analyzer needs — never a verdict. The page content
 # is treated as data; nothing it returns is executed on our side.
+# The script is sent verbatim, so its long lines are left as-is (noqa E501 below).
 _DETONATION_SCRIPT = """
 export default async function ({ page, context }) {
   const { url, captureScreenshot } = context;
@@ -91,7 +92,7 @@ export default async function ({ page, context }) {
     type: 'application/json',
   };
 }
-"""
+"""  # noqa: E501
 
 
 @dataclass(slots=True)

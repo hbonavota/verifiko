@@ -20,9 +20,7 @@ class SqlAlchemyMagicLinkStore(MagicLinkStorePort):
     def __init__(
         self,
         session_factory: sessionmaker,
-        current_time_provider: Callable[[], datetime] = lambda: datetime.now(
-            UTC
-        ),
+        current_time_provider: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._session_factory = session_factory
         self._now = current_time_provider

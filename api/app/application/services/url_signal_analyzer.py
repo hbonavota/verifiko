@@ -202,7 +202,7 @@ def _is_edit_distance_one(shorter: str, longer: str) -> bool:
     if len_longer - len_shorter > 1:
         return False
     if len_shorter == len_longer:
-        return sum(1 for a, b in zip(shorter, longer) if a != b) == 1
+        return sum(1 for a, b in zip(shorter, longer, strict=False) if a != b) == 1
     # longer has exactly one extra character: verify a single clean insertion.
     i = j = 0
     edited = False
@@ -885,9 +885,7 @@ class DeterministicUrlSignalAnalyzer:
             return False
         if normalized_url.is_ip_address:
             return False
-        if normalized_url.contains_unicode or normalized_url.contains_punycode:
-            return False
-        return True
+        return not (normalized_url.contains_unicode or normalized_url.contains_punycode)
 
     def _deceptive_brand_subdomain_pattern(
         self,
@@ -911,7 +909,9 @@ class DeterministicUrlSignalAnalyzer:
             if _contains_label_sequence(subdomain_labels, trusted_labels):
                 return trusted_domain
 
-        for left_label, right_label in zip(subdomain_labels, subdomain_labels[1:]):
+        for left_label, right_label in zip(
+            subdomain_labels, subdomain_labels[1:], strict=False
+        ):
             left_tokens = _tokenize(left_label.replace("-", " "))
             matched_brands = sorted(_BRAND_KEYWORDS.intersection(left_tokens))
             if not matched_brands:

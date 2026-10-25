@@ -1,7 +1,8 @@
 from enum import Enum
 
 
-class SignalCategory(str, Enum):
+# Kept as (str, Enum): StrEnum would change str()/format() of members.
+class SignalCategory(str, Enum):  # noqa: UP042
     DOMAIN_REPUTATION = "domain_reputation"
     DOMAIN_STRUCTURE = "domain_structure"
     NETWORK_TRANSPORT = "network_transport"

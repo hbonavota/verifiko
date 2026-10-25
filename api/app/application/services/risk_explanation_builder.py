@@ -26,7 +26,9 @@ _DOMINANT_EXPLANATION_REASON_KEYS = {
     SignalType.TLS_VALIDATION_FAILURE: "summary.reason.tls_validation_failure",
     SignalType.INSECURE_TRANSPORT: "summary.reason.insecure_transport",
     SignalType.BRAND_IMPERSONATION: "summary.reason.brand_impersonation",
-    SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN: "summary.reason.suspicious_infrastructure_pattern",
+    SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN: (
+        "summary.reason.suspicious_infrastructure_pattern"
+    ),
 }
 _CATEGORY_LABELS = {
     SignalCategory.DOMAIN_REPUTATION.value: "domain reputation",

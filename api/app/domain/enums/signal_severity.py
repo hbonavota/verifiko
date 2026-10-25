@@ -1,7 +1,8 @@
 from enum import Enum
 
 
-class SignalSeverity(str, Enum):
+# Kept as (str, Enum): StrEnum would change str()/format() of members.
+class SignalSeverity(str, Enum):  # noqa: UP042
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
