@@ -33,7 +33,10 @@ function titleCase(value: string): string {
 // (signals_detected / clean / degraded). Localize the known ones; fall back to
 // a readable title-case for anything new.
 function localizeTraceStatus(status: string, language: Language): string {
-  const key = status.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const key = status
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
   const labels: Record<string, { en: string; es: string }> = {
     signals_detected: { en: "Signals detected", es: "Señales detectadas" },
     clean: { en: "Clean", es: "Sin señales" },
@@ -64,7 +67,8 @@ function formatSignalSource(source: string, language: Language): string {
     "redirect-resolver": language === "es" ? "Resolución de redirecciones" : "Redirect resolution",
     "url-rule-analyzer": language === "es" ? "Análisis de URL" : "URL analysis",
     "url-normalizer": language === "es" ? "Normalización de URL" : "URL normalization",
-    "redirect-chain-analyzer": language === "es" ? "Análisis de redirecciones" : "Redirect analysis",
+    "redirect-chain-analyzer":
+      language === "es" ? "Análisis de redirecciones" : "Redirect analysis",
     "resolved-destination-url-analyzer":
       language === "es" ? "Análisis de URL del destino final" : "Final-destination URL analysis",
     "resolved-destination-html-analyzer":
@@ -80,7 +84,8 @@ function formatSignalSource(source: string, language: Language): string {
     "infrastructure-intelligence-analyzer":
       language === "es" ? "Análisis de infraestructura" : "Infrastructure analysis",
     "reputation-analyzer": language === "es" ? "Análisis de reputación" : "Reputation analysis",
-    "trusted-signal-input": language === "es" ? "Señal de confianza aportada" : "Trusted signal input",
+    "trusted-signal-input":
+      language === "es" ? "Señal de confianza aportada" : "Trusted signal input",
   } as const;
 
   return labels[normalized as keyof typeof labels] ?? titleCase(source.replace(/-/g, " "));
@@ -105,7 +110,10 @@ function mapSignal(signal: ApiAnalysisSignal, language: Language): VerificationS
   };
 }
 
-function mapAnalysisTraceStep(step: ApiAnalysisTraceStep, language: Language): VerificationAnalysisTraceStep {
+function mapAnalysisTraceStep(
+  step: ApiAnalysisTraceStep,
+  language: Language,
+): VerificationAnalysisTraceStep {
   return {
     stage: titleCase(step.stage),
     source: formatSignalSource(step.source, language),
@@ -177,7 +185,9 @@ function mapExplanation(
   return {
     headline: explanation.headline,
     decisionBasis: explanation.decision_basis,
-    primaryFactors: explanation.primary_factors.map((factor) => mapExplanationFactor(factor, language)),
+    primaryFactors: explanation.primary_factors.map((factor) =>
+      mapExplanationFactor(factor, language),
+    ),
     analysisTrace: explanation.analysis_trace.map((step) => mapAnalysisTraceStep(step, language)),
     coverageWarnings: explanation.coverage_warnings,
   };
@@ -198,10 +208,10 @@ function mapRiskAssessment(
     terminalReason: assessment.terminal_reason,
     calculationVersion: assessment.calculation_version,
     analysisWarnings: assessment.analysis_warnings ?? undefined,
-    analysisTrace: assessment.analysis_trace?.map((step) =>
-      mapAnalysisTraceStep(step, language),
-    ),
-    explanation: assessment.explanation ? mapExplanation(assessment.explanation, language) : undefined,
+    analysisTrace: assessment.analysis_trace?.map((step) => mapAnalysisTraceStep(step, language)),
+    explanation: assessment.explanation
+      ? mapExplanation(assessment.explanation, language)
+      : undefined,
     calculatedAt: assessment.calculated_at,
   };
 }

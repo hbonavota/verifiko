@@ -79,10 +79,7 @@ export function LandingPage() {
         </section>
       </main>
 
-      <EmailAuthModal
-        open={isEmailAuthModalOpen}
-        onClose={() => setIsEmailAuthModalOpen(false)}
-      />
+      <EmailAuthModal open={isEmailAuthModalOpen} onClose={() => setIsEmailAuthModalOpen(false)} />
     </div>
   );
 }

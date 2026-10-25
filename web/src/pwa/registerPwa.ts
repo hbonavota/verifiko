@@ -5,7 +5,11 @@ import "./pwa.css";
 // Loaded only when the build has VITE_PWA_ENABLED=true (see main.tsx).
 const COPY = {
   en: { message: "A new version of Verifiko is available.", reload: "Reload", later: "Later" },
-  es: { message: "Hay una nueva versión de Verifiko disponible.", reload: "Recargar", later: "Más tarde" },
+  es: {
+    message: "Hay una nueva versión de Verifiko disponible.",
+    reload: "Recargar",
+    later: "Más tarde",
+  },
 } as const;
 
 export function registerPwa(): void {

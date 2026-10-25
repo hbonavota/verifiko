@@ -16,7 +16,10 @@ function isStandalone(): boolean {
 function isIos(): boolean {
   const ua = navigator.userAgent;
   // iPadOS reports itself as a Mac; touch support tells them apart.
-  return /iphone|ipad|ipod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return (
+    /iphone|ipad|ipod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 /**

@@ -20,10 +20,7 @@ export function ApiHealthPage() {
   const { copy, language, locale } = useI18n();
   const [healthState, setHealthState] = useState<HealthState>({ status: "idle" });
 
-  useDocumentMeta(
-    copy.health.metaTitle,
-    copy.health.metaDescription,
-  );
+  useDocumentMeta(copy.health.metaTitle, copy.health.metaDescription);
 
   async function runHealthCheck() {
     setHealthState({ status: "loading" });
@@ -81,7 +78,8 @@ export function ApiHealthPage() {
                 : copy.health.detailUnexpected}
             </p>
             <p className="api-health__timestamp">
-              {copy.common.lastChecked} {new Date(healthState.payload.checkedAt).toLocaleString(locale)}
+              {copy.common.lastChecked}{" "}
+              {new Date(healthState.payload.checkedAt).toLocaleString(locale)}
             </p>
           </div>
         ) : null}

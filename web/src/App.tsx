@@ -9,9 +9,7 @@ import { LandingPage } from "./pages/LandingPage";
 // After a new deploy, an old tab holds an index.html that points at chunk
 // hashes that no longer exist, so a lazy import 404s and React renders a blank
 // screen. Recover by reloading the page once (guarded so we never loop).
-function lazyWithReload<T extends ComponentType<unknown>>(
-  factory: () => Promise<{ default: T }>,
-) {
+function lazyWithReload<T extends ComponentType<unknown>>(factory: () => Promise<{ default: T }>) {
   return lazy(() =>
     factory()
       .then((mod) => {
@@ -67,20 +65,20 @@ export default function App() {
         <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
-          <Route element={<AppLayout />}>
-            <Route path="/app" element={<HomePage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/verifications/:id" element={<VerificationDetailPage />} />
-            <Route path="/api-health" element={<ApiHealthPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/auth/magic" element={<MagicLinkPage />} />
-            <Route path="/home" element={<Navigate to="/app" replace />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Route>
-        </Routes>
-      </Suspense>
+            <Route element={<AppLayout />}>
+              <Route path="/app" element={<HomePage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/verifications/:id" element={<VerificationDetailPage />} />
+              <Route path="/api-health" element={<ApiHealthPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/auth/magic" element={<MagicLinkPage />} />
+              <Route path="/home" element={<Navigate to="/app" replace />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </RouteErrorBoundary>
     </BrowserRouter>
   );

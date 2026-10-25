@@ -25,7 +25,9 @@ export function AppLayout() {
       <Sidebar />
       <div className="app-layout__main">
         <Topbar />
-        <ContentShell onOpenCookiePreferences={() => setCookieBannerReopenKey((current) => current + 1)}>
+        <ContentShell
+          onOpenCookiePreferences={() => setCookieBannerReopenKey((current) => current + 1)}
+        >
           <Outlet />
         </ContentShell>
         <CookieBanner reopenKey={cookieBannerReopenKey} />

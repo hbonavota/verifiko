@@ -3,12 +3,7 @@
 // raw penalty-math summary, and the note is always in their language.
 
 export type CoverageArea =
-  | "domain"
-  | "redirects"
-  | "reputation"
-  | "infrastructure"
-  | "security"
-  | "content";
+  "domain" | "redirects" | "reputation" | "infrastructure" | "security" | "content";
 
 // Each area is detected by substrings that appear in the localized warning text
 // in BOTH English and Spanish, so it works regardless of the response language.
@@ -18,7 +13,10 @@ const AREA_PATTERNS: ReadonlyArray<readonly [CoverageArea, RegExp]> = [
   ["reputation", /reputation|reputaci/i],
   ["infrastructure", /infrastructure|infraestructura/i],
   ["security", /\bTLS\b/i],
-  ["content", /html|content|contenido|dynamic|dinámic|detonaci|resolved destination|destino resuelto/i],
+  [
+    "content",
+    /html|content|contenido|dynamic|dinámic|detonaci|resolved destination|destino resuelto/i,
+  ],
 ];
 
 // Non-degrading warnings: the analysis explicitly continued despite them, so

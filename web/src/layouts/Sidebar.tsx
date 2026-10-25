@@ -103,7 +103,11 @@ export function Sidebar() {
             key={item.href}
             to={item.href}
             onClick={() => setIsMenuOpen(false)}
-            className={isActiveItem(item.href) ? "sidebar-nav__link sidebar-nav__link--active" : "sidebar-nav__link"}
+            className={
+              isActiveItem(item.href)
+                ? "sidebar-nav__link sidebar-nav__link--active"
+                : "sidebar-nav__link"
+            }
           >
             {item.labelKey === "review"
               ? currentUser

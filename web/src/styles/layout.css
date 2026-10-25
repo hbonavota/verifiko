@@ -106,7 +106,10 @@
   border-radius: var(--radius-sm);
   color: var(--color-text-muted);
   font-weight: 600;
-  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
 .sidebar-nav__button {
@@ -148,7 +151,9 @@
   background: transparent;
   color: var(--color-text);
   cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
 }
 
 .sidebar__menu-toggle:hover {
@@ -614,7 +619,9 @@
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .language-switcher__button:hover {

@@ -19,9 +19,7 @@ interface VerificationProgressProps {
  */
 export function VerificationProgress({ deep = false }: VerificationProgressProps) {
   const { copy } = useI18n();
-  const stages: readonly string[] = deep
-    ? copy.home.deepProgressStages
-    : copy.home.progressStages;
+  const stages: readonly string[] = deep ? copy.home.deepProgressStages : copy.home.progressStages;
   const hint = deep ? copy.home.deepProgressTimeHint : copy.home.progressTimeHint;
   // Deep analysis loads the page live, so give each stage more breathing room.
   const stepMs = deep ? 3200 : 620;

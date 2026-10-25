@@ -57,12 +57,7 @@ function PasteIcon() {
 
 function ScanIcon() {
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M4 8V6.5A2.5 2.5 0 0 1 6.5 4H8M16 4h1.5A2.5 2.5 0 0 1 20 6.5V8M20 16v1.5a2.5 2.5 0 0 1-2.5 2.5H16M8 20H6.5A2.5 2.5 0 0 1 4 17.5V16"
         stroke="currentColor"
@@ -71,7 +66,12 @@ function ScanIcon() {
         strokeLinejoin="round"
       />
       <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M12 5.5v2M12 16.5v2M5.5 12h2M16.5 12h2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path
+        d="M12 5.5v2M12 16.5v2M5.5 12h2M16.5 12h2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -143,8 +143,7 @@ export function AnalyzeUrlForm({
   // While a saved session is being validated, show the signed-in hint text so it
   // does not change length (and move the toggle) when the session is confirmed.
   // Behavior still depends on isAuthenticated.
-  const showsSignedInHint =
-    isAuthenticated || (!authReady && readPendingSessionPlan() !== null);
+  const showsSignedInHint = isAuthenticated || (!authReady && readPendingSessionPlan() !== null);
 
   function getVerificationWarningCount(verification: ApiVerification): number {
     const analysisWarnings = verification.risk_assessment.analysis_warnings?.length ?? 0;
@@ -588,10 +587,7 @@ export function AnalyzeUrlForm({
               : resolvedButtonLabel}
         </Button>
         <label
-          className={[
-            "deep-toggle",
-            deepScan && isAuthenticated ? "deep-toggle--on" : "",
-          ]
+          className={["deep-toggle", deepScan && isAuthenticated ? "deep-toggle--on" : ""]
             .filter(Boolean)
             .join(" ")}
         >
@@ -678,67 +674,67 @@ export function AnalyzeUrlForm({
           ) : null}
         </section>
       ) : null}
-  {
-    showQuotaPanel ? (
-      <section className="analysis-form__quota analysis-form__quota--prominent" aria-live="polite">
-        <div className="analysis-form__quota-body">
-          <p className="analysis-form__quota-eyebrow">{quotaPanelCopy.eyebrow}</p>
-          <p className="analysis-form__quota-title">{quotaPanelCopy.title}</p>
-          <p className="analysis-form__quota-copy">{quotaPanelCopy.description}</p>
-          <p className="analysis-form__quota-meta">{quotaResetCopy}</p>
-        </div>
-        <div className="analysis-form__quota-actions">
-          {quotaPlan === "ANONYMOUS" ? (
-            <div className="analysis-form__quota-auth-actions">
-              <GoogleSignInButton
-                className="analysis-form__quota-signin"
-                variant="quota"
-                busy={isQuotaRetrying}
-                busyLabel={copy.analyzeForm.quota.retrying}
-                onInteraction={() => {
-                  trackAuthEntryClicked({
-                    sourcePath: location.pathname,
-                    language,
-                    isAuthenticated,
-                    plan: analyticsPlan,
-                    entryPoint: "quota_panel_google_sign_in",
-                  });
+      {showQuotaPanel ? (
+        <section
+          className="analysis-form__quota analysis-form__quota--prominent"
+          aria-live="polite"
+        >
+          <div className="analysis-form__quota-body">
+            <p className="analysis-form__quota-eyebrow">{quotaPanelCopy.eyebrow}</p>
+            <p className="analysis-form__quota-title">{quotaPanelCopy.title}</p>
+            <p className="analysis-form__quota-copy">{quotaPanelCopy.description}</p>
+            <p className="analysis-form__quota-meta">{quotaResetCopy}</p>
+          </div>
+          <div className="analysis-form__quota-actions">
+            {quotaPlan === "ANONYMOUS" ? (
+              <div className="analysis-form__quota-auth-actions">
+                <GoogleSignInButton
+                  className="analysis-form__quota-signin"
+                  variant="quota"
+                  busy={isQuotaRetrying}
+                  busyLabel={copy.analyzeForm.quota.retrying}
+                  onInteraction={() => {
+                    trackAuthEntryClicked({
+                      sourcePath: location.pathname,
+                      language,
+                      isAuthenticated,
+                      plan: analyticsPlan,
+                      entryPoint: "quota_panel_google_sign_in",
+                    });
+                  }}
+                  onSuccess={retryAfterAuthentication}
+                />
+              </div>
+            ) : null}
+            {quotaPanelCopy.valueCue ? (
+              <p className="analysis-form__quota-value-cue">{quotaPanelCopy.valueCue}</p>
+            ) : null}
+            {quotaPlan === "FREE" ? (
+              <Button
+                className="analysis-form__quota-upgrade"
+                onClick={() => {
+                  openUpgradeModal("quota_blocked");
                 }}
-                onSuccess={retryAfterAuthentication}
-              />
-            </div>
-          ) : null}
-          {quotaPanelCopy.valueCue ? (
-            <p className="analysis-form__quota-value-cue">{quotaPanelCopy.valueCue}</p>
-          ) : null}
-          {quotaPlan === "FREE" ? (
-            <Button
-              className="analysis-form__quota-upgrade"
-              onClick={() => {
-                openUpgradeModal("quota_blocked");
-              }}
-              variant={hasSubmittedUpgradeIntent ? "secondary" : "primary"}
-            >
-              {hasSubmittedUpgradeIntent
-                ? copy.analyzeForm.quota.upgradeSavedCta
-                : copy.analyzeForm.quota.upgradeCta}
-            </Button>
-          ) : null}
-          {quotaPlan === "ANONYMOUS" ? (
-            isQuotaRetrying ? (
-              <p className="analysis-form__quota-note">{copy.analyzeForm.quota.retrying}</p>
+                variant={hasSubmittedUpgradeIntent ? "secondary" : "primary"}
+              >
+                {hasSubmittedUpgradeIntent
+                  ? copy.analyzeForm.quota.upgradeSavedCta
+                  : copy.analyzeForm.quota.upgradeCta}
+              </Button>
+            ) : null}
+            {quotaPlan === "ANONYMOUS" ? (
+              isQuotaRetrying ? (
+                <p className="analysis-form__quota-note">{copy.analyzeForm.quota.retrying}</p>
+              ) : (
+                <p className="analysis-form__quota-note">{copy.authModal.magicLinkComingSoon}</p>
+              )
             ) : (
-              <p className="analysis-form__quota-note">{copy.authModal.magicLinkComingSoon}</p>
-            )
-          ) : (
-            <p className="analysis-form__quota-note">{quotaPanelCopy.note}</p>
-          )}
-        </div>
-      </section>
-    ) : null
-  }
-  {
-    showProPanel && quotaStatus?.plan !== "PRO" && !showQuotaPanel ? (
+              <p className="analysis-form__quota-note">{quotaPanelCopy.note}</p>
+            )}
+          </div>
+        </section>
+      ) : null}
+      {showProPanel && quotaStatus?.plan !== "PRO" && !showQuotaPanel ? (
         <section className="analysis-form__pro-panel" aria-label={copy.analyzeForm.proValue.title}>
           <div className="analysis-form__pro-panel-header">
             <p className="analysis-form__pro-panel-eyebrow">{copy.analyzeForm.proValue.eyebrow}</p>
@@ -768,9 +764,7 @@ export function AnalyzeUrlForm({
           </div>
         </section>
       ) : null}
-      {submitError && !showQuotaPanel ? (
-        <p className={messageClassName}>{submitError}</p>
-      ) : null}
+      {submitError && !showQuotaPanel ? <p className={messageClassName}>{submitError}</p> : null}
       <UpgradeModal
         open={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}

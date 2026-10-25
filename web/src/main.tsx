@@ -13,8 +13,7 @@ const rootElement = document.getElementById("root") as HTMLElement;
 // "/" — where the markup matches what React renders. On any other path the
 // snapshot is the landing, which would cause a hydration mismatch, so we discard
 // it and mount fresh (those routes are behind auth and not perf-critical).
-const isLandingSnapshot =
-  rootElement.hasChildNodes() && window.location.pathname === "/";
+const isLandingSnapshot = rootElement.hasChildNodes() && window.location.pathname === "/";
 
 const tree = (
   <React.StrictMode>

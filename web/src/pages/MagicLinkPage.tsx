@@ -72,7 +72,10 @@ export function MagicLinkPage() {
   return (
     <PageShell>
       <div className="auth-status" role="status" aria-live="polite">
-        <div className={`auth-status__indicator auth-status__indicator--${status}`} aria-hidden="true">
+        <div
+          className={`auth-status__indicator auth-status__indicator--${status}`}
+          aria-hidden="true"
+        >
           {status === "verifying" ? (
             <span className="auth-status__spinner" />
           ) : status === "success" ? (

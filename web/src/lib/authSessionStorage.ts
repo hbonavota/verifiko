@@ -26,7 +26,7 @@ export function persistAuthSession(session: ApiAuthSession): void {
 export function readPendingSessionPlan(): string | null {
   try {
     const session = readStoredAuthSession();
-    return session ? session.user?.plan ?? "FREE" : null;
+    return session ? (session.user?.plan ?? "FREE") : null;
   } catch {
     return null;
   }

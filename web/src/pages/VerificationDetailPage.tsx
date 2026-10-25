@@ -58,7 +58,9 @@ export function VerificationDetailPage() {
   const { authReady, currentUser } = useAuth();
   const { id } = useParams();
   const location = useLocation();
-  const [verificationState, setVerificationState] = useState<VerificationState>({ status: "loading" });
+  const [verificationState, setVerificationState] = useState<VerificationState>({
+    status: "loading",
+  });
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
   const [isScreenshotOpen, setIsScreenshotOpen] = useState(false);
   const [detailActionMessage, setDetailActionMessage] = useState<string | null>(null);
@@ -238,9 +240,7 @@ export function VerificationDetailPage() {
 
   async function handleCopyLink() {
     const didCopy = await copyVerificationLink(readyVerification.id);
-    setDetailActionMessage(
-      didCopy ? copy.detail.copiedAction : copy.detail.copyLinkUnavailable,
-    );
+    setDetailActionMessage(didCopy ? copy.detail.copiedAction : copy.detail.copyLinkUnavailable);
   }
 
   async function handleExportSummary() {
@@ -303,13 +303,13 @@ export function VerificationDetailPage() {
         <div className="verification-detail-header__copy">
           <p className="eyebrow">{copy.detail.eyebrow}</p>
           <h1 className="serif-heading verification-detail__title">{copy.detail.title}</h1>
-          <p className="muted-copy verification-detail__summary-copy">
-            {copy.detail.summaryCopy}
-          </p>
+          <p className="muted-copy verification-detail__summary-copy">{copy.detail.summaryCopy}</p>
           {verification.isOwned && currentUser ? (
             <div className="verification-detail__ownership">
               <Badge
-                label={detailSource === "fresh" ? copy.detail.savedNow : copy.detail.openedFromHistory}
+                label={
+                  detailSource === "fresh" ? copy.detail.savedNow : copy.detail.openedFromHistory
+                }
                 tone="primary"
               />
               <p className="verification-detail__ownership-copy">
@@ -341,7 +341,9 @@ export function VerificationDetailPage() {
               label={formatRiskLevel(riskAssessment.riskLevel, language)}
               tone={toneForRiskLevel(riskAssessment.riskLevel)}
             />
-            <p className="verification-assessment-card__status">{formatVerificationStatus(verification.status, language)}</p>
+            <p className="verification-assessment-card__status">
+              {formatVerificationStatus(verification.status, language)}
+            </p>
           </div>
 
           <div className="verification-assessment-card__hero">
@@ -422,7 +424,9 @@ export function VerificationDetailPage() {
           <div className="verification-score-guide" aria-label={copy.detail.scoreInterpretation}>
             <div className="verification-score-guide__header">
               <p className="metric-card__label">{copy.detail.scoreInterpretation}</p>
-              <p className="verification-score-guide__copy">{scoreInterpretationCopy(clampedScore, copy.detail.scoreGuide)}</p>
+              <p className="verification-score-guide__copy">
+                {scoreInterpretationCopy(clampedScore, copy.detail.scoreGuide)}
+              </p>
             </div>
             <div className="verification-score-guide__scale" aria-hidden="true">
               <div className="verification-score-guide__track">
@@ -442,12 +446,18 @@ export function VerificationDetailPage() {
                 className="verification-score-guide__marker"
                 style={{ left: `${clampedScore}%` }}
               >
-                <span className="verification-score-guide__marker-value">{Math.round(clampedScore)}</span>
+                <span className="verification-score-guide__marker-value">
+                  {Math.round(clampedScore)}
+                </span>
               </div>
             </div>
             <div className="verification-score-guide__legend" role="list">
               {copy.detail.scoreGuide.legend.map((item) => (
-                <article key={item.range} className="verification-score-guide__legend-item" role="listitem">
+                <article
+                  key={item.range}
+                  className="verification-score-guide__legend-item"
+                  role="listitem"
+                >
                   <span className="verification-score-guide__legend-swatch" data-tone={item.tone} />
                   <div className="verification-score-guide__legend-copy">
                     <p className="verification-score-guide__range">{item.range}</p>
@@ -459,7 +469,11 @@ export function VerificationDetailPage() {
           </div>
 
           <div className="verification-assessment-card__pills">
-            <StatPill label={copy.detail.signalsRetained} value={String(verification.signals.length)} tone="warning" />
+            <StatPill
+              label={copy.detail.signalsRetained}
+              value={String(verification.signals.length)}
+              tone="warning"
+            />
             <StatPill
               label={copy.detail.openQuestions}
               value={String(warnings.length)}
@@ -584,15 +598,21 @@ export function VerificationDetailPage() {
               </article>
               <article className="verification-detail-meta-item">
                 <p className="verification-detail-meta-item__label">{copy.detail.verifiedTarget}</p>
-                <p className="verification-detail-meta-item__value">{verification.normalizedInput}</p>
+                <p className="verification-detail-meta-item__value">
+                  {verification.normalizedInput}
+                </p>
               </article>
               <article className="verification-detail-meta-item">
                 <p className="verification-detail-meta-item__label">{copy.detail.executedAt}</p>
-                <p className="verification-detail-meta-item__value">{formatTimestamp(verification.createdAt, locale)}</p>
+                <p className="verification-detail-meta-item__value">
+                  {formatTimestamp(verification.createdAt, locale)}
+                </p>
               </article>
               <article className="verification-detail-meta-item">
                 <p className="verification-detail-meta-item__label">{copy.detail.currentStatus}</p>
-                <p className="verification-detail-meta-item__value">{formatVerificationStatus(verification.status, language)}</p>
+                <p className="verification-detail-meta-item__value">
+                  {formatVerificationStatus(verification.status, language)}
+                </p>
               </article>
             </div>
           </Card>
@@ -600,7 +620,9 @@ export function VerificationDetailPage() {
           <section className="technical-analysis-section">
             <div className="technical-analysis-section__header">
               <p className="eyebrow">{copy.detail.evidenceEyebrow}</p>
-              <h2 className="serif-heading technical-analysis-section__title">{copy.detail.detailedReviewTitle}</h2>
+              <h2 className="serif-heading technical-analysis-section__title">
+                {copy.detail.detailedReviewTitle}
+              </h2>
               <p className="muted-copy technical-analysis-section__copy">
                 {copy.detail.detailedReviewCopy}
               </p>
@@ -620,8 +642,12 @@ export function VerificationDetailPage() {
                         <p className="signal-review-card__description">{signal.description}</p>
                       </div>
                       <div className="signal-review-card__score">
-                        <p className="signal-review-card__score-label">{copy.detail.contribution}</p>
-                        <p className="signal-review-card__score-value">-{signal.scoreContribution}</p>
+                        <p className="signal-review-card__score-label">
+                          {copy.detail.contribution}
+                        </p>
+                        <p className="signal-review-card__score-value">
+                          -{signal.scoreContribution}
+                        </p>
                       </div>
                     </div>
 
@@ -641,7 +667,9 @@ export function VerificationDetailPage() {
                         <p className="signal-review-card__reason">{signal.description}</p>
                       </div>
                       <div>
-                        <p className="signal-review-card__label">{copy.detail.supportingObservation}</p>
+                        <p className="signal-review-card__label">
+                          {copy.detail.supportingObservation}
+                        </p>
                         <ul className="signal-review-card__evidence">
                           {signal.evidence.map((item) => (
                             <li key={item}>{item}</li>
@@ -673,9 +701,11 @@ export function VerificationDetailPage() {
                   <div className="evidence-block">
                     <p className="evidence-block__label">{copy.dashboard.sources}</p>
                     <ul className="evidence-block__list">
-                      {[...new Set(verification.signals.map((signal) => signal.source))].map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
+                      {[...new Set(verification.signals.map((signal) => signal.source))].map(
+                        (item) => (
+                          <li key={item}>{item}</li>
+                        ),
+                      )}
                     </ul>
                   </div>
 
@@ -689,8 +719,8 @@ export function VerificationDetailPage() {
                       ]
                         .filter((item): item is string => Boolean(item))
                         .map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
+                          <li key={item}>{item}</li>
+                        ))}
                     </ul>
                   </div>
                 </div>
@@ -801,7 +831,11 @@ export function VerificationDetailPage() {
       </section>
 
       {!isDisclaimerOpen ? (
-        <Button className="verification-disclaimer-float" onClick={() => setIsDisclaimerOpen(true)} variant="secondary">
+        <Button
+          className="verification-disclaimer-float"
+          onClick={() => setIsDisclaimerOpen(true)}
+          variant="secondary"
+        >
           {copy.detail.disclaimerFloat}
         </Button>
       ) : null}

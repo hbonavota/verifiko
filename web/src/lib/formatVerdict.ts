@@ -19,9 +19,7 @@ export function formatVerdict(verdict: string, language: Language = "en") {
     return language === "es" ? "Malicioso" : "Malicious";
   }
 
-  return normalizedVerdict
-    .toLowerCase()
-    .replace(/\b\w/g, (character) => character.toUpperCase());
+  return normalizedVerdict.toLowerCase().replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 export function formatRiskLevel(riskLevel: string, language: Language = "en") {
@@ -35,7 +33,9 @@ export function formatRiskLevel(riskLevel: string, language: Language = "en") {
     CRITICAL: language === "es" ? "Crítico" : "Critical",
   } as const;
 
-  return riskLevelLabels[normalizedRiskLevel as keyof typeof riskLevelLabels] ?? normalizedRiskLevel;
+  return (
+    riskLevelLabels[normalizedRiskLevel as keyof typeof riskLevelLabels] ?? normalizedRiskLevel
+  );
 }
 
 export function formatVerificationStatus(status: string, language: Language = "en") {

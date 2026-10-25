@@ -82,10 +82,7 @@ export function DashboardPage() {
   const [cardFeedback, setCardFeedback] = useState<{ id: string; text: string } | null>(null);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
 
-  useDocumentMeta(
-    copy.dashboard.metaTitle,
-    copy.dashboard.metaDescription,
-  );
+  useDocumentMeta(copy.dashboard.metaTitle, copy.dashboard.metaDescription);
 
   useEffect(() => {
     let isMounted = true;
@@ -111,7 +108,9 @@ export function DashboardPage() {
           return;
         }
 
-        setVerifications(payload.map((verification) => adaptApiVerification(verification, language)));
+        setVerifications(
+          payload.map((verification) => adaptApiVerification(verification, language)),
+        );
       } catch {
         if (!isMounted) {
           return;
@@ -149,9 +148,13 @@ export function DashboardPage() {
           coverageNote: copy.coverageNote,
         })
       : "";
-  const activeAnalysisTrace = activeVerification ? getVerificationAnalysisTrace(activeVerification) : [];
+  const activeAnalysisTrace = activeVerification
+    ? getVerificationAnalysisTrace(activeVerification)
+    : [];
   const showOwnedLoading = authReady && !!currentUser && isHistoryLoading;
-  const workspaceOwner = currentUser ? firstName(currentUser.display_name || currentUser.email) : null;
+  const workspaceOwner = currentUser
+    ? firstName(currentUser.display_name || currentUser.email)
+    : null;
   const latestSavedAt = activeVerification
     ? new Date(activeVerification.createdAt).toLocaleString(locale, {
         dateStyle: "medium",
@@ -186,7 +189,7 @@ export function DashboardPage() {
       ? activeRiskAssessment.topSignals.slice(0, 3)
       : activeVerification && activeVerification.signals.length > 0
         ? activeVerification.signals.slice(0, 3).map((signal) => signal.title)
-      : [copy.dashboard.noRecentAnalysis];
+        : [copy.dashboard.noRecentAnalysis];
 
   async function handleCopyLink(verificationId: string) {
     const didCopy = await copyVerificationLink(verificationId);
@@ -213,10 +216,7 @@ export function DashboardPage() {
       ]);
       void refreshQuotaStatus();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : copy.dashboard.rerunFailed;
+      const message = error instanceof Error ? error.message : copy.dashboard.rerunFailed;
       setWorkspaceMessage(message);
     } finally {
       setRerunningVerificationId(null);
@@ -292,11 +292,16 @@ export function DashboardPage() {
       />
 
       {currentUser ? (
-        <section className="dashboard-workspace-banner" aria-label={copy.dashboard.workspaceEyebrow}>
+        <section
+          className="dashboard-workspace-banner"
+          aria-label={copy.dashboard.workspaceEyebrow}
+        >
           <div className="dashboard-workspace-banner__copy">
             <p className="dashboard-workspace-banner__eyebrow">{copy.dashboard.workspaceEyebrow}</p>
             <p className="dashboard-workspace-banner__owner">{workspaceOwner}</p>
-            <p className="dashboard-workspace-banner__description">{copy.dashboard.workspaceDescription}</p>
+            <p className="dashboard-workspace-banner__description">
+              {copy.dashboard.workspaceDescription}
+            </p>
           </div>
 
           <div className="dashboard-workspace-banner__stats">
@@ -312,13 +317,11 @@ export function DashboardPage() {
                   ? formatRiskLevel(activeRiskAssessment.riskLevel, language)
                   : copy.dashboard.empty
               }
-              tone={activeVerification ? toneForRiskLevel(activeRiskAssessment.riskLevel) : "neutral"}
+              tone={
+                activeVerification ? toneForRiskLevel(activeRiskAssessment.riskLevel) : "neutral"
+              }
             />
-            <StatPill
-              label={copy.dashboard.lastSavedLabel}
-              value={latestSavedAt}
-              tone="neutral"
-            />
+            <StatPill label={copy.dashboard.lastSavedLabel} value={latestSavedAt} tone="neutral" />
           </div>
         </section>
       ) : null}
@@ -432,7 +435,11 @@ export function DashboardPage() {
 
             <div className="dashboard-card-headline dashboard-card-headline--muted">
               <div className="dashboard-card-pills">
-                <StatPill label={copy.dashboard.signalsCount} value={String(activeVerification.signals.length)} tone="warning" />
+                <StatPill
+                  label={copy.dashboard.signalsCount}
+                  value={String(activeVerification.signals.length)}
+                  tone="warning"
+                />
                 <StatPill
                   label={copy.dashboard.openQuestions}
                   value={String(activeWarnings.length)}
@@ -474,7 +481,11 @@ export function DashboardPage() {
         <div className="dashboard-main">
           <Card
             eyebrow={copy.dashboard.signalBreakdown}
-            title={activeVerification ? copy.dashboard.signalsInThisResult : copy.dashboard.signalsUnavailable}
+            title={
+              activeVerification
+                ? copy.dashboard.signalsInThisResult
+                : copy.dashboard.signalsUnavailable
+            }
             description={undefined}
             id="signals"
           >
@@ -507,7 +518,10 @@ export function DashboardPage() {
                       <span className="signal-table__value" data-label={copy.dashboard.confidence}>
                         {signal.confidence}%
                       </span>
-                      <span className="signal-table__value" data-label={copy.dashboard.scoreContribution}>
+                      <span
+                        className="signal-table__value"
+                        data-label={copy.dashboard.scoreContribution}
+                      >
                         -{signal.scoreContribution}
                       </span>
                       <span className="signal-table__value" data-label={copy.dashboard.sources}>
@@ -558,9 +572,11 @@ export function DashboardPage() {
                   <div className="evidence-block">
                     <p className="evidence-block__label">{copy.dashboard.sources}</p>
                     <ul className="evidence-block__list">
-                      {[...new Set(activeVerification.signals.map((signal) => signal.source))].map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
+                      {[...new Set(activeVerification.signals.map((signal) => signal.source))].map(
+                        (item) => (
+                          <li key={item}>{item}</li>
+                        ),
+                      )}
                     </ul>
                   </div>
                   <div className="evidence-block">
@@ -587,7 +603,10 @@ export function DashboardPage() {
             {activeVerification && activeAnalysisTrace.length > 0 ? (
               <div className="decision-trace">
                 {activeAnalysisTrace.map((step) => (
-                  <article key={`${step.stage}-${step.source}-${step.status}`} className="decision-trace__item">
+                  <article
+                    key={`${step.stage}-${step.source}-${step.status}`}
+                    className="decision-trace__item"
+                  >
                     <div className="decision-trace__marker" />
                     <div className="decision-trace__content">
                       <p className="decision-trace__label">{step.stage}</p>
@@ -605,12 +624,13 @@ export function DashboardPage() {
               <p className="metric-card__detail">{copy.dashboard.decisionTraceAppearsLater}</p>
             )}
           </Card>
-
         </div>
 
         <aside className="dashboard-rail">
           <Card
-            eyebrow={currentUser ? copy.dashboard.privateLibraryEyebrow : copy.dashboard.recentAnalyses}
+            eyebrow={
+              currentUser ? copy.dashboard.privateLibraryEyebrow : copy.dashboard.recentAnalyses
+            }
             title={currentUser ? copy.dashboard.privateLibraryTitle : copy.dashboard.latestResults}
             description={currentUser ? copy.dashboard.privateLibraryDescription : undefined}
             action={
@@ -626,7 +646,10 @@ export function DashboardPage() {
             {showOwnedLoading ? (
               <div className="dashboard-history-skeleton" aria-hidden="true">
                 {Array.from({ length: 3 }).map((_, index) => (
-                  <div key={`history-skeleton-${index}`} className="dashboard-history-skeleton__item">
+                  <div
+                    key={`history-skeleton-${index}`}
+                    className="dashboard-history-skeleton__item"
+                  >
                     <span className="dashboard-history-skeleton__line dashboard-history-skeleton__line--eyebrow" />
                     <span className="dashboard-history-skeleton__line dashboard-history-skeleton__line--title" />
                     <span className="dashboard-history-skeleton__line" />
@@ -758,7 +781,9 @@ export function DashboardPage() {
               </div>
             ) : currentUser ? (
               <div className="dashboard-history-empty">
-                <p className="recommendation-panel__headline">{copy.dashboard.noVerificationsYetTitle}</p>
+                <p className="recommendation-panel__headline">
+                  {copy.dashboard.noVerificationsYetTitle}
+                </p>
                 <p className="notes-panel__text">{copy.dashboard.noVerificationsYetCopy}</p>
                 <div className="dashboard-action-stack">
                   <Button href="#verifications" variant="primary">
@@ -795,7 +820,9 @@ export function DashboardPage() {
               </div>
             ) : currentUser ? (
               <div className="notes-panel">
-                <p className="recommendation-panel__headline">{copy.dashboard.emptySignedInTitle}</p>
+                <p className="recommendation-panel__headline">
+                  {copy.dashboard.emptySignedInTitle}
+                </p>
                 <p className="notes-panel__text">{copy.dashboard.emptySignedInCopy}</p>
                 <div className="dashboard-action-stack">
                   <Button href="#verifications" variant="primary">

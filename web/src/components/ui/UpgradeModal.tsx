@@ -3,10 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { useI18n } from "../../lib/i18n";
-import {
-  type UpgradeIntentSource,
-  useUpgradeIntent,
-} from "../../lib/upgradeIntentStorage";
+import { type UpgradeIntentSource, useUpgradeIntent } from "../../lib/upgradeIntentStorage";
 
 interface UpgradeModalProps {
   open: boolean;

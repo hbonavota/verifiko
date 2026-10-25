@@ -5,12 +5,7 @@ interface SectionTitleProps {
   align?: "start" | "center";
 }
 
-export function SectionTitle({
-  eyebrow,
-  title,
-  description,
-  align = "start",
-}: SectionTitleProps) {
+export function SectionTitle({ eyebrow, title, description, align = "start" }: SectionTitleProps) {
   return (
     <div className={`section-title section-title--${align}`}>
       <p className="section-title__eyebrow">{eyebrow}</p>

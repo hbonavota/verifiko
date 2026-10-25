@@ -8,10 +8,7 @@ import { PageShell } from "../layouts/PageShell";
 export function PrivacyPage() {
   const { copy } = useI18n();
 
-  useDocumentMeta(
-    copy.privacyPage.metaTitle,
-    copy.privacyPage.metaDescription,
-  );
+  useDocumentMeta(copy.privacyPage.metaTitle, copy.privacyPage.metaDescription);
 
   return (
     <PageShell>
