@@ -32,8 +32,8 @@ export function HomePage() {
 
   useDocumentMeta(copy.home.metaTitle, copy.home.metaDescription);
 
-  const [verifications, setVerifications] = useState<VerificationSummary[]>([]);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [, setVerifications] = useState<VerificationSummary[]>([]);
+  const [, setIsHistoryLoading] = useState(false);
   const [analysisState, setAnalysisState] = useState<"idle" | "submitting" | "error">("idle");
   const [deepAnalysisActive, setDeepAnalysisActive] = useState(false);
   const [inlineResult, setInlineResult] = useState<VerificationSummary | null>(null);

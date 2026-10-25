@@ -69,6 +69,7 @@ export function VerificationDetailPage() {
     let isMounted = true;
 
     if (!id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the verification for the route id; a missing id fails synchronously
       setVerificationState({ status: "error", message: copy.detail.verificationIdRequired });
       return;
     }

@@ -39,6 +39,7 @@ export function useInstallPrompt(): { mode: InstallMode; promptInstall: () => Pr
       return;
     }
     if (isIos()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- platform detection needs window/navigator, so it runs after mount
       setMode("ios");
       return;
     }

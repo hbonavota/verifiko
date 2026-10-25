@@ -26,6 +26,7 @@ export function VerificationProgress({ deep = false }: VerificationProgressProps
   const [completed, setCompleted] = useState(0);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- restarts the stage sequence when the analysis mode changes
     setCompleted(0);
     const timers: number[] = [];
     // Tick each stage (except the last) to "done" in sequence; the last one

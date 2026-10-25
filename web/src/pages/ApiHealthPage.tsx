@@ -37,6 +37,7 @@ export function ApiHealthPage() {
   // Check once on mount. The language only changes how the result is worded
   // (localized at render), so it must not trigger another request; Refresh does.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only health check; the request sets its own loading state
     void runHealthCheck();
   }, []);
 

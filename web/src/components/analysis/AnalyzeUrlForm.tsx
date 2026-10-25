@@ -157,6 +157,7 @@ export function AnalyzeUrlForm({
   // parent render, so depending on it made this wipe every signed-in error (and
   // force "idle" mid-request) whenever the parent re-rendered.
   const onStateChangeRef = useRef(onStateChange);
+  // eslint-disable-next-line react-hooks/refs -- latest-ref pattern: tracks the newest onStateChange without making it an effect dep
   onStateChangeRef.current = onStateChange;
   const previousUserIdRef = useRef(currentUser?.id ?? null);
   useEffect(() => {

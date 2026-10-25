@@ -1442,6 +1442,7 @@ const locales: Record<Language, string> = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components -- kept next to its provider; edits here full-reload instead of hot-swapping
 export function getStoredLanguage(): Language {
   if (typeof window === "undefined") {
     return "en";
@@ -1479,6 +1480,7 @@ export function I18nProvider({
     }
     const storedLanguage = getStoredLanguage();
     if (storedLanguage !== PRERENDER_LANGUAGE) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- stored language applies after hydration so the prerendered landing matches (#418/#423)
       setLanguage(storedLanguage);
     }
     setHasLoadedStoredLanguage(true);
@@ -1507,6 +1509,7 @@ export function I18nProvider({
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- kept next to its provider; edits here full-reload instead of hot-swapping
 export function useI18n() {
   const context = useContext(I18nContext);
 

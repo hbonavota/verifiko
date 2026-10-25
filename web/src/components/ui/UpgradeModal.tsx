@@ -23,6 +23,7 @@ export function UpgradeModal({ open, onClose, source = "topbar" }: UpgradeModalP
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the modal view each time it opens
     setView(hasSubmittedUpgradeIntent ? "saved" : "default");
   }, [hasSubmittedUpgradeIntent, open]);
 

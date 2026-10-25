@@ -28,6 +28,7 @@ export function MagicLinkPage() {
     startedRef.current = true;
 
     if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot token exchange on mount, guarded by startedRef
       setStatus("missing");
       return;
     }

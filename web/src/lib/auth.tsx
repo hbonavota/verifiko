@@ -72,6 +72,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const storedSession = readStoredAuthSession();
 
     if (!storedSession) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- session is read from storage after mount (SSR-safe); the auth flow is order-sensitive
       setAuthReady(true);
       return;
     }
@@ -223,6 +224,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- kept next to its provider; edits here full-reload instead of hot-swapping
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {
