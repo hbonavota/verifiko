@@ -10,8 +10,9 @@ every resolved address is globally routable. Network adapters then connect only 
 addresses that were validated.
 
 This is a baseline spec extracted from the code as of `main@d3f9dfb`. It describes
-current behavior only. Gaps, ambiguities and suspected bypasses are in
-`docs/openspec-baseline-findings.md`, not here.
+current behavior only. The gaps found when the guard was reviewed against this baseline
+were resolved in follow-up PRs (#88, #89); `docs/openspec-baseline-findings.md` summarizes
+the outcome.
 
 Outbound calls to fixed, operator-configured hosts (reputation feeds, RDAP, Browserless,
 email, Google token info, the internal scan dispatcher) do not use this guard and are out
