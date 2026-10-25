@@ -28,6 +28,8 @@ beat: **URLert** (see `docs/COMPETITIVE-ANALYSIS-URLERT.md`).
   - `cd api && python -m pytest -q`  (full suite; ~500 tests, must stay green)
   - `cd api && python -m evaluation.run_evaluation`  (detection quality — precision **must not**
     regress: baseline precision 1.00, recall ~0.80, FPR 0.00 at MEDIUM threshold)
+  - `cd web && npm run test`  (Vitest + Testing Library; test files sit next to the code as
+    `*.test.{ts,tsx}`, with explicit imports from `vitest`, no globals)
   - `cd api && ruff check . && black --check .`  (lint + format; `black .` and
     `ruff check --fix .` apply fixes. Alembic migrations are excluded.)
 - **New detection signals** require: enum in `signal_type.py`, weight + category in
@@ -77,7 +79,7 @@ password (Argon2), quotas/rate-limits. Also shipped:
 - **Phase C** — computer vision over screenshots (brand-logo match, visual fake-login).
 - **Business layer (later)** — usage-based billing (credits, per-request price), domain
   classification product, programmatic SEO (`/domains/*`, threat feed), Chrome extension.
-- Frontend tests + a CI workflow for the test suite and eval harness.
+- A CI workflow for the API and web test suites and the eval harness.
 
 ## Conventions worth knowing
 

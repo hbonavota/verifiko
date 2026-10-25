@@ -53,7 +53,7 @@ explanation, so the verdict can be audited instead of trusted blindly.
 - Computer vision over deep-scan screenshots: brand-logo matching, visual fake-login detection.
 - Usage-based billing (credits), a domain-classification product, a public threat feed, a browser
   extension.
-- Frontend tests and CI.
+- CI for the API and web test suites and the eval harness.
 
 ## Architecture
 
@@ -155,8 +155,16 @@ The evaluation harness scores the engine offline against a labeled corpus of mal
 URLs. At the `MEDIUM` threshold the current baseline is **precision 1.00, recall 0.82, false
 positive rate 0.00**. Changes must not regress precision.
 
-Frontend: `cd web && npm run build` type-checks (`tsc --noEmit`), builds and prerenders. There
-are no frontend unit tests or CI yet. Both are on the roadmap.
+Frontend:
+
+```bash
+cd web
+npm run test                             # Vitest + Testing Library (jsdom)
+npm run build                            # type-checks (tsc --noEmit), builds and prerenders
+```
+
+Unit tests live next to the code they cover (`src/**/*.test.{ts,tsx}`). There is no CI yet; it
+is on the roadmap.
 
 The web app is also tested by hand in a real browser before and after each change, across
 viewports, both languages and the PWA. The process is described in [docs/QA.md](docs/QA.md).
