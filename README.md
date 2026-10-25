@@ -1,3 +1,5 @@
+**English** · [Español](README.es.md)
+
 # Verifiko
 
 **Is this link safe?** Verifiko detects phishing and malware links. You paste a URL and get an
