@@ -1,4 +1,4 @@
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -46,13 +46,13 @@ def _engine_kwargs(database_url: str) -> dict:
     return kwargs
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_engine(database_url: str | None = None) -> Engine:
     resolved_database_url = _resolved_database_url(database_url)
     return create_engine(resolved_database_url, **_engine_kwargs(resolved_database_url))
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_session_factory(database_url: str | None = None) -> sessionmaker:
     return sessionmaker(
         bind=get_engine(database_url),

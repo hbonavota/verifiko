@@ -1,7 +1,7 @@
-from dataclasses import dataclass
 import ipaddress
 import socket
 import time
+from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 from app.domain.i18n.resolver import resolve_message
@@ -40,7 +40,9 @@ def resolve_safe_outbound_url(url: str) -> SafeOutboundResolution:
             resolve_message("error.only_http_https_outbound_targets_allowed")
         )
     if not parsed.hostname:
-        raise UnsafeOutboundTargetError(resolve_message("error.outbound_target_host_required"))
+        raise UnsafeOutboundTargetError(
+            resolve_message("error.outbound_target_host_required")
+        )
 
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     return resolve_safe_outbound_host(parsed.hostname, port)
@@ -56,11 +58,19 @@ def resolve_safe_outbound_host(
 ) -> SafeOutboundResolution:
     normalized_host = hostname.strip().lower().rstrip(".")
     if not normalized_host:
-        raise UnsafeOutboundTargetError(resolve_message("error.outbound_target_host_required"))
-    if normalized_host == "localhost" or normalized_host.endswith(_BLOCKED_HOST_SUFFIXES):
-        raise UnsafeOutboundTargetError(resolve_message("error.outbound_target_local_special_use_blocked"))
+        raise UnsafeOutboundTargetError(
+            resolve_message("error.outbound_target_host_required")
+        )
+    if normalized_host == "localhost" or normalized_host.endswith(
+        _BLOCKED_HOST_SUFFIXES
+    ):
+        raise UnsafeOutboundTargetError(
+            resolve_message("error.outbound_target_local_special_use_blocked")
+        )
     if "." not in normalized_host and not _looks_like_ip_address(normalized_host):
-        raise UnsafeOutboundTargetError(resolve_message("error.outbound_target_single_label_blocked"))
+        raise UnsafeOutboundTargetError(
+            resolve_message("error.outbound_target_single_label_blocked")
+        )
 
     resolved_port = port or 443
     addresses = _resolve_host_addresses(normalized_host, resolved_port)
@@ -70,7 +80,9 @@ def resolve_safe_outbound_host(
             for embedded_ip in _embedded_ipv4_addresses(resolved_ip)
         ):
             raise UnsafeOutboundTargetError(
-                resolve_message("error.outbound_target_private_special_use_address_blocked")
+                resolve_message(
+                    "error.outbound_target_private_special_use_address_blocked"
+                )
             )
     return SafeOutboundResolution(
         hostname=normalized_host,
@@ -113,7 +125,9 @@ def _getaddrinfo_with_retry(hostname: str, port: int) -> list:
             return socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
         except socket.gaierror as exc:
             raise UnsafeOutboundTargetError(
-                resolve_message("error.outbound_target_host_unresolved_for_safety_validation")
+                resolve_message(
+                    "error.outbound_target_host_unresolved_for_safety_validation"
+                )
             ) from exc
         except OSError as exc:
             last_error = exc

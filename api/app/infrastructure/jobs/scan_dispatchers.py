@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from app.application.ports.verification_job_dispatcher import VerificationJobDispatcher
-from app.application.services.verification_scan_processor import VerificationScanProcessor
+from app.application.services.verification_scan_processor import (
+    VerificationScanProcessor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,9 @@ class ThreadPoolVerificationJobDispatcher(VerificationJobDispatcher):
     later requires no change to the API or use cases.
     """
 
-    def __init__(self, processor: VerificationScanProcessor, max_workers: int = 4) -> None:
+    def __init__(
+        self, processor: VerificationScanProcessor, max_workers: int = 4
+    ) -> None:
         self._processor = processor
         self._executor = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="verifiko-scan"
@@ -50,8 +54,12 @@ class ThreadPoolVerificationJobDispatcher(VerificationJobDispatcher):
     @staticmethod
     def _log_failure(job_id: str, future) -> None:
         exception = future.exception()
-        if exception is not None:  # pragma: no cover - defensive; processor handles its own errors
-            logger.exception("Scan job %s crashed in the worker", job_id, exc_info=exception)
+        if (
+            exception is not None
+        ):  # pragma: no cover - defensive; processor handles its own errors
+            logger.exception(
+                "Scan job %s crashed in the worker", job_id, exc_info=exception
+            )
 
 
 class QStashDeliveryError(Exception):
@@ -99,7 +107,9 @@ class QStashVerificationJobDispatcher(VerificationJobDispatcher):
             "Upstash-Retries": str(self._max_retries),
         }
         try:
-            status_code, response_body = self._http_poster(self._publish_url, headers, body)
+            status_code, response_body = self._http_poster(
+                self._publish_url, headers, body
+            )
         except QStashDeliveryError:
             logger.exception(
                 "Failed to publish scan job %s to QStash; it remains queued.", job_id

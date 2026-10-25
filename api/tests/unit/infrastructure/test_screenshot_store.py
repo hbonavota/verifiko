@@ -73,7 +73,10 @@ def test_r2_store_presigned_url_calls_boto3_with_bucket_and_key() -> None:
     assert len(s3.presign_calls) == 1
     call = s3.presign_calls[0]
     assert call["operation"] == "get_object"
-    assert call["Params"] == {"Bucket": "verifiko-screenshots", "Key": "screenshots/abc.png"}
+    assert call["Params"] == {
+        "Bucket": "verifiko-screenshots",
+        "Key": "screenshots/abc.png",
+    }
     assert call["ExpiresIn"] == 120
     assert url == "https://signed.example/screenshots/abc.png?exp=120"
 

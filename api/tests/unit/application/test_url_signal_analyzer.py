@@ -31,22 +31,34 @@ def test_url_signal_analyzer_uses_userinfo_in_brand_lure_detection() -> None:
     assert SignalType.PHISHING_KEYWORDS in signal_types
 
 
-def test_url_signal_analyzer_does_not_flag_official_brand_host_as_impersonation() -> None:
+def test_url_signal_analyzer_does_not_flag_official_brand_host_as_impersonation() -> (
+    None
+):
     analyzer = DeterministicUrlSignalAnalyzer()
 
-    signals = analyzer.analyze(NormalizedUrl.from_raw("https://onedrive.live.com/login"))
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://onedrive.live.com/login")
+    )
 
-    assert all(signal.signal_type != SignalType.BRAND_IMPERSONATION for signal in signals)
+    assert all(
+        signal.signal_type != SignalType.BRAND_IMPERSONATION for signal in signals
+    )
 
 
-def test_url_signal_analyzer_does_not_flag_official_auth_hosts_with_generic_login_terms() -> None:
+def test_url_signal_analyzer_does_not_flag_official_auth_hosts_with_generic_login_terms() -> (
+    None
+):
     analyzer = DeterministicUrlSignalAnalyzer()
 
-    google_signals = analyzer.analyze(NormalizedUrl.from_raw("https://accounts.google.com/signin"))
+    google_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://accounts.google.com/signin")
+    )
     google_recovery_signals = analyzer.analyze(
         NormalizedUrl.from_raw("https://accounts.google.com/recovery")
     )
-    microsoft_signals = analyzer.analyze(NormalizedUrl.from_raw("https://login.microsoftonline.com/"))
+    microsoft_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://login.microsoftonline.com/")
+    )
 
     assert {signal.signal_type for signal in google_signals} == {
         SignalType.RECOGNIZED_REPUTABLE_DOMAIN
@@ -60,26 +72,38 @@ def test_url_signal_analyzer_does_not_flag_official_auth_hosts_with_generic_logi
 def test_url_signal_analyzer_flags_recovery_and_verification_variants() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
-    recovery_signals = analyzer.analyze(NormalizedUrl.from_raw("https://collector.bad.example/recovery"))
+    recovery_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://collector.bad.example/recovery")
+    )
     verification_signals = analyzer.analyze(
         NormalizedUrl.from_raw("https://collector.bad.example/verification")
     )
 
-    assert any(signal.signal_type == SignalType.PHISHING_KEYWORDS for signal in recovery_signals)
-    assert any(signal.signal_type == SignalType.PHISHING_KEYWORDS for signal in verification_signals)
+    assert any(
+        signal.signal_type == SignalType.PHISHING_KEYWORDS
+        for signal in recovery_signals
+    )
+    assert any(
+        signal.signal_type == SignalType.PHISHING_KEYWORDS
+        for signal in verification_signals
+    )
 
 
 def test_url_signal_analyzer_flags_government_brand_lure_domains() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
-    signals = analyzer.analyze(NormalizedUrl.from_raw("https://irs-verify.example.xyz/login"))
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://irs-verify.example.xyz/login")
+    )
 
     signal_types = {signal.signal_type for signal in signals}
     assert SignalType.BRAND_IMPERSONATION in signal_types
     assert SignalType.PHISHING_KEYWORDS in signal_types
 
 
-def test_url_signal_analyzer_flags_known_deceptive_brand_domain_fragments_in_subdomain() -> None:
+def test_url_signal_analyzer_flags_known_deceptive_brand_domain_fragments_in_subdomain() -> (
+    None
+):
     analyzer = DeterministicUrlSignalAnalyzer()
     cases = (
         (
@@ -106,11 +130,16 @@ def test_url_signal_analyzer_flags_known_deceptive_brand_domain_fragments_in_sub
         signals = analyzer.analyze(NormalizedUrl.from_raw(url))
 
         deceptive_signal = next(
-            signal for signal in signals if signal.signal_type == SignalType.DECEPTIVE_BRAND_SUBDOMAIN
+            signal
+            for signal in signals
+            if signal.signal_type == SignalType.DECEPTIVE_BRAND_SUBDOMAIN
         )
 
         assert f"Observed deceptive fragment: {fragment}." in deceptive_signal.evidence
-        assert f"Registered domain observed: {registered_domain}." in deceptive_signal.evidence
+        assert (
+            f"Registered domain observed: {registered_domain}."
+            in deceptive_signal.evidence
+        )
         assert f"Subdomain observed: {subdomain}." in deceptive_signal.evidence
 
 
@@ -125,7 +154,9 @@ def test_url_signal_analyzer_explains_long_deceptive_paypal_subdomain_chain() ->
 
     signal_types = {signal.signal_type for signal in signals}
     misleading_signal = next(
-        signal for signal in signals if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
+        signal
+        for signal in signals
+        if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
     )
 
     assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
@@ -148,7 +179,9 @@ def test_url_signal_analyzer_explains_long_deceptive_apple_subdomain_chain() -> 
 
     signal_types = {signal.signal_type for signal in signals}
     misleading_signal = next(
-        signal for signal in signals if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
+        signal
+        for signal in signals
+        if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
     )
 
     assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
@@ -160,7 +193,9 @@ def test_url_signal_analyzer_explains_long_deceptive_apple_subdomain_chain() -> 
     assert "Subdomain label count observed: 5." in misleading_signal.evidence
 
 
-def test_url_signal_analyzer_does_not_flag_official_brand_domains_as_deceptive_subdomain() -> None:
+def test_url_signal_analyzer_does_not_flag_official_brand_domains_as_deceptive_subdomain() -> (
+    None
+):
     analyzer = DeterministicUrlSignalAnalyzer()
 
     for url in (
@@ -171,7 +206,8 @@ def test_url_signal_analyzer_does_not_flag_official_brand_domains_as_deceptive_s
         signals = analyzer.analyze(NormalizedUrl.from_raw(url))
 
         assert all(
-            signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN for signal in signals
+            signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN
+            for signal in signals
         )
 
 
@@ -183,25 +219,40 @@ def test_url_signal_analyzer_flags_deceptive_institution_domain_in_subdomain() -
     )
 
     deceptive_signal = next(
-        signal for signal in signals if signal.signal_type == SignalType.DECEPTIVE_BRAND_SUBDOMAIN
+        signal
+        for signal in signals
+        if signal.signal_type == SignalType.DECEPTIVE_BRAND_SUBDOMAIN
     )
 
     assert "Observed deceptive fragment: dgt.gob.es." in deceptive_signal.evidence
-    assert "Registered domain observed: secure-payments.xyz." in deceptive_signal.evidence
-    assert "Subdomain observed: dgt.gob.es.multa-pendiente." in deceptive_signal.evidence
-    assert deceptive_signal.message_params["evidence"][0]["params"]["fragment"] == "dgt.gob.es"
+    assert (
+        "Registered domain observed: secure-payments.xyz." in deceptive_signal.evidence
+    )
+    assert (
+        "Subdomain observed: dgt.gob.es.multa-pendiente." in deceptive_signal.evidence
+    )
+    assert (
+        deceptive_signal.message_params["evidence"][0]["params"]["fragment"]
+        == "dgt.gob.es"
+    )
 
 
-def test_url_signal_analyzer_explains_long_deceptive_institution_subdomain_chain() -> None:
+def test_url_signal_analyzer_explains_long_deceptive_institution_subdomain_chain() -> (
+    None
+):
     analyzer = DeterministicUrlSignalAnalyzer()
 
     signals = analyzer.analyze(
-        NormalizedUrl.from_raw("https://dgt.gob.es.multa.pendiente.secure.payments.confirmacion.xyz/")
+        NormalizedUrl.from_raw(
+            "https://dgt.gob.es.multa.pendiente.secure.payments.confirmacion.xyz/"
+        )
     )
 
     signal_types = {signal.signal_type for signal in signals}
     misleading_signal = next(
-        signal for signal in signals if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
+        signal
+        for signal in signals
+        if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
     )
 
     assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
@@ -222,34 +273,53 @@ def test_url_signal_analyzer_strengthens_deep_deceptive_subdomain_chains() -> No
 
     signal_types = {signal.signal_type for signal in signals}
     misleading_signal = next(
-        signal for signal in signals if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
+        signal
+        for signal in signals
+        if signal.signal_type == SignalType.MISLEADING_SUBDOMAIN
     )
 
     assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
     assert SignalType.MISLEADING_SUBDOMAIN in signal_types
     assert "Registered domain observed: example.net." in misleading_signal.evidence
-    assert "Subdomain observed: api.mail.google.com.security." in misleading_signal.evidence
-    assert "Matched suspicious subdomain labels: security." in misleading_signal.evidence
+    assert (
+        "Subdomain observed: api.mail.google.com.security."
+        in misleading_signal.evidence
+    )
+    assert (
+        "Matched suspicious subdomain labels: security." in misleading_signal.evidence
+    )
     assert "Subdomain label count observed: 5." in misleading_signal.evidence
 
 
-def test_url_signal_analyzer_does_not_flag_official_institution_domain_as_deceptive_subdomain() -> None:
+def test_url_signal_analyzer_does_not_flag_official_institution_domain_as_deceptive_subdomain() -> (
+    None
+):
     analyzer = DeterministicUrlSignalAnalyzer()
 
     signals = analyzer.analyze(NormalizedUrl.from_raw("https://dgt.gob.es/multas"))
 
-    assert all(signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN for signal in signals)
+    assert all(
+        signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN for signal in signals
+    )
 
 
-def test_url_signal_analyzer_does_not_flag_official_deep_brand_subdomains_as_misleading() -> None:
+def test_url_signal_analyzer_does_not_flag_official_deep_brand_subdomains_as_misleading() -> (
+    None
+):
     analyzer = DeterministicUrlSignalAnalyzer()
 
     signals = analyzer.analyze(
-        NormalizedUrl.from_raw("https://docs.paypal.com.developer.api.internal.paypal.com")
+        NormalizedUrl.from_raw(
+            "https://docs.paypal.com.developer.api.internal.paypal.com"
+        )
     )
 
-    assert all(signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN for signal in signals)
-    assert all(signal.signal_type != SignalType.MISLEADING_SUBDOMAIN for signal in signals)
+    assert all(
+        signal.signal_type != SignalType.DECEPTIVE_BRAND_SUBDOMAIN for signal in signals
+    )
+    assert all(
+        signal.signal_type != SignalType.MISLEADING_SUBDOMAIN for signal in signals
+    )
 
 
 def test_url_signal_analyzer_flags_institution_mismatch_lures() -> None:
@@ -259,8 +329,13 @@ def test_url_signal_analyzer_flags_institution_mismatch_lures() -> None:
         NormalizedUrl.from_raw("https://traffic-fine-payment.example.xyz/notice")
     )
 
-    assert any(signal.signal_type == SignalType.BRAND_IMPERSONATION for signal in signals)
-    assert any(signal.title == "Institution-style payment or penalty lure" for signal in signals)
+    assert any(
+        signal.signal_type == SignalType.BRAND_IMPERSONATION for signal in signals
+    )
+    assert any(
+        signal.title == "Institution-style payment or penalty lure"
+        for signal in signals
+    )
 
 
 def test_url_signal_analyzer_flags_risky_tld_for_institution_mismatch_lures() -> None:
@@ -288,43 +363,72 @@ def test_url_signal_analyzer_flags_branded_shorteners() -> None:
 def test_url_signal_analyzer_strengthens_suspicious_synthetic_hostname_labels() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
-    signals = analyzer.analyze(NormalizedUrl.from_raw("https://secure-verify-9x1k-login.net"))
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://secure-verify-9x1k-login.net")
+    )
 
     entropy_signal = next(
-        signal for signal in signals if signal.signal_type == SignalType.HIGH_DOMAIN_ENTROPY
+        signal
+        for signal in signals
+        if signal.signal_type == SignalType.HIGH_DOMAIN_ENTROPY
     )
 
     assert entropy_signal.severity.value == "HIGH"
     assert "Suspicious label: secure-verify-9x1k-login." in entropy_signal.evidence
-    assert "Matched suspicious hostname terms: login, secure, verify." in entropy_signal.evidence
+    assert (
+        "Matched suspicious hostname terms: login, secure, verify."
+        in entropy_signal.evidence
+    )
     assert any(signal.signal_type == SignalType.PHISHING_KEYWORDS for signal in signals)
 
 
 def test_url_signal_analyzer_strengthens_mailbox_synthetic_hostname_labels() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
-    signals = analyzer.analyze(NormalizedUrl.from_raw("https://mailbox-8f2k-review-login.xyz"))
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://mailbox-8f2k-review-login.xyz")
+    )
 
     entropy_signal = next(
-        signal for signal in signals if signal.signal_type == SignalType.HIGH_DOMAIN_ENTROPY
+        signal
+        for signal in signals
+        if signal.signal_type == SignalType.HIGH_DOMAIN_ENTROPY
     )
 
     assert entropy_signal.severity.value == "HIGH"
     assert "Suspicious label: mailbox-8f2k-review-login." in entropy_signal.evidence
-    assert "Matched suspicious hostname terms: login, mailbox." in entropy_signal.evidence
-    assert any(signal.signal_type == SignalType.TACTICAL_EMAIL_STAGING for signal in signals)
+    assert (
+        "Matched suspicious hostname terms: login, mailbox." in entropy_signal.evidence
+    )
+    assert any(
+        signal.signal_type == SignalType.TACTICAL_EMAIL_STAGING for signal in signals
+    )
 
 
-def test_url_signal_analyzer_does_not_flag_technical_compound_hostname_labels_as_entropy() -> None:
+def test_url_signal_analyzer_does_not_flag_technical_compound_hostname_labels_as_entropy() -> (
+    None
+):
     analyzer = DeterministicUrlSignalAnalyzer()
 
-    cdn_signals = analyzer.analyze(NormalizedUrl.from_raw("https://cdn-cgi.example.com"))
-    api_signals = analyzer.analyze(NormalizedUrl.from_raw("https://api-v2.docs.example.com"))
-    asset_signals = analyzer.analyze(NormalizedUrl.from_raw("https://assets-01.examplecdn.net"))
+    cdn_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://cdn-cgi.example.com")
+    )
+    api_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://api-v2.docs.example.com")
+    )
+    asset_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://assets-01.examplecdn.net")
+    )
 
-    assert all(signal.signal_type != SignalType.HIGH_DOMAIN_ENTROPY for signal in cdn_signals)
-    assert all(signal.signal_type != SignalType.HIGH_DOMAIN_ENTROPY for signal in api_signals)
-    assert all(signal.signal_type != SignalType.HIGH_DOMAIN_ENTROPY for signal in asset_signals)
+    assert all(
+        signal.signal_type != SignalType.HIGH_DOMAIN_ENTROPY for signal in cdn_signals
+    )
+    assert all(
+        signal.signal_type != SignalType.HIGH_DOMAIN_ENTROPY for signal in api_signals
+    )
+    assert all(
+        signal.signal_type != SignalType.HIGH_DOMAIN_ENTROPY for signal in asset_signals
+    )
 
 
 def test_url_signal_analyzer_flags_mailbox_mfa_review_lures() -> None:
@@ -357,7 +461,9 @@ def test_url_signal_analyzer_flags_mailbox_challenge_review_lures() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
     signals = analyzer.analyze(
-        NormalizedUrl.from_raw("https://outlook.office365.challenge-review.mail-access.net/")
+        NormalizedUrl.from_raw(
+            "https://outlook.office365.challenge-review.mail-access.net/"
+        )
     )
 
     signal_types = {signal.signal_type for signal in signals}
@@ -370,7 +476,9 @@ def test_url_signal_analyzer_flags_deceptive_reauth_brand_lures() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
     signals = analyzer.analyze(
-        NormalizedUrl.from_raw("https://google.com.reauth-security-check.user-access.net/")
+        NormalizedUrl.from_raw(
+            "https://google.com.reauth-security-check.user-access.net/"
+        )
     )
 
     signal_types = {signal.signal_type for signal in signals}
@@ -383,7 +491,9 @@ def test_url_signal_analyzer_flags_mailbox_session_review_lures() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
     signals = analyzer.analyze(
-        NormalizedUrl.from_raw("https://outlook.office365.session-review.mail-access.net/")
+        NormalizedUrl.from_raw(
+            "https://outlook.office365.session-review.mail-access.net/"
+        )
     )
 
     signal_types = {signal.signal_type for signal in signals}
@@ -405,10 +515,14 @@ def test_url_signal_analyzer_flags_deceptive_approve_brand_lures() -> None:
     assert SignalType.DECEPTIVE_BRAND_SUBDOMAIN in signal_types
 
 
-def test_url_signal_analyzer_does_not_flag_official_mfa_or_passkey_flows_as_phishing() -> None:
+def test_url_signal_analyzer_does_not_flag_official_mfa_or_passkey_flows_as_phishing() -> (
+    None
+):
     analyzer = DeterministicUrlSignalAnalyzer()
 
-    google_signals = analyzer.analyze(NormalizedUrl.from_raw("https://accounts.google.com/passkey"))
+    google_signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://accounts.google.com/passkey")
+    )
     google_challenge_signals = analyzer.analyze(
         NormalizedUrl.from_raw("https://accounts.google.com/challenge")
     )
@@ -416,13 +530,19 @@ def test_url_signal_analyzer_does_not_flag_official_mfa_or_passkey_flows_as_phis
         NormalizedUrl.from_raw("https://accounts.google.com/approve")
     )
     microsoft_signals = analyzer.analyze(
-        NormalizedUrl.from_raw("https://login.microsoftonline.com/common/oauth2/authorize?mfa=required")
+        NormalizedUrl.from_raw(
+            "https://login.microsoftonline.com/common/oauth2/authorize?mfa=required"
+        )
     )
     otp_signals = analyzer.analyze(
-        NormalizedUrl.from_raw("https://login.microsoftonline.com/common/oauth2/authorize?otp=required")
+        NormalizedUrl.from_raw(
+            "https://login.microsoftonline.com/common/oauth2/authorize?otp=required"
+        )
     )
     reauth_signals = analyzer.analyze(
-        NormalizedUrl.from_raw("https://login.microsoftonline.com/common/oauth2/authorize?reauth=true")
+        NormalizedUrl.from_raw(
+            "https://login.microsoftonline.com/common/oauth2/authorize?reauth=true"
+        )
     )
     session_signals = analyzer.analyze(
         NormalizedUrl.from_raw("https://dropbox.com/session")
@@ -446,7 +566,9 @@ def test_url_signal_analyzer_does_not_flag_official_mfa_or_passkey_flows_as_phis
 def test_url_signal_analyzer_flags_recognized_reputable_domains() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
 
-    signals = analyzer.analyze(NormalizedUrl.from_raw("https://docs.python.org/3/library"))
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://docs.python.org/3/library")
+    )
 
     assert {signal.signal_type for signal in signals} == {
         SignalType.RECOGNIZED_REPUTABLE_DOMAIN
@@ -459,10 +581,14 @@ def test_url_signal_analyzer_uses_structured_empty_and_none_placeholders() -> No
     signals = analyzer.analyze(NormalizedUrl.from_raw("https://example.com/?next="))
 
     redirect_signal = next(
-        signal for signal in signals if signal.signal_type == SignalType.SUSPICIOUS_REDIRECT_CHAIN
+        signal
+        for signal in signals
+        if signal.signal_type == SignalType.SUSPICIOUS_REDIRECT_CHAIN
     )
 
-    assert "Query parameter next=(empty) may steer navigation." in redirect_signal.evidence
+    assert (
+        "Query parameter next=(empty) may steer navigation." in redirect_signal.evidence
+    )
     assert redirect_signal.message_params["evidence"][0]["params"]["value"] == {
         "key": "phrase.placeholder_empty_value",
         "params": {},

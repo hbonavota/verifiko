@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-import logging
-from typing import Callable
 
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
@@ -24,23 +24,19 @@ logger = logging.getLogger(__name__)
 # caller is already at the limit the conditional DO UPDATE matches no row and
 # RETURNING yields nothing, so the counter is never over-incremented. The syntax
 # is shared by Postgres and modern SQLite (>= 3.35 for RETURNING).
-_CONSUME_SQL = text(
-    """
+_CONSUME_SQL = text("""
     INSERT INTO daily_quota_counters (identity_key, quota_day, used)
     VALUES (:identity_key, :quota_day, 1)
     ON CONFLICT (identity_key, quota_day)
     DO UPDATE SET used = daily_quota_counters.used + 1
     WHERE daily_quota_counters.used < :daily_limit
     RETURNING used
-    """
-)
+    """)
 
-_STATUS_SQL = text(
-    """
+_STATUS_SQL = text("""
     SELECT used FROM daily_quota_counters
     WHERE identity_key = :identity_key AND quota_day = :quota_day
-    """
-)
+    """)
 
 
 def _consume(
@@ -156,7 +152,9 @@ class SqlAlchemyAuthenticatedUtcDayQuotaLimiter:
                 daily_limit=daily_limit,
             )
         except Exception as exc:  # noqa: BLE001 - fail open on DB outage
-            logger.warning("Authenticated quota limiter unavailable; failing open: %s", exc)
+            logger.warning(
+                "Authenticated quota limiter unavailable; failing open: %s", exc
+            )
             return None
         if used is None:
             return seconds_until_next_midnight(now)

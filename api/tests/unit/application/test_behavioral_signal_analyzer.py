@@ -22,7 +22,9 @@ def test_offsite_form_action_flags_exfiltration() -> None:
     result = DetonationResult(
         requested_url="https://secure-login.example/",
         final_url="https://secure-login.example/",
-        forms=(DetonationForm(has_password_field=True, action_host="collector.evil.net"),),
+        forms=(
+            DetonationForm(has_password_field=True, action_host="collector.evil.net"),
+        ),
     )
     types = _types(result)
     assert SignalType.RENDERED_CREDENTIAL_FORM in types
@@ -59,7 +61,9 @@ def test_offsite_form_to_untrusted_domain_is_still_flagged() -> None:
     result = DetonationResult(
         requested_url="https://app.mycompany.example/login",
         final_url="https://app.mycompany.example/login",
-        forms=(DetonationForm(has_password_field=True, action_host="collector.evil.net"),),
+        forms=(
+            DetonationForm(has_password_field=True, action_host="collector.evil.net"),
+        ),
     )
     assert SignalType.OFFSITE_FORM_ACTION in _types(result)
 

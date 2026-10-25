@@ -49,8 +49,12 @@ def test_harness_reports_false_positives_and_false_negatives() -> None:
 
     assert (report.matrix.true_positive, report.matrix.false_positive) == (1, 1)
     assert (report.matrix.true_negative, report.matrix.false_negative) == (1, 1)
-    assert {item.sample.url for item in report.false_positives} == {"https://flagged-benign.example/"}
-    assert {item.sample.url for item in report.false_negatives} == {"https://missed-malicious.example/"}
+    assert {item.sample.url for item in report.false_positives} == {
+        "https://flagged-benign.example/"
+    }
+    assert {item.sample.url for item in report.false_negatives} == {
+        "https://missed-malicious.example/"
+    }
     assert "Precision" in report.render()
 
 
@@ -104,6 +108,8 @@ def test_detection_separates_malicious_from_benign_at_safe_boundary() -> None:
 
 def test_official_auth_flows_are_never_flagged() -> None:
     report = DetectionHarness(policy=DecisionPolicy("LOW")).evaluate(load_corpus())
-    official = {item for item in report.false_positives if "official" in item.sample.note}
+    official = {
+        item for item in report.false_positives if "official" in item.sample.note
+    }
 
     assert official == set(), report.render()

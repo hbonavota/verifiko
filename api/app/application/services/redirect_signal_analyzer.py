@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from app.application.ports.redirect_resolver import (
     RedirectResolution,
@@ -7,15 +7,27 @@ from app.application.ports.redirect_resolver import (
     RedirectResolverPort,
 )
 from app.application.services.analysis_result import SignalAnalysisResult
-from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
-from app.domain.entities.analysis_signal import AnalysisSignal
+from app.application.services.message_resolver import (
+    build_localized_signal,
+    evidence_ref,
+    resolve_message,
+)
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
-from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
+from app.domain.services.scoring_policies import (
+    BASE_SIGNAL_WEIGHTS,
+    SIGNAL_CATEGORY_MAP,
+)
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
-_INTERSTITIAL_REDIRECT_TOKENS = {"continue", "out", "away", "redirect", "redirecionamento"}
+_INTERSTITIAL_REDIRECT_TOKENS = {
+    "continue",
+    "out",
+    "away",
+    "redirect",
+    "redirecionamento",
+}
 _PHISHING_LURE_TOKENS = {
     "account",
     "auth",
@@ -93,7 +105,18 @@ _SHORTENER_DOMAINS = {
     "t.co",
     "tinyurl.com",
 }
-_QUESTIONABLE_DESTINATION_TLDS = {"buzz", "click", "gq", "info", "link", "live", "rest", "shop", "top", "xyz"}
+_QUESTIONABLE_DESTINATION_TLDS = {
+    "buzz",
+    "click",
+    "gq",
+    "info",
+    "link",
+    "live",
+    "rest",
+    "shop",
+    "top",
+    "xyz",
+}
 _OFFICIAL_AUTH_DOMAINS = {
     "apple.com",
     "dropbox.com",
@@ -111,7 +134,9 @@ class RedirectSignalAnalyzer:
     redirect_resolver: RedirectResolverPort
     source: str = "redirect-chain-analyzer"
 
-    def analyze_with_context(self, normalized_url: NormalizedUrl) -> SignalAnalysisResult:
+    def analyze_with_context(
+        self, normalized_url: NormalizedUrl
+    ) -> SignalAnalysisResult:
         try:
             resolution = self.redirect_resolver.resolve(normalized_url.normalized)
         except RedirectResolutionError:
@@ -128,9 +153,11 @@ class RedirectSignalAnalyzer:
         distinct_hosts.update(
             NormalizedUrl.from_raw(hop.target_url).ascii_host for hop in resolution.hops
         )
-        scheme_downgrade = normalized_url.scheme == "https" and resolved_final.scheme == "http"
-        questionable_destination_structure = self._has_questionable_destination_structure(
-            resolved_final
+        scheme_downgrade = (
+            normalized_url.scheme == "https" and resolved_final.scheme == "http"
+        )
+        questionable_destination_structure = (
+            self._has_questionable_destination_structure(resolved_final)
         )
         clean_single_hop_redirect = self._is_clean_single_hop_redirect(
             normalized_url=normalized_url,
@@ -182,9 +209,13 @@ class RedirectSignalAnalyzer:
             or questionable_destination_structure
             or self._has_phishing_like_final_cues(resolved_final)
         )
-        severity = SignalSeverity.HIGH if strong_redirect_cues else SignalSeverity.MEDIUM
+        severity = (
+            SignalSeverity.HIGH if strong_redirect_cues else SignalSeverity.MEDIUM
+        )
         if strong_redirect_cues:
-            confidence = min(94, 72 + len(resolution.hops) * 6 + len(domain_crossings) * 7)
+            confidence = min(
+                94, 72 + len(resolution.hops) * 6 + len(domain_crossings) * 7
+            )
         else:
             confidence = min(82, 64 + len(domain_crossings) * 6)
 
@@ -218,11 +249,15 @@ class RedirectSignalAnalyzer:
             signals.append(
                 build_localized_signal(
                     signal_type=SignalType.QUESTIONABLE_DESTINATION_TLD,
-                    category=SIGNAL_CATEGORY_MAP[SignalType.QUESTIONABLE_DESTINATION_TLD],
+                    category=SIGNAL_CATEGORY_MAP[
+                        SignalType.QUESTIONABLE_DESTINATION_TLD
+                    ],
                     severity=SignalSeverity.MEDIUM,
                     confidence=ConfidenceScore(84),
                     source=self.source,
-                    base_weight=BASE_SIGNAL_WEIGHTS[SignalType.QUESTIONABLE_DESTINATION_TLD],
+                    base_weight=BASE_SIGNAL_WEIGHTS[
+                        SignalType.QUESTIONABLE_DESTINATION_TLD
+                    ],
                     message_key="signal.questionable_destination_tld_after_redirect",
                     message_params={
                         "evidence": [
@@ -236,7 +271,11 @@ class RedirectSignalAnalyzer:
                             ),
                         ]
                     },
-                    tags=("redirect-chain", "questionable-tld", resolved_final.registered_domain),
+                    tags=(
+                        "redirect-chain",
+                        "questionable-tld",
+                        resolved_final.registered_domain,
+                    ),
                 )
             )
 
@@ -310,11 +349,15 @@ class RedirectSignalAnalyzer:
         ).lower()
         return {match.group(0) for match in _TOKEN_PATTERN.finditer(combined)}
 
-    def _has_questionable_destination_structure(self, normalized_url: NormalizedUrl) -> bool:
+    def _has_questionable_destination_structure(
+        self, normalized_url: NormalizedUrl
+    ) -> bool:
         return self._registered_tld(normalized_url) in _QUESTIONABLE_DESTINATION_TLDS
 
     def _registered_tld(self, normalized_url: NormalizedUrl) -> str:
-        labels = [label for label in normalized_url.registered_domain.split(".") if label]
+        labels = [
+            label for label in normalized_url.registered_domain.split(".") if label
+        ]
         return labels[-1].lower() if len(labels) >= 2 else ""
 
     def _is_official_auth_destination(self, normalized_url: NormalizedUrl) -> bool:

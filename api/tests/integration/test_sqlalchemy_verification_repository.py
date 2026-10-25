@@ -13,7 +13,11 @@ from app.domain.enums.verification_status import VerificationStatus
 from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.verification_id import VerificationId
-from app.infrastructure.persistence.database import drop_db, get_engine, get_session_factory
+from app.infrastructure.persistence.database import (
+    drop_db,
+    get_engine,
+    get_session_factory,
+)
 from app.infrastructure.persistence.repositories.sqlalchemy_verification_repository import (
     SQLAlchemyVerificationRepository,
 )
@@ -86,16 +90,23 @@ def test_sqlalchemy_repository_persists_create_get_and_list(tmp_path: Path) -> N
     repository = _build_repository(database_path)
 
     first = _build_verification("550e8400-e29b-41d4-a716-446655440010")
-    second = _build_verification("550e8400-e29b-41d4-a716-446655440011", created_at_offset_minutes=1)
+    second = _build_verification(
+        "550e8400-e29b-41d4-a716-446655440011", created_at_offset_minutes=1
+    )
 
     repository.save(first)
     repository.save(second)
 
-    fetched = repository.get_by_id(VerificationId.from_string("550e8400-e29b-41d4-a716-446655440010"))
+    fetched = repository.get_by_id(
+        VerificationId.from_string("550e8400-e29b-41d4-a716-446655440010")
+    )
     assert fetched is not None
     assert fetched.original_input == "https://secure-paypal-login.example.xyz/verify"
     assert fetched.risk_assessment is not None
-    assert fetched.risk_assessment.summary == "High-risk output from persisted repository test fixture."
+    assert (
+        fetched.risk_assessment.summary
+        == "High-risk output from persisted repository test fixture."
+    )
     assert fetched.risk_assessment.top_signals == ("Credential lure wording in URL",)
     assert fetched.risk_assessment.category_breakdown == {"content_behavior": 44.6}
     assert fetched.risk_assessment.terminal_override is False
@@ -126,7 +137,9 @@ def test_sqlalchemy_repository_survives_repository_recreation(tmp_path: Path) ->
     get_session_factory.cache_clear()
     get_engine.cache_clear()
 
-    second_repository = SQLAlchemyVerificationRepository(get_session_factory(database_url))
+    second_repository = SQLAlchemyVerificationRepository(
+        get_session_factory(database_url)
+    )
     fetched = second_repository.get_by_id(
         VerificationId.from_string("550e8400-e29b-41d4-a716-446655440012")
     )
@@ -135,7 +148,10 @@ def test_sqlalchemy_repository_survives_repository_recreation(tmp_path: Path) ->
     assert fetched.status is VerificationStatus.COMPLETED
     assert fetched.risk_assessment is not None
     assert fetched.risk_assessment.verdict is VerdictType.LIKELY_MALICIOUS
-    assert fetched.risk_assessment.summary == "High-risk output from persisted repository test fixture."
+    assert (
+        fetched.risk_assessment.summary
+        == "High-risk output from persisted repository test fixture."
+    )
     assert fetched.risk_assessment.top_signals == ("Credential lure wording in URL",)
     assert fetched.risk_assessment.category_breakdown == {"content_behavior": 44.6}
     assert fetched.risk_assessment.terminal_override is False

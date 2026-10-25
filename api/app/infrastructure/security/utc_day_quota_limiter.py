@@ -1,8 +1,8 @@
-from dataclasses import dataclass, field
-from datetime import date, datetime, time, timedelta, timezone
 import math
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, time, timedelta
 from threading import Lock
-from typing import Callable
 
 from app.infrastructure.security.utc_day_quota_status import UtcDayQuotaStatus
 
@@ -51,7 +51,7 @@ class UtcDayQuotaLimiter:
         next_midnight = datetime.combine(
             current_day + timedelta(days=1),
             time.min,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
         self._drop_stale_days(current_day)
         counts = self._counts_by_day.setdefault(current_day, {})
@@ -69,5 +69,5 @@ class UtcDayQuotaLimiter:
 
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

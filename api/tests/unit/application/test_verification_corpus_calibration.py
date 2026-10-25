@@ -1,8 +1,10 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
-from app.application.commands.create_verification_command import CreateVerificationCommand
+from app.application.commands.create_verification_command import (
+    CreateVerificationCommand,
+)
 from app.application.ports.domain_age_lookup import DomainAgeLookupPort
 from app.application.ports.html_fetcher import HtmlFetcherPort
 from app.application.ports.infrastructure_lookup import (
@@ -19,8 +21,12 @@ from app.application.ports.redirect_resolver import (
 )
 from app.application.ports.reputation_lookup import ReputationLookupPort
 from app.application.ports.tls_validator import TlsValidationResult, TlsValidatorPort
-from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
-from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.domain_recency_signal_analyzer import (
+    DomainRecencySignalAnalyzer,
+)
+from app.application.services.html_credential_signal_analyzer import (
+    HtmlCredentialSignalAnalyzer,
+)
 from app.application.services.infrastructure_signal_analyzer import (
     InfrastructureSignalAnalyzer,
 )
@@ -33,14 +39,18 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
-from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
-from app.domain.exceptions.domain_exception import DomainException
+from app.application.use_cases.create_url_verification import (
+    CreateURLVerificationUseCase,
+)
 from app.domain.enums.risk_level import RiskLevel
+from app.domain.exceptions.domain_exception import DomainException
 from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.services.risk_scoring_engine import RiskScoringEngine
 from app.domain.value_objects.verification_id import VerificationId
-from app.infrastructure.external_services.outbound_target_guard import assert_safe_outbound_url
+from app.infrastructure.external_services.outbound_target_guard import (
+    assert_safe_outbound_url,
+)
 
 
 class FakeRepository(VerificationRepository):
@@ -66,7 +76,9 @@ class NullDomainAgeLookup(DomainAgeLookupPort):
 
 class FailingDomainAgeLookup(DomainAgeLookupPort):
     def lookup(self, domain: str):
-        from app.application.ports.domain_age_lookup import DomainRegistrationLookupError
+        from app.application.ports.domain_age_lookup import (
+            DomainRegistrationLookupError,
+        )
 
         raise DomainRegistrationLookupError(f"lookup failed for {domain}")
 
@@ -133,7 +145,7 @@ def _build_use_case(
         signal_analyzer=DeterministicUrlSignalAnalyzer(),
         domain_recency_signal_analyzer=DomainRecencySignalAnalyzer(
             domain_age_lookup=domain_age_lookup or NullDomainAgeLookup(),
-            current_time_provider=lambda: datetime(2026, 3, 17, tzinfo=timezone.utc),
+            current_time_provider=lambda: datetime(2026, 3, 17, tzinfo=UTC),
         ),
         redirect_signal_analyzer=RedirectSignalAnalyzer(
             redirect_resolver=redirect_resolver or NoopRedirectResolver()
@@ -158,7 +170,9 @@ def _build_use_case(
     )
 
 
-def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse() -> None:
+def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse() -> (
+    None
+):
     use_case = _build_use_case()
     suspicious_urls = (
         "http://paypal-login-security-check.example.xyz/verify?redirect=https://example.org",
@@ -191,7 +205,9 @@ def test_manual_corpus_calibration_suspicious_urls_score_as_suspicious_or_worse(
         }
 
 
-def test_manual_corpus_calibration_marks_redirected_login_style_destinations_as_caution() -> None:
+def test_manual_corpus_calibration_marks_redirected_login_style_destinations_as_caution() -> (
+    None
+):
     class RedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:
             return RedirectResolution(
@@ -208,11 +224,15 @@ def test_manual_corpus_calibration_marks_redirected_login_style_destinations_as_
 
     use_case = _build_use_case(redirect_resolver=RedirectResolver())
 
-    result = use_case.execute(CreateVerificationCommand(url="https://safe.example/link/123"))
+    result = use_case.execute(
+        CreateVerificationCommand(url="https://safe.example/link/123")
+    )
 
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level == RiskLevel.LOW.value
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in result.signals
+    )
     assert any(
         signal.signal_type == "phishing_keywords"
         and signal.source == "resolved-destination-url-analyzer"
@@ -243,12 +263,16 @@ def test_manual_corpus_calibration_reduces_known_false_positive_patterns() -> No
     accounts_result = use_case.execute(
         CreateVerificationCommand(url="https://accounts.example.org/login")
     )
-    assert {signal.signal_type for signal in accounts_result.signals} == {"phishing_keywords"}
+    assert {signal.signal_type for signal in accounts_result.signals} == {
+        "phishing_keywords"
+    }
 
     portal_result = use_case.execute(
         CreateVerificationCommand(url="https://customer-portal.example.com/")
     )
-    assert all(signal.signal_type != "high_domain_entropy" for signal in portal_result.signals)
+    assert all(
+        signal.signal_type != "high_domain_entropy" for signal in portal_result.signals
+    )
 
     google_auth_result = use_case.execute(
         CreateVerificationCommand(url="https://accounts.google.com/signin")
@@ -278,20 +302,18 @@ def test_manual_corpus_calibration_rejects_single_label_targets() -> None:
 
 
 def test_manual_corpus_calibration_marks_parked_pages_as_caution_or_worse() -> None:
-    use_case = _build_use_case(
-        html_fetcher=StaticHtmlFetcher(
-            """
+    use_case = _build_use_case(html_fetcher=StaticHtmlFetcher("""
             <html>
               <body>
                 <h1>This domain is for sale</h1>
                 <p>Buy this domain with Sedo.</p>
               </body>
             </html>
-            """
-        )
-    )
+            """))
 
-    result = use_case.execute(CreateVerificationCommand(url="https://for-sale-example.test/"))
+    result = use_case.execute(
+        CreateVerificationCommand(url="https://for-sale-example.test/")
+    )
 
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level in {
@@ -300,13 +322,15 @@ def test_manual_corpus_calibration_marks_parked_pages_as_caution_or_worse() -> N
         RiskLevel.HIGH.value,
         RiskLevel.CRITICAL.value,
     }
-    assert any(signal.signal_type == "low_information_page" for signal in result.signals)
+    assert any(
+        signal.signal_type == "low_information_page" for signal in result.signals
+    )
 
 
-def test_manual_corpus_calibration_marks_challenge_approval_html_surfaces_as_suspicious() -> None:
-    use_case = _build_use_case(
-        html_fetcher=StaticHtmlFetcher(
-            """
+def test_manual_corpus_calibration_marks_challenge_approval_html_surfaces_as_suspicious() -> (
+    None
+):
+    use_case = _build_use_case(html_fetcher=StaticHtmlFetcher("""
             <html>
               <body>
                 <h1>Security challenge</h1>
@@ -317,11 +341,11 @@ def test_manual_corpus_calibration_marks_challenge_approval_html_surfaces_as_sus
                 </form>
               </body>
             </html>
-            """
-        )
-    )
+            """))
 
-    result = use_case.execute(CreateVerificationCommand(url="https://secure-login.bad-example.test/"))
+    result = use_case.execute(
+        CreateVerificationCommand(url="https://secure-login.bad-example.test/")
+    )
 
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level in {
@@ -330,27 +354,31 @@ def test_manual_corpus_calibration_marks_challenge_approval_html_surfaces_as_sus
         RiskLevel.HIGH.value,
         RiskLevel.CRITICAL.value,
     }
-    assert any(signal.signal_type == "suspicious_login_interface" for signal in result.signals)
+    assert any(
+        signal.signal_type == "suspicious_login_interface" for signal in result.signals
+    )
 
 
-def test_manual_corpus_calibration_marks_empty_root_pages_as_ambiguous_not_pristine() -> None:
-    use_case = _build_use_case(
-        html_fetcher=StaticHtmlFetcher(
-            """
+def test_manual_corpus_calibration_marks_empty_root_pages_as_ambiguous_not_pristine() -> (
+    None
+):
+    use_case = _build_use_case(html_fetcher=StaticHtmlFetcher("""
             <html>
               <body>
                 <h1>Welcome</h1>
               </body>
             </html>
-            """
-        )
-    )
+            """))
 
-    result = use_case.execute(CreateVerificationCommand(url="https://thin-example.test/"))
+    result = use_case.execute(
+        CreateVerificationCommand(url="https://thin-example.test/")
+    )
 
     assert result.risk_assessment is not None
     assert result.risk_assessment.score < 100
-    assert any(signal.signal_type == "low_information_page" for signal in result.signals)
+    assert any(
+        signal.signal_type == "low_information_page" for signal in result.signals
+    )
 
 
 def test_manual_corpus_calibration_treats_clean_shortener_redirects_as_safe() -> None:
@@ -380,7 +408,9 @@ def test_manual_corpus_calibration_treats_clean_shortener_redirects_as_safe() ->
     }
 
 
-def test_manual_corpus_calibration_keeps_shortener_to_low_information_targets_in_caution() -> None:
+def test_manual_corpus_calibration_keeps_shortener_to_low_information_targets_in_caution() -> (
+    None
+):
     class ShortenerRedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:
             return RedirectResolution(
@@ -397,15 +427,13 @@ def test_manual_corpus_calibration_keeps_shortener_to_low_information_targets_in
 
     use_case = _build_use_case(
         redirect_resolver=ShortenerRedirectResolver(),
-        html_fetcher=StaticHtmlFetcher(
-            """
+        html_fetcher=StaticHtmlFetcher("""
             <html>
               <body>
                 <h1>Welcome</h1>
               </body>
             </html>
-            """
-        ),
+            """),
     )
 
     result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/abcd"))
@@ -413,11 +441,17 @@ def test_manual_corpus_calibration_keeps_shortener_to_low_information_targets_in
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level == RiskLevel.LOW.value
     assert any(signal.signal_type == "shortened_url" for signal in result.signals)
-    assert any(signal.signal_type == "low_information_page" for signal in result.signals)
-    assert all(signal.signal_type != "suspicious_redirect_chain" for signal in result.signals)
+    assert any(
+        signal.signal_type == "low_information_page" for signal in result.signals
+    )
+    assert all(
+        signal.signal_type != "suspicious_redirect_chain" for signal in result.signals
+    )
 
 
-def test_manual_corpus_calibration_marks_shortener_to_questionable_tld_as_suspicious() -> None:
+def test_manual_corpus_calibration_marks_shortener_to_questionable_tld_as_suspicious() -> (
+    None
+):
     class ShortenerRedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:
             return RedirectResolution(
@@ -444,10 +478,14 @@ def test_manual_corpus_calibration_marks_shortener_to_questionable_tld_as_suspic
         RiskLevel.CRITICAL.value,
     }
     assert any(signal.signal_type == "shortened_url" for signal in result.signals)
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in result.signals
+    )
 
 
-def test_manual_corpus_calibration_strengthens_redirects_to_thin_questionable_destinations() -> None:
+def test_manual_corpus_calibration_strengthens_redirects_to_thin_questionable_destinations() -> (
+    None
+):
     class ShortenerRedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:
             return RedirectResolution(
@@ -464,15 +502,13 @@ def test_manual_corpus_calibration_strengthens_redirects_to_thin_questionable_de
 
     use_case = _build_use_case(
         redirect_resolver=ShortenerRedirectResolver(),
-        html_fetcher=StaticHtmlFetcher(
-            """
+        html_fetcher=StaticHtmlFetcher("""
             <html>
               <body>
                 <h1>Welcome</h1>
               </body>
             </html>
-            """
-        ),
+            """),
     )
 
     result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/abcd"))
@@ -480,11 +516,17 @@ def test_manual_corpus_calibration_strengthens_redirects_to_thin_questionable_de
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level == RiskLevel.MEDIUM.value
     assert result.risk_assessment.score < 55
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
-    assert any(signal.signal_type == "low_information_page" for signal in result.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in result.signals
+    )
+    assert any(
+        signal.signal_type == "low_information_page" for signal in result.signals
+    )
 
 
-def test_manual_corpus_calibration_marks_shortener_redirected_session_lures_as_suspicious() -> None:
+def test_manual_corpus_calibration_marks_shortener_redirected_session_lures_as_suspicious() -> (
+    None
+):
     class ShortenerRedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:
             return RedirectResolution(
@@ -510,7 +552,9 @@ def test_manual_corpus_calibration_marks_shortener_redirected_session_lures_as_s
         RiskLevel.CRITICAL.value,
     }
     assert any(signal.signal_type == "shortened_url" for signal in result.signals)
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in result.signals
+    )
     assert any(
         signal.signal_type == "phishing_keywords"
         and signal.source == "resolved-destination-url-analyzer"
@@ -518,7 +562,9 @@ def test_manual_corpus_calibration_marks_shortener_redirected_session_lures_as_s
     )
 
 
-def test_manual_corpus_calibration_marks_shortener_redirected_reauth_lures_as_suspicious() -> None:
+def test_manual_corpus_calibration_marks_shortener_redirected_reauth_lures_as_suspicious() -> (
+    None
+):
     class ShortenerRedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:
             return RedirectResolution(
@@ -535,7 +581,9 @@ def test_manual_corpus_calibration_marks_shortener_redirected_reauth_lures_as_su
 
     use_case = _build_use_case(redirect_resolver=ShortenerRedirectResolver())
 
-    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/google-reauth"))
+    result = use_case.execute(
+        CreateVerificationCommand(url="https://bit.ly/google-reauth")
+    )
 
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level in {
@@ -543,7 +591,9 @@ def test_manual_corpus_calibration_marks_shortener_redirected_reauth_lures_as_su
         RiskLevel.CRITICAL.value,
     }
     assert any(signal.signal_type == "shortened_url" for signal in result.signals)
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in result.signals
+    )
     assert any(
         signal.signal_type == "phishing_keywords"
         and signal.source == "resolved-destination-url-analyzer"
@@ -551,7 +601,9 @@ def test_manual_corpus_calibration_marks_shortener_redirected_reauth_lures_as_su
     )
 
 
-def test_manual_corpus_calibration_marks_shortener_redirected_approve_lures_as_suspicious() -> None:
+def test_manual_corpus_calibration_marks_shortener_redirected_approve_lures_as_suspicious() -> (
+    None
+):
     class ShortenerRedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:
             return RedirectResolution(
@@ -568,7 +620,9 @@ def test_manual_corpus_calibration_marks_shortener_redirected_approve_lures_as_s
 
     use_case = _build_use_case(redirect_resolver=ShortenerRedirectResolver())
 
-    result = use_case.execute(CreateVerificationCommand(url="https://bit.ly/google-approve"))
+    result = use_case.execute(
+        CreateVerificationCommand(url="https://bit.ly/google-approve")
+    )
 
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level in {
@@ -576,7 +630,9 @@ def test_manual_corpus_calibration_marks_shortener_redirected_approve_lures_as_s
         RiskLevel.CRITICAL.value,
     }
     assert any(signal.signal_type == "shortened_url" for signal in result.signals)
-    assert any(signal.signal_type == "suspicious_redirect_chain" for signal in result.signals)
+    assert any(
+        signal.signal_type == "suspicious_redirect_chain" for signal in result.signals
+    )
     assert any(
         signal.signal_type == "phishing_keywords"
         and signal.source == "resolved-destination-url-analyzer"
@@ -584,7 +640,9 @@ def test_manual_corpus_calibration_marks_shortener_redirected_approve_lures_as_s
     )
 
 
-def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_source_challenge_lures() -> None:
+def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_source_challenge_lures() -> (
+    None
+):
     class FailingRedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:
             raise RedirectResolutionError("redirect lookup failed")
@@ -605,7 +663,9 @@ def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_so
     assert any(signal.signal_type == "phishing_keywords" for signal in result.signals)
 
 
-def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_source_reauth_lures() -> None:
+def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_source_reauth_lures() -> (
+    None
+):
     class FailingRedirectResolver(RedirectResolverPort):
         def resolve(self, url: str) -> RedirectResolution:
             raise RedirectResolutionError("redirect lookup failed")
@@ -626,10 +686,14 @@ def test_manual_corpus_calibration_strengthens_failed_redirect_resolution_for_so
     assert any(signal.signal_type == "phishing_keywords" for signal in result.signals)
 
 
-def test_manual_corpus_calibration_strengthens_failed_domain_age_for_suspicious_source_urls() -> None:
+def test_manual_corpus_calibration_strengthens_failed_domain_age_for_suspicious_source_urls() -> (
+    None
+):
     use_case = _build_use_case(domain_age_lookup=FailingDomainAgeLookup())
 
-    result = use_case.execute(CreateVerificationCommand(url="https://secure-verify-9x1k-login.net"))
+    result = use_case.execute(
+        CreateVerificationCommand(url="https://secure-verify-9x1k-login.net")
+    )
 
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level in {
@@ -643,22 +707,28 @@ def test_manual_corpus_calibration_strengthens_failed_domain_age_for_suspicious_
     assert any(signal.signal_type == "phishing_keywords" for signal in result.signals)
 
 
-def test_manual_corpus_calibration_keeps_failed_infrastructure_lookup_safe_for_benign_urls() -> None:
+def test_manual_corpus_calibration_keeps_failed_infrastructure_lookup_safe_for_benign_urls() -> (
+    None
+):
     use_case = _build_use_case(infrastructure_lookup=FailingInfrastructureLookup())
 
-    result = use_case.execute(CreateVerificationCommand(url="https://openai.com/research"))
+    result = use_case.execute(
+        CreateVerificationCommand(url="https://openai.com/research")
+    )
 
     assert result.risk_assessment is not None
     assert result.risk_assessment.risk_level == RiskLevel.SAFE.value
     assert result.risk_assessment.analysis_warnings == (
         "Infrastructure intelligence could not be completed for this run.",
     )
-    assert {
-        signal.signal_type for signal in result.signals
-    } == {"recognized_reputable_domain"}
+    assert {signal.signal_type for signal in result.signals} == {
+        "recognized_reputable_domain"
+    }
 
 
-def test_manual_corpus_calibration_distinguishes_trusted_clean_from_unknown_clean() -> None:
+def test_manual_corpus_calibration_distinguishes_trusted_clean_from_unknown_clean() -> (
+    None
+):
     trusted_result = _build_use_case().execute(
         CreateVerificationCommand(url="https://openai.com/research")
     )
@@ -670,14 +740,20 @@ def test_manual_corpus_calibration_distinguishes_trusted_clean_from_unknown_clea
     assert trusted_result.risk_assessment is not None
     assert trusted_result.risk_assessment.risk_level == RiskLevel.SAFE.value
     assert trusted_result.risk_assessment.score > unknown_result.risk_assessment.score
-    assert {
-        signal.signal_type for signal in trusted_result.signals
-    } == {"recognized_reputable_domain"}
+    assert {signal.signal_type for signal in trusted_result.signals} == {
+        "recognized_reputable_domain"
+    }
     assert "Supporting trust context" in trusted_result.risk_assessment.summary
-    assert "recognized_reputable_domain_bonus" not in trusted_result.risk_assessment.summary
+    assert (
+        "recognized_reputable_domain_bonus"
+        not in trusted_result.risk_assessment.summary
+    )
 
     assert unknown_result.risk_assessment is not None
     assert unknown_result.risk_assessment.risk_level == RiskLevel.SAFE.value
     assert unknown_result.signals == ()
-    assert "Compound pattern adjustments applied:" in unknown_result.risk_assessment.summary
+    assert (
+        "Compound pattern adjustments applied:"
+        in unknown_result.risk_assessment.summary
+    )
     assert "evidence_light_clean_result" not in unknown_result.risk_assessment.summary

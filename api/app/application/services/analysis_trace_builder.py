@@ -14,7 +14,9 @@ class AnalysisTraceBuilder:
 
         return AnalysisTrace(
             layers_executed=tuple(layers_executed),
-            signals_by_source={source: tuple(items) for source, items in grouped.items()},
+            signals_by_source={
+                source: tuple(items) for source, items in grouped.items()
+            },
             total_signals=len(signals),
         )
 
@@ -30,6 +32,8 @@ class AnalysisTraceBuilder:
 
         return AnalysisTrace(
             layers_executed=tuple(seen_sources),
-            signals_by_source={source: tuple(items) for source, items in grouped.items()},
+            signals_by_source={
+                source: tuple(items) for source, items in grouped.items()
+            },
             total_signals=len(signals),
         )

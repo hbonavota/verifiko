@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
-from app.application.ports.reputation_lookup import ReputationLookupPort, ReputationMatch
+from app.application.ports.reputation_lookup import (
+    ReputationLookupPort,
+    ReputationMatch,
+)
 from app.infrastructure.cache.json_redis_cache import JsonRedisCache
 
 

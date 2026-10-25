@@ -2,11 +2,15 @@ from dataclasses import dataclass
 
 from app.application.ports.html_fetcher import (
     FetchedHtmlDocument,
-    HtmlFetchError,
     HtmlFetcherPort,
+    HtmlFetchError,
 )
-from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
-from app.infrastructure.external_services.pinned_http_client import send_pinned_get_request
+from app.infrastructure.external_services.outbound_target_guard import (
+    UnsafeOutboundTargetError,
+)
+from app.infrastructure.external_services.pinned_http_client import (
+    send_pinned_get_request,
+)
 
 
 @dataclass(slots=True)

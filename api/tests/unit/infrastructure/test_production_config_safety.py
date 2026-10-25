@@ -21,7 +21,12 @@ REAL_WEBHOOK_SECRET = "real-webhook-secret-0123456789"
 
 @pytest.fixture(autouse=True)
 def _clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("APP_ENV", "VERCEL_ENV", "AUTH_TOKEN_SECRET", "SCAN_WEBHOOK_SIGNING_SECRET"):
+    for name in (
+        "APP_ENV",
+        "VERCEL_ENV",
+        "AUTH_TOKEN_SECRET",
+        "SCAN_WEBHOOK_SIGNING_SECRET",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -122,7 +127,9 @@ def test_secrets_are_read_from_environment_in_production(
     assert settings.scan_webhook_signing_secret == REAL_WEBHOOK_SECRET
 
 
-@pytest.mark.parametrize("app_env", [None, "development", "dev", "local", "test", "TEST"])
+@pytest.mark.parametrize(
+    "app_env", [None, "development", "dev", "local", "test", "TEST"]
+)
 def test_non_production_keeps_dev_defaults(
     monkeypatch: pytest.MonkeyPatch, app_env: str | None
 ) -> None:

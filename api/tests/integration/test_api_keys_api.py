@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 import app.entrypoints.api.dependencies.container as container
 from app.entrypoints.api.dependencies.container import (
@@ -11,7 +11,11 @@ from app.entrypoints.api.dependencies.container import (
     get_verification_repository,
 )
 from app.entrypoints.api.main import app
-from app.infrastructure.persistence.database import drop_db, get_engine, get_session_factory
+from app.infrastructure.persistence.database import (
+    drop_db,
+    get_engine,
+    get_session_factory,
+)
 from tests.integration.alembic_helpers import upgrade_to_head
 
 
@@ -60,11 +64,15 @@ def _bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_create_api_key_returns_plaintext_once_and_lists_metadata_only(client: TestClient) -> None:
+def test_create_api_key_returns_plaintext_once_and_lists_metadata_only(
+    client: TestClient,
+) -> None:
     session = _register(client)
     session_headers = _bearer(session["access_token"])
 
-    created = client.post("/api/keys", json={"name": "CI pipeline"}, headers=session_headers)
+    created = client.post(
+        "/api/keys", json={"name": "CI pipeline"}, headers=session_headers
+    )
     assert created.status_code == 201, created.text
     body = created.json()
     assert body["api_key"].startswith("vfk_live_")
@@ -82,7 +90,9 @@ def test_create_api_key_returns_plaintext_once_and_lists_metadata_only(client: T
     assert "token_hash" not in keys[0]
 
 
-def test_api_key_authenticates_on_legacy_and_versioned_surfaces(client: TestClient) -> None:
+def test_api_key_authenticates_on_legacy_and_versioned_surfaces(
+    client: TestClient,
+) -> None:
     session = _register(client, email="alice@example.com")
     created = client.post(
         "/api/keys", json={"name": "gateway"}, headers=_bearer(session["access_token"])
@@ -149,9 +159,10 @@ def test_revoke_is_scoped_to_owner_and_hides_unknown_ids(client: TestClient) -> 
     assert missing.status_code == 404
 
     # Alice's key remains usable after the failed cross-tenant revoke.
-    assert client.get(
-        "/api/me", headers={"X-API-Key": alice_key["api_key"]}
-    ).status_code == 200
+    assert (
+        client.get("/api/me", headers={"X-API-Key": alice_key["api_key"]}).status_code
+        == 200
+    )
 
 
 def test_key_management_requires_authentication(client: TestClient) -> None:

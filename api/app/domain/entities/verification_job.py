@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.enums.verification_job_status import VerificationJobStatus
 
@@ -34,7 +34,7 @@ class VerificationJob:
         webhook_url: str | None = None,
         now: datetime | None = None,
     ) -> "VerificationJob":
-        moment = now or datetime.now(timezone.utc)
+        moment = now or datetime.now(UTC)
         return VerificationJob(
             id=job_id,
             owner_user_id=owner_user_id,
@@ -47,19 +47,22 @@ class VerificationJob:
 
     @property
     def is_terminal(self) -> bool:
-        return self.status in {VerificationJobStatus.COMPLETED, VerificationJobStatus.FAILED}
+        return self.status in {
+            VerificationJobStatus.COMPLETED,
+            VerificationJobStatus.FAILED,
+        }
 
     def mark_running(self, now: datetime | None = None) -> None:
         self.status = VerificationJobStatus.RUNNING
-        self.updated_at = now or datetime.now(timezone.utc)
+        self.updated_at = now or datetime.now(UTC)
 
     def mark_completed(self, verification_id: str, now: datetime | None = None) -> None:
         self.status = VerificationJobStatus.COMPLETED
         self.result_verification_id = verification_id
         self.error_message = None
-        self.updated_at = now or datetime.now(timezone.utc)
+        self.updated_at = now or datetime.now(UTC)
 
     def mark_failed(self, error_message: str, now: datetime | None = None) -> None:
         self.status = VerificationJobStatus.FAILED
         self.error_message = error_message
-        self.updated_at = now or datetime.now(timezone.utc)
+        self.updated_at = now or datetime.now(UTC)

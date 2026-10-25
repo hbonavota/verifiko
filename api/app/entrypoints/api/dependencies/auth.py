@@ -1,13 +1,18 @@
 from fastapi import Depends, Header, HTTPException, status
 
-from app.application.ports.auth_token_service import AuthTokenError, AuthTokenServicePort
+from app.application.ports.auth_token_service import (
+    AuthTokenError,
+    AuthTokenServicePort,
+)
 from app.application.services.message_resolver import resolve_message
-from app.application.use_cases.authenticate_with_api_key import AuthenticateWithApiKeyUseCase
+from app.application.use_cases.authenticate_with_api_key import (
+    AuthenticateWithApiKeyUseCase,
+)
 from app.domain.entities.user import User
 from app.domain.ports.user_repository import UserRepository
 from app.entrypoints.api.dependencies.container import (
-    get_authenticate_with_api_key_use_case,
     get_auth_token_service,
+    get_authenticate_with_api_key_use_case,
     get_user_repository,
 )
 from app.entrypoints.api.locale import select_response_locale

@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from datetime import UTC, datetime, timedelta
 
 from app.application.ports.api_key_token_service import ApiKeyTokenServicePort
 from app.domain.entities.user import User
@@ -21,7 +21,7 @@ class AuthenticateWithApiKeyUseCase:
     api_key_repository: ApiKeyRepository
     user_repository: UserRepository
     token_service: ApiKeyTokenServicePort
-    current_time_provider: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    current_time_provider: Callable[[], datetime] = lambda: datetime.now(UTC)
     usage_write_interval: timedelta = field(default=_DEFAULT_USAGE_WRITE_INTERVAL)
 
     def execute(self, plaintext: str) -> User | None:
@@ -43,12 +43,14 @@ class AuthenticateWithApiKeyUseCase:
             self.api_key_repository.record_usage(api_key.id, now)
         return user
 
-    def _should_record_usage(self, last_used_at: datetime | None, now: datetime) -> bool:
+    def _should_record_usage(
+        self, last_used_at: datetime | None, now: datetime
+    ) -> bool:
         if last_used_at is None:
             return True
         normalized = (
             last_used_at
             if last_used_at.tzinfo is not None
-            else last_used_at.replace(tzinfo=timezone.utc)
+            else last_used_at.replace(tzinfo=UTC)
         )
         return (now - normalized) >= self.usage_write_interval

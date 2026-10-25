@@ -1,6 +1,8 @@
 from app.application.queries.get_verification_query import GetVerificationQuery
 from app.application.queries.list_verifications_query import ListVerificationsQuery
-from app.application.use_cases.get_verification_result import GetVerificationResultUseCase
+from app.application.use_cases.get_verification_result import (
+    GetVerificationResultUseCase,
+)
 from app.application.use_cases.list_verifications import ListVerificationsUseCase
 from app.domain.entities.verification import Verification
 from app.domain.enums.verification_status import VerificationStatus
@@ -37,7 +39,9 @@ class InMemoryRepository(VerificationRepository):
 def test_get_and_list_use_cases() -> None:
     verification = Verification.create_url(
         "https://example.org",
-        verification_id=VerificationId.from_string("550e8400-e29b-41d4-a716-446655440001"),
+        verification_id=VerificationId.from_string(
+            "550e8400-e29b-41d4-a716-446655440001"
+        ),
     )
 
     repository = InMemoryRepository([verification])
@@ -45,7 +49,9 @@ def test_get_and_list_use_cases() -> None:
     get_result = GetVerificationResultUseCase(repository).execute(
         GetVerificationQuery(verification_id="550e8400-e29b-41d4-a716-446655440001")
     )
-    listed = ListVerificationsUseCase(repository).execute(ListVerificationsQuery(limit=10, offset=0))
+    listed = ListVerificationsUseCase(repository).execute(
+        ListVerificationsQuery(limit=10, offset=0)
+    )
 
     assert get_result.id == "550e8400-e29b-41d4-a716-446655440001"
     assert len(listed) == 1

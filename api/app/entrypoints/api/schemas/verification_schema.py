@@ -49,7 +49,7 @@ class AnalysisTraceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     layers_executed: tuple[str, ...]
-    signals_by_source: dict[str, tuple["AnalysisSignalResponse", ...]]
+    signals_by_source: dict[str, tuple[AnalysisSignalResponse, ...]]
     total_signals: int
 
 

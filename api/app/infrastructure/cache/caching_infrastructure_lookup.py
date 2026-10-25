@@ -35,7 +35,10 @@ def _encode(profile: InfrastructureProfile) -> dict:
         "queried_host": profile.queried_host,
         "provider_name": profile.provider_name,
         "resolved_addresses": [
-            {"ip_address": address.ip_address, "reverse_hostname": address.reverse_hostname}
+            {
+                "ip_address": address.ip_address,
+                "reverse_hostname": address.reverse_hostname,
+            }
             for address in profile.resolved_addresses
         ],
     }

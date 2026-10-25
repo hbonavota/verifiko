@@ -5,7 +5,9 @@ from app.application.ports.infrastructure_lookup import (
     ResolvedAddress,
 )
 from app.application.ports.redirect_resolver import RedirectHop, RedirectResolution
-from app.application.services.infrastructure_signal_analyzer import InfrastructureSignalAnalyzer
+from app.application.services.infrastructure_signal_analyzer import (
+    InfrastructureSignalAnalyzer,
+)
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
 from app.domain.value_objects.normalized_url import NormalizedUrl
@@ -48,7 +50,10 @@ def test_infrastructure_signal_analyzer_flags_dynamic_dns_reverse_host() -> None
     signal = result.signals[0]
     assert signal.signal_type == SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN
     assert signal.severity == SignalSeverity.HIGH
-    assert "Matched infrastructure patterns: dynamic-dns, residential-ptr." in signal.evidence
+    assert (
+        "Matched infrastructure patterns: dynamic-dns, residential-ptr."
+        in signal.evidence
+    )
     assert signal.message_params["evidence"][3]["params"]["patterns"] == [
         {"key": "phrase.infrastructure_pattern_dynamic_dns", "params": {}},
         {"key": "phrase.infrastructure_pattern_residential_ptr", "params": {}},
@@ -71,7 +76,9 @@ def test_infrastructure_signal_analyzer_skips_benign_cdn_reverse_host() -> None:
         )
     )
 
-    result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://www.example.com"))
+    result = analyzer.analyze_with_context(
+        NormalizedUrl.from_raw("https://www.example.com")
+    )
 
     assert result.signals == ()
     assert result.warnings == ()
@@ -110,8 +117,9 @@ def test_infrastructure_signal_analyzer_uses_redirect_target() -> None:
     )
 
     assert len(result.signals) == 1
-    assert "Effective target derived from redirect chain: https://collector.bad.example/login." in (
-        result.signals[0].evidence
+    assert (
+        "Effective target derived from redirect chain: https://collector.bad.example/login."
+        in (result.signals[0].evidence)
     )
 
 
@@ -123,4 +131,6 @@ def test_infrastructure_signal_analyzer_records_warning_when_lookup_fails() -> N
     result = analyzer.analyze_with_context(NormalizedUrl.from_raw("https://openai.com"))
 
     assert result.signals == ()
-    assert result.warnings == ("Infrastructure intelligence could not be completed for this run.",)
+    assert result.warnings == (
+        "Infrastructure intelligence could not be completed for this run.",
+    )

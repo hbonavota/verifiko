@@ -20,7 +20,9 @@ def test_resolve_client_ip_uses_peer_host_without_trusted_proxies() -> None:
     assert resolved == "198.51.100.10"
 
 
-def test_resolve_client_ip_uses_original_x_forwarded_for_value_for_trusted_proxy() -> None:
+def test_resolve_client_ip_uses_original_x_forwarded_for_value_for_trusted_proxy() -> (
+    None
+):
     request = _request(
         client_host="203.0.113.10",
         forwarded_for="198.51.100.25, 203.0.113.10",

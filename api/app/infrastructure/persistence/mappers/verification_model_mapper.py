@@ -29,8 +29,12 @@ class VerificationModelMapper:
         return model
 
     @staticmethod
-    def update_model(model: VerificationModel, verification: Verification) -> VerificationModel:
-        model.user_id = str(verification.user_id) if verification.user_id is not None else None
+    def update_model(
+        model: VerificationModel, verification: Verification
+    ) -> VerificationModel:
+        model.user_id = (
+            str(verification.user_id) if verification.user_id is not None else None
+        )
         model.target_type = verification.target_type.value
         model.original_input = verification.original_input
         model.normalized_input = verification.normalized_input.normalized
@@ -39,7 +43,10 @@ class VerificationModelMapper:
         model.updated_at = verification.updated_at
         model.completed_at = verification.completed_at
         model.calculation_version = verification.calculation_version
-        model.signals = [VerificationModelMapper._signal_to_model(signal) for signal in verification.signals]
+        model.signals = [
+            VerificationModelMapper._signal_to_model(signal)
+            for signal in verification.signals
+        ]
         model.risk_assessment = VerificationModelMapper._risk_assessment_to_model(
             verification.risk_assessment
         )
@@ -78,8 +85,13 @@ class VerificationModelMapper:
             original_input=model.original_input,
             normalized_input=normalized_input,
             status=VerificationStatus(model.status),
-            signals=[VerificationModelMapper._signal_to_domain(signal) for signal in model.signals],
-            risk_assessment=VerificationModelMapper._risk_assessment_to_domain(model.risk_assessment),
+            signals=[
+                VerificationModelMapper._signal_to_domain(signal)
+                for signal in model.signals
+            ],
+            risk_assessment=VerificationModelMapper._risk_assessment_to_domain(
+                model.risk_assessment
+            ),
             created_at=model.created_at,
             updated_at=model.updated_at,
             completed_at=model.completed_at,

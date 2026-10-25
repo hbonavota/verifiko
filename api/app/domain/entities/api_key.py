@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.value_objects.api_key_id import ApiKeyId
 from app.domain.value_objects.user_id import UserId
@@ -33,7 +33,7 @@ class ApiKey:
         api_key_id: ApiKeyId | None = None,
         now: datetime | None = None,
     ) -> "ApiKey":
-        issued_at = now or datetime.now(timezone.utc)
+        issued_at = now or datetime.now(UTC)
         return ApiKey(
             id=api_key_id or ApiKeyId.new(),
             user_id=user_id,
@@ -51,7 +51,7 @@ class ApiKey:
 
     def revoke(self, now: datetime | None = None) -> None:
         if self.revoked_at is None:
-            self.revoked_at = now or datetime.now(timezone.utc)
+            self.revoked_at = now or datetime.now(UTC)
 
     def record_usage(self, now: datetime | None = None) -> None:
-        self.last_used_at = now or datetime.now(timezone.utc)
+        self.last_used_at = now or datetime.now(UTC)

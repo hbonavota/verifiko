@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -29,7 +29,7 @@ def _queued_job(owner: str = "user-1") -> VerificationJob:
         owner_user_id=owner,
         url="https://example.org/login",
         webhook_url="https://hooks.example/verifiko",
-        now=datetime(2026, 7, 24, 12, 0, tzinfo=timezone.utc),
+        now=datetime(2026, 7, 24, 12, 0, tzinfo=UTC),
     )
 
 

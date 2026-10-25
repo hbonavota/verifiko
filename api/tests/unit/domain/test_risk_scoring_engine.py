@@ -31,7 +31,9 @@ def test_terminal_override_for_high_confidence_blacklist_match() -> None:
     assert result.score_breakdown is not None
     assert result.score_breakdown.base_score == 100.0
     assert result.score_breakdown.final_score == 0
-    assert result.score_breakdown.signal_contributions[0].signal_type == "blacklist_match"
+    assert (
+        result.score_breakdown.signal_contributions[0].signal_type == "blacklist_match"
+    )
 
 
 def test_compound_rule_adds_penalty() -> None:
@@ -62,7 +64,9 @@ def test_compound_rule_adds_penalty() -> None:
     result = engine.calculate(signals, calculation_version="v1")
 
     assert result.score.value < 100
-    assert result.summary.startswith("Primary concern: brand or institution impersonation cues.")
+    assert result.summary.startswith(
+        "Primary concern: brand or institution impersonation cues."
+    )
     assert "Additional risk indicators were also detected." in result.summary
     assert "Compound pattern adjustments applied:" in result.summary
     assert "credential_lure_pattern" not in result.summary
@@ -85,7 +89,9 @@ def test_infrastructure_compound_rule_adds_penalty() -> None:
             title="Suspicious infrastructure pattern",
             description="Reverse DNS points to dynamic residential hosting.",
             source="infrastructure-intelligence-analyzer",
-            base_weight=BASE_SIGNAL_WEIGHTS[SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN],
+            base_weight=BASE_SIGNAL_WEIGHTS[
+                SignalType.SUSPICIOUS_INFRASTRUCTURE_PATTERN
+            ],
         ),
         AnalysisSignal.create(
             signal_type=SignalType.PHISHING_KEYWORDS,
@@ -354,7 +360,9 @@ def test_summary_falls_back_when_no_dominant_mapped_signal_exists() -> None:
     assert "Primary concern:" not in result.summary
 
 
-def test_safe_result_does_not_lead_with_primary_concern_even_with_dominant_signal() -> None:
+def test_safe_result_does_not_lead_with_primary_concern_even_with_dominant_signal() -> (
+    None
+):
     engine = RiskScoringEngine()
     signals = [
         AnalysisSignal.create(
@@ -429,7 +437,9 @@ def test_offsite_form_action_escalates_to_high_bypassing_content_cap() -> None:
 
     engine = RiskScoringEngine()
     signals = [
-        _behavioral_signal(SignalType.RENDERED_CREDENTIAL_FORM, SignalSeverity.HIGH, 88),
+        _behavioral_signal(
+            SignalType.RENDERED_CREDENTIAL_FORM, SignalSeverity.HIGH, 88
+        ),
         _behavioral_signal(SignalType.OFFSITE_FORM_ACTION, SignalSeverity.CRITICAL, 95),
     ]
 
@@ -470,7 +480,9 @@ def test_benign_behavioral_signals_do_not_trigger_exfiltration_rule() -> None:
     # A rendered same-domain login form (no offsite action, no download) is only
     # the capped CONTENT_BEHAVIOR signal, so it must stay SAFE.
     signals = [
-        _behavioral_signal(SignalType.RENDERED_CREDENTIAL_FORM, SignalSeverity.HIGH, 88),
+        _behavioral_signal(
+            SignalType.RENDERED_CREDENTIAL_FORM, SignalSeverity.HIGH, 88
+        ),
     ]
 
     result = engine.calculate(signals, calculation_version="v1")

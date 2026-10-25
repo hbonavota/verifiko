@@ -31,7 +31,9 @@ def test_transport_security_signal_analyzer_emits_http_signal() -> None:
         )
     )
 
-    signals = analyzer.analyze(NormalizedUrl.from_raw("http://portal-example.test/login"))
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("http://portal-example.test/login")
+    )
 
     assert len(signals) == 1
     signal = signals[0]
@@ -52,7 +54,9 @@ def test_transport_security_signal_analyzer_emits_tls_failure_signal() -> None:
         )
     )
 
-    signals = analyzer.analyze(NormalizedUrl.from_raw("https://portal-example.test/login"))
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://portal-example.test/login")
+    )
 
     assert len(signals) == 1
     signal = signals[0]
@@ -73,15 +77,17 @@ def test_transport_security_signal_analyzer_skips_valid_https() -> None:
         )
     )
 
-    signals = analyzer.analyze(NormalizedUrl.from_raw("https://portal-example.test/home"))
+    signals = analyzer.analyze(
+        NormalizedUrl.from_raw("https://portal-example.test/home")
+    )
 
     assert signals == []
 
 
-def test_transport_security_signal_analyzer_reports_validation_failures_as_warning() -> None:
-    analyzer = TransportSecuritySignalAnalyzer(
-        tls_validator=FailingTlsValidator()
-    )
+def test_transport_security_signal_analyzer_reports_validation_failures_as_warning() -> (
+    None
+):
+    analyzer = TransportSecuritySignalAnalyzer(tls_validator=FailingTlsValidator())
 
     result = analyzer.analyze_with_context(
         NormalizedUrl.from_raw("https://portal-example.test/home")

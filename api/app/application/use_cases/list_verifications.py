@@ -16,4 +16,6 @@ class ListVerificationsUseCase:
             offset=query.offset,
             status=query.status,
         )
-        return [VerificationMapper.to_dto(verification) for verification in verifications]
+        return [
+            VerificationMapper.to_dto(verification) for verification in verifications
+        ]

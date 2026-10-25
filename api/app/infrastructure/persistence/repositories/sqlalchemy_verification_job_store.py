@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -50,7 +50,8 @@ class SqlAlchemyVerificationJobStore(VerificationJobStore):
             return session.execute(
                 select(VerificationJobModel.screenshot_ref)
                 .where(
-                    VerificationJobModel.result_verification_id == result_verification_id,
+                    VerificationJobModel.result_verification_id
+                    == result_verification_id,
                     VerificationJobModel.owner_user_id == owner_user_id,
                     VerificationJobModel.screenshot_ref.is_not(None),
                 )
@@ -90,4 +91,4 @@ def _to_entity(model: VerificationJobModel) -> VerificationJob:
 
 
 def _as_utc(value: datetime) -> datetime:
-    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)

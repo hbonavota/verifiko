@@ -1,9 +1,9 @@
-from collections import deque
-from dataclasses import dataclass, field
 import math
+from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from threading import Lock
 from time import monotonic
-from typing import Callable
 
 
 @dataclass(slots=True)

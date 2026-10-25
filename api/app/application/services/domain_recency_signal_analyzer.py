@@ -1,17 +1,24 @@
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Callable
+from datetime import UTC, datetime
 
 from app.application.ports.domain_age_lookup import (
     DomainAgeLookupPort,
     DomainRegistrationLookupError,
 )
 from app.application.services.analysis_result import SignalAnalysisResult
-from app.application.services.message_resolver import build_localized_signal, evidence_ref, resolve_message
+from app.application.services.message_resolver import (
+    build_localized_signal,
+    evidence_ref,
+    resolve_message,
+)
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
-from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
+from app.domain.services.scoring_policies import (
+    BASE_SIGNAL_WEIGHTS,
+    SIGNAL_CATEGORY_MAP,
+)
 from app.domain.value_objects.confidence_score import ConfidenceScore
 from app.domain.value_objects.normalized_url import NormalizedUrl
 
@@ -23,17 +30,21 @@ RECENT_RECENCY_THRESHOLD_DAYS = 30
 class DomainRecencySignalAnalyzer:
     domain_age_lookup: DomainAgeLookupPort
     source: str = "domain-recency-analyzer"
-    current_time_provider: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    current_time_provider: Callable[[], datetime] = lambda: datetime.now(UTC)
 
     def analyze(self, normalized_url: NormalizedUrl) -> list[AnalysisSignal]:
         return list(self.analyze_with_context(normalized_url).signals)
 
-    def analyze_with_context(self, normalized_url: NormalizedUrl) -> SignalAnalysisResult:
+    def analyze_with_context(
+        self, normalized_url: NormalizedUrl
+    ) -> SignalAnalysisResult:
         if normalized_url.is_ip_address:
             return SignalAnalysisResult()
 
         try:
-            registration = self.domain_age_lookup.lookup(normalized_url.registered_domain)
+            registration = self.domain_age_lookup.lookup(
+                normalized_url.registered_domain
+            )
         except DomainRegistrationLookupError:
             return SignalAnalysisResult(
                 warnings=(resolve_message("warning.domain_registration_unavailable"),)
@@ -82,8 +93,8 @@ class DomainRecencySignalAnalyzer:
 
     def _age_in_days(self, registered_at: datetime) -> int:
         reference_time = self.current_time_provider()
-        normalized_registered_at = registered_at.astimezone(timezone.utc)
-        normalized_reference_time = reference_time.astimezone(timezone.utc)
+        normalized_registered_at = registered_at.astimezone(UTC)
+        normalized_reference_time = reference_time.astimezone(UTC)
         return (normalized_reference_time.date() - normalized_registered_at.date()).days
 
     def _signal(
@@ -108,13 +119,21 @@ class DomainRecencySignalAnalyzer:
             message_params={
                 "threshold_days": threshold_days,
                 "evidence": [
-                    evidence_ref("evidence.observed_domain", observed_domain=observed_domain),
+                    evidence_ref(
+                        "evidence.observed_domain", observed_domain=observed_domain
+                    ),
                     evidence_ref(
                         "evidence.registration_date",
-                        registration_date=registered_at.astimezone(timezone.utc).date().isoformat(),
+                        registration_date=registered_at.astimezone(UTC)
+                        .date()
+                        .isoformat(),
                     ),
-                    evidence_ref("evidence.computed_domain_age_days", age_in_days=age_in_days),
-                    evidence_ref("evidence.lookup_provider", provider_name=provider_name),
+                    evidence_ref(
+                        "evidence.computed_domain_age_days", age_in_days=age_in_days
+                    ),
+                    evidence_ref(
+                        "evidence.lookup_provider", provider_name=provider_name
+                    ),
                 ],
             },
             tags=("domain-age", "registration-recency"),

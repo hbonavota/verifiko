@@ -28,7 +28,9 @@ class GoogleTokeninfoIdentityVerifier(GoogleIdentityVerifierPort):
         try:
             payload = self._fetch_tokeninfo(id_token)
         except (HTTPError, URLError, TimeoutError, ValueError) as exc:
-            raise GoogleIdentityVerificationError("Google identity token could not be verified.") from exc
+            raise GoogleIdentityVerificationError(
+                "Google identity token could not be verified."
+            ) from exc
 
         issuer = payload.get("iss")
         audience = payload.get("aud")
@@ -37,15 +39,25 @@ class GoogleTokeninfoIdentityVerifier(GoogleIdentityVerifierPort):
         email_verified = payload.get("email_verified")
 
         if issuer not in {"accounts.google.com", "https://accounts.google.com"}:
-            raise GoogleIdentityVerificationError("Google identity token could not be verified.")
+            raise GoogleIdentityVerificationError(
+                "Google identity token could not be verified."
+            )
         if audience != self.client_id:
-            raise GoogleIdentityVerificationError("Google identity token could not be verified.")
+            raise GoogleIdentityVerificationError(
+                "Google identity token could not be verified."
+            )
         if not isinstance(subject, str) or not subject:
-            raise GoogleIdentityVerificationError("Google identity token could not be verified.")
+            raise GoogleIdentityVerificationError(
+                "Google identity token could not be verified."
+            )
         if not isinstance(email, str) or not email:
-            raise GoogleIdentityVerificationError("Google identity token could not be verified.")
+            raise GoogleIdentityVerificationError(
+                "Google identity token could not be verified."
+            )
         if str(email_verified).lower() != "true":
-            raise GoogleIdentityVerificationError("Google identity token could not be verified.")
+            raise GoogleIdentityVerificationError(
+                "Google identity token could not be verified."
+            )
 
         display_name = payload.get("name")
         if not isinstance(display_name, str) or not display_name.strip():

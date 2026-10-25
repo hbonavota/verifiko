@@ -31,16 +31,22 @@ def _make_token(
         "iss": "Upstash",
         "exp": exp if exp is not None else now + 300,
         "nbf": nbf if nbf is not None else now - 10,
-        "body": body_claim
-        if body_claim is not None
-        else base64.urlsafe_b64encode(hashlib.sha256(body).digest()).decode("ascii"),
+        "body": (
+            body_claim
+            if body_claim is not None
+            else base64.urlsafe_b64encode(hashlib.sha256(body).digest()).decode("ascii")
+        ),
     }
     if sub is not None:
         payload["sub"] = sub
     signing_input = f"{_seg({'alg': 'HS256', 'typ': 'JWT'})}.{_seg(payload)}"
     signature = (
         base64.urlsafe_b64encode(
-            hmac.new(signing_key.encode("utf-8"), signing_input.encode("ascii"), hashlib.sha256).digest()
+            hmac.new(
+                signing_key.encode("utf-8"),
+                signing_input.encode("ascii"),
+                hashlib.sha256,
+            ).digest()
         )
         .rstrip(b"=")
         .decode("ascii")
@@ -64,7 +70,9 @@ def test_standard_base64_body_claim_also_accepted() -> None:
     body = b'{"job_id": "abc123"}'
     standard_claim = base64.b64encode(hashlib.sha256(body).digest()).decode("ascii")
     verifier = QStashSignatureVerifier(_KEY)
-    verifier.verify(signature=_make_token(_KEY, body, body_claim=standard_claim), body=body)
+    verifier.verify(
+        signature=_make_token(_KEY, body, body_claim=standard_claim), body=body
+    )
 
 
 def test_signature_from_next_key_passes() -> None:

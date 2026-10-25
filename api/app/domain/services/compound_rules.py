@@ -23,7 +23,10 @@ class BrandNewLookalikeDomainRule(CompoundRule):
             SignalType.ZERO_WIDTH_CHAR_INJECTION,
             SignalType.TLD_TYPOSQUATTING,
         }
-        if SignalType.RECENT_DOMAIN_REGISTRATION in signal_types and signal_types.intersection(lookalike):
+        if (
+            SignalType.RECENT_DOMAIN_REGISTRATION in signal_types
+            and signal_types.intersection(lookalike)
+        ):
             return 10
         return None
 

@@ -7,7 +7,9 @@ from app.domain.entities.api_key import ApiKey
 from app.domain.ports.api_key_repository import ApiKeyRepository
 from app.domain.value_objects.api_key_id import ApiKeyId
 from app.domain.value_objects.user_id import UserId
-from app.infrastructure.persistence.mappers.api_key_model_mapper import ApiKeyModelMapper
+from app.infrastructure.persistence.mappers.api_key_model_mapper import (
+    ApiKeyModelMapper,
+)
 from app.infrastructure.persistence.models.base_model import ApiKeyModel
 
 

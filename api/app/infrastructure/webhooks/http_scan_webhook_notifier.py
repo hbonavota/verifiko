@@ -2,20 +2,24 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import http.client
 import json
 import logging
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-import http.client
-from typing import Callable
+from datetime import UTC, datetime
 
 from app.application.ports.scan_webhook_notifier import ScanWebhookNotifierPort
 from app.domain.entities.verification_job import VerificationJob
 from app.domain.enums.verification_job_status import VerificationJobStatus
-from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
-from app.infrastructure.external_services.pinned_http_client import send_pinned_post_request
+from app.infrastructure.external_services.outbound_target_guard import (
+    UnsafeOutboundTargetError,
+)
+from app.infrastructure.external_services.pinned_http_client import (
+    send_pinned_post_request,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +46,7 @@ class HttpScanWebhookNotifier(ScanWebhookNotifierPort):
     http_poster: WebhookPoster
     max_attempts: int = 3
     backoff_seconds: float = 0.5
-    current_time_provider: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    current_time_provider: Callable[[], datetime] = lambda: datetime.now(UTC)
     delivery_id_factory: Callable[[], str] = field(default=lambda: uuid.uuid4().hex)
     sleep: Callable[[float], None] = field(default=time.sleep)
 
@@ -53,9 +57,7 @@ class HttpScanWebhookNotifier(ScanWebhookNotifierPort):
         try:
             self.target_validator(job.webhook_url)
         except UnsafeOutboundTargetError:
-            logger.warning(
-                "Skipping webhook for scan %s: unsafe destination", job.id
-            )
+            logger.warning("Skipping webhook for scan %s: unsafe destination", job.id)
             return
 
         event = self._event_name(job.status)
@@ -119,15 +121,17 @@ class HttpScanWebhookNotifier(ScanWebhookNotifierPort):
         }
 
     def _sign(self, timestamp: str, body: bytes) -> str:
-        message = f"{timestamp}.".encode("utf-8") + body
+        message = f"{timestamp}.".encode() + body
         return hmac.new(
             self.signing_secret.encode("utf-8"), message, hashlib.sha256
         ).hexdigest()
 
 
 def _iso_utc(value: datetime) -> str:
-    normalized = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-    return normalized.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    normalized = (
+        value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    )
+    return normalized.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def build_pinned_webhook_poster(timeout_seconds: float = 5.0) -> WebhookPoster:

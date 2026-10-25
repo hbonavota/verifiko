@@ -36,7 +36,9 @@ class SQLAlchemyUserRepository(UserRepository):
 
     def get_by_google_subject(self, google_subject: str) -> User | None:
         with self._session_factory() as session:
-            statement = select(UserModel).where(UserModel.google_subject == google_subject)
+            statement = select(UserModel).where(
+                UserModel.google_subject == google_subject
+            )
             model = session.execute(statement).scalar_one_or_none()
             if model is None:
                 return None
@@ -44,7 +46,9 @@ class SQLAlchemyUserRepository(UserRepository):
 
     def get_by_email(self, email: str) -> User | None:
         with self._session_factory() as session:
-            statement = select(UserModel).where(UserModel.email == email.strip().lower())
+            statement = select(UserModel).where(
+                UserModel.email == email.strip().lower()
+            )
             model = session.execute(statement).scalar_one_or_none()
             if model is None:
                 return None

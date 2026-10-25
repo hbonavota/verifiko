@@ -16,7 +16,9 @@ from app.infrastructure.storage.screenshot_store import NullScreenshotStore
 
 
 class _RecordingStore(ScreenshotStorePort):
-    def __init__(self, ref: str = "screenshots/fake.png", error: Exception | None = None) -> None:
+    def __init__(
+        self, ref: str = "screenshots/fake.png", error: Exception | None = None
+    ) -> None:
         self.ref = ref
         self.error = error
         self.stored: list[bytes] = []
@@ -62,7 +64,9 @@ def _result_body(**overrides) -> str:
 
 def test_parses_browserless_response_into_detonation_result() -> None:
     poster = _RecordingPoster(200, _result_body())
-    client = BrowserlessDetonationClient(endpoint="https://bl.test/function?token=x", http_poster=poster)
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function?token=x", http_poster=poster
+    )
 
     result = client.detonate("https://scan.example/login")
 
@@ -82,7 +86,9 @@ def test_request_does_not_send_accept_application_json() -> None:
     # Browserless's Cloudflare edge 404s a POST to /function that carries
     # `Accept: application/json`; the client must send `*/*` instead.
     poster = _RecordingPoster(200, _result_body())
-    client = BrowserlessDetonationClient(endpoint="https://bl.test/function?token=x", http_poster=poster)
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function?token=x", http_poster=poster
+    )
 
     client.detonate("https://scan.example/login")
 
@@ -95,7 +101,9 @@ def test_accepts_unwrapped_result_object() -> None:
     # Some deployments return the object directly, without a "data" envelope.
     raw = json.loads(_result_body())["data"]
     poster = _RecordingPoster(200, json.dumps(raw))
-    client = BrowserlessDetonationClient(endpoint="https://bl.test/function", http_poster=poster)
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function", http_poster=poster
+    )
 
     result = client.detonate("https://scan.example/login")
     assert result.forms[0].action_host == "collector.evil.net"
@@ -103,7 +111,9 @@ def test_accepts_unwrapped_result_object() -> None:
 
 def test_non_2xx_raises_detonation_error() -> None:
     poster = _RecordingPoster(429, "rate limited")
-    client = BrowserlessDetonationClient(endpoint="https://bl.test/function", http_poster=poster)
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function", http_poster=poster
+    )
 
     with pytest.raises(HeadlessDetonationError):
         client.detonate("https://scan.example/login")
@@ -111,7 +121,9 @@ def test_non_2xx_raises_detonation_error() -> None:
 
 def test_non_json_body_raises_detonation_error() -> None:
     poster = _RecordingPoster(200, "<html>not json</html>")
-    client = BrowserlessDetonationClient(endpoint="https://bl.test/function", http_poster=poster)
+    client = BrowserlessDetonationClient(
+        endpoint="https://bl.test/function", http_poster=poster
+    )
 
     with pytest.raises(HeadlessDetonationError):
         client.detonate("https://scan.example/login")

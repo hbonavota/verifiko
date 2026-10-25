@@ -147,7 +147,7 @@ def _send_pinned_request(
                 headers={key: value for key, value in response.getheaders()},
                 body=response_body,
             )
-        except (http.client.HTTPException, socket.timeout, OSError, ssl.SSLError) as exc:
+        except (TimeoutError, http.client.HTTPException, OSError, ssl.SSLError) as exc:
             last_error = exc
         finally:
             connection.close()

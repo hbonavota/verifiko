@@ -1,7 +1,8 @@
-from dataclasses import dataclass
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 from time import time
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

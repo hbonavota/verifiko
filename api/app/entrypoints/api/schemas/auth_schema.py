@@ -2,7 +2,6 @@ import re
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
 EMAIL_PATTERN = re.compile(
     r"^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+$",
     re.IGNORECASE,

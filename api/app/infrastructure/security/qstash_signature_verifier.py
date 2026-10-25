@@ -54,7 +54,9 @@ class QStashSignatureVerifier:
         *,
         leeway_seconds: int = 60,
     ) -> None:
-        self._keys = tuple(key for key in (current_signing_key, next_signing_key) if key)
+        self._keys = tuple(
+            key for key in (current_signing_key, next_signing_key) if key
+        )
         self._leeway_seconds = leeway_seconds
 
     def verify(

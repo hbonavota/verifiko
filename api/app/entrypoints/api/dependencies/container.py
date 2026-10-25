@@ -2,16 +2,27 @@ import logging
 from functools import lru_cache
 from urllib.parse import parse_qs, urlsplit
 
+from app.application.ports.api_key_token_service import ApiKeyTokenServicePort
 from app.application.ports.auth_token_service import AuthTokenServicePort
+from app.application.ports.domain_age_lookup import DomainAgeLookupPort
 from app.application.ports.google_identity_verifier import GoogleIdentityVerifierPort
+from app.application.ports.headless_detonation import HeadlessDetonationPort
+from app.application.ports.infrastructure_lookup import InfrastructureLookupPort
 from app.application.ports.password_hasher import PasswordHasherPort
-from app.application.services.quota_status_service import QuotaStatusService
-from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
-from app.domain.services.user_quota_policy import UserQuotaPolicy
-from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.ports.reputation_lookup import ReputationLookupPort
+from app.application.ports.screenshot_store import ScreenshotStorePort
+from app.application.ports.verification_job_dispatcher import VerificationJobDispatcher
+from app.application.services.behavioral_signal_analyzer import BehavioralSignalAnalyzer
+from app.application.services.domain_recency_signal_analyzer import (
+    DomainRecencySignalAnalyzer,
+)
+from app.application.services.html_credential_signal_analyzer import (
+    HtmlCredentialSignalAnalyzer,
+)
 from app.application.services.infrastructure_signal_analyzer import (
     InfrastructureSignalAnalyzer,
 )
+from app.application.services.quota_status_service import QuotaStatusService
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
 from app.application.services.resolved_destination_signal_analyzer import (
@@ -21,78 +32,108 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
-from app.application.ports.api_key_token_service import ApiKeyTokenServicePort
-from app.application.ports.domain_age_lookup import DomainAgeLookupPort
-from app.application.ports.infrastructure_lookup import InfrastructureLookupPort
-from app.application.ports.reputation_lookup import ReputationLookupPort
-from app.application.use_cases.authenticate_with_api_key import AuthenticateWithApiKeyUseCase
+from app.application.services.verification_scan_processor import (
+    VerificationScanProcessor,
+)
+from app.application.use_cases.authenticate_with_api_key import (
+    AuthenticateWithApiKeyUseCase,
+)
 from app.application.use_cases.authenticate_with_email_password import (
     AuthenticateWithEmailPasswordUseCase,
 )
-from app.application.use_cases.authenticate_with_google import AuthenticateWithGoogleUseCase
-from app.application.services.behavioral_signal_analyzer import BehavioralSignalAnalyzer
-from app.application.ports.headless_detonation import HeadlessDetonationPort
-from app.application.services.verification_scan_processor import VerificationScanProcessor
-from app.domain.services.detonation_policy import DetonationPolicy
-from app.application.ports.screenshot_store import ScreenshotStorePort
-from app.infrastructure.detonation.browserless_detonation_client import (
-    BrowserlessDetonationClient,
-    NullHeadlessDetonation,
-    build_urllib_detonation_poster,
-)
-from app.infrastructure.storage.screenshot_store import (
-    NullScreenshotStore,
-    R2ScreenshotStore,
-    build_r2_s3_client,
+from app.application.use_cases.authenticate_with_google import (
+    AuthenticateWithGoogleUseCase,
 )
 from app.application.use_cases.authenticate_with_magic_link import (
     AuthenticateWithMagicLinkUseCase,
 )
 from app.application.use_cases.create_api_key import CreateApiKeyUseCase
-from app.application.use_cases.request_magic_link import RequestMagicLinkUseCase
+from app.application.use_cases.create_url_verification import (
+    CreateURLVerificationUseCase,
+)
+from app.application.use_cases.get_owned_verification_result import (
+    GetOwnedVerificationResultUseCase,
+)
+from app.application.use_cases.get_verification_result import (
+    GetVerificationResultUseCase,
+)
 from app.application.use_cases.get_verification_scan import GetVerificationScanUseCase
 from app.application.use_cases.list_api_keys import ListApiKeysUseCase
-from app.application.use_cases.revoke_api_key import RevokeApiKeyUseCase
-from app.application.use_cases.submit_verification_scan import SubmitVerificationScanUseCase
-from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
-from app.application.use_cases.get_verification_result import GetVerificationResultUseCase
-from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
+from app.application.use_cases.list_owned_verifications import (
+    ListOwnedVerificationsUseCase,
+)
 from app.application.use_cases.list_verifications import ListVerificationsUseCase
-from app.application.use_cases.list_owned_verifications import ListOwnedVerificationsUseCase
 from app.application.use_cases.register_with_email_password import (
     RegisterWithEmailPasswordUseCase,
 )
-from app.infrastructure.external_services.google.google_tokeninfo_identity_verifier import (
-    GoogleTokeninfoIdentityVerifier,
+from app.application.use_cases.request_magic_link import RequestMagicLinkUseCase
+from app.application.use_cases.revoke_api_key import RevokeApiKeyUseCase
+from app.application.use_cases.submit_verification_scan import (
+    SubmitVerificationScanUseCase,
 )
-from app.infrastructure.persistence.repositories.sqlalchemy_magic_link_store import (
-    SqlAlchemyMagicLinkStore,
+from app.domain.services.detonation_policy import DetonationPolicy
+from app.domain.services.risk_scoring_engine import RiskScoringEngine
+from app.domain.services.user_quota_policy import UserQuotaPolicy
+from app.infrastructure.cache.caching_domain_age_lookup import CachingDomainAgeLookup
+from app.infrastructure.cache.caching_infrastructure_lookup import (
+    CachingInfrastructureLookup,
+)
+from app.infrastructure.cache.caching_reputation_lookup import CachingReputationLookup
+from app.infrastructure.cache.json_redis_cache import JsonRedisCache
+from app.infrastructure.config.settings import get_settings
+from app.infrastructure.detonation.browserless_detonation_client import (
+    BrowserlessDetonationClient,
+    NullHeadlessDetonation,
+    build_urllib_detonation_poster,
 )
 from app.infrastructure.email.logging_email_sender import LoggingEmailSender
 from app.infrastructure.email.resend_email_sender import (
     ResendEmailSender,
     build_urllib_email_poster,
 )
-from app.application.ports.verification_job_dispatcher import VerificationJobDispatcher
+from app.infrastructure.external_services.blacklist.urlhaus_reputation_client import (
+    UrlhausReputationClient,
+)
+from app.infrastructure.external_services.dns.socket_infrastructure_lookup import (
+    SocketInfrastructureLookup,
+)
+from app.infrastructure.external_services.domain_age.rdap_domain_age_lookup import (
+    RdapDomainAgeLookup,
+)
+from app.infrastructure.external_services.google.google_tokeninfo_identity_verifier import (
+    GoogleTokeninfoIdentityVerifier,
+)
+from app.infrastructure.external_services.html.simple_html_fetcher import (
+    SimpleHtmlFetcher,
+)
+from app.infrastructure.external_services.outbound_target_guard import (
+    assert_safe_outbound_url,
+)
+from app.infrastructure.external_services.redirects.http_redirect_resolver import (
+    HttpRedirectResolver,
+)
+from app.infrastructure.external_services.tls.tls_client import SocketTlsValidator
+from app.infrastructure.ids.id_generator import UUIDVerificationIdGenerator
 from app.infrastructure.jobs.scan_dispatchers import (
     QStashVerificationJobDispatcher,
     ThreadPoolVerificationJobDispatcher,
     build_urllib_qstash_poster,
 )
-from app.infrastructure.security.qstash_signature_verifier import (
-    QStashSignatureVerifier,
+from app.infrastructure.persistence.database import get_session_factory
+from app.infrastructure.persistence.repositories.sqlalchemy_api_key_repository import (
+    SQLAlchemyApiKeyRepository,
 )
-from app.infrastructure.webhooks.http_scan_webhook_notifier import (
-    HttpScanWebhookNotifier,
-    build_pinned_webhook_poster,
+from app.infrastructure.persistence.repositories.sqlalchemy_magic_link_store import (
+    SqlAlchemyMagicLinkStore,
 )
-from app.domain.services.risk_scoring_engine import RiskScoringEngine
-from app.infrastructure.cache.caching_domain_age_lookup import CachingDomainAgeLookup
-from app.infrastructure.cache.caching_infrastructure_lookup import CachingInfrastructureLookup
-from app.infrastructure.cache.caching_reputation_lookup import CachingReputationLookup
-from app.infrastructure.cache.json_redis_cache import JsonRedisCache
-from app.infrastructure.external_services.blacklist.urlhaus_reputation_client import (
-    UrlhausReputationClient,
+from app.infrastructure.persistence.repositories.sqlalchemy_user_repository import (
+    SQLAlchemyUserRepository,
+)
+from app.infrastructure.persistence.repositories.sqlalchemy_verification_job_store import (
+    SqlAlchemyVerificationJobStore,
+)
+from app.infrastructure.persistence.repositories.sqlalchemy_verification_repository import (
+    SQLAlchemyVerificationRepository,
 )
 from app.infrastructure.reputation.aggregating_reputation_lookup import (
     AggregatingReputationLookup,
@@ -105,44 +146,33 @@ from app.infrastructure.reputation.openphish_reputation_client import (
     build_openphish_feed_fetcher,
 )
 from app.infrastructure.resilience.circuit_breaker import CircuitBreaker
-from app.infrastructure.external_services.domain_age.rdap_domain_age_lookup import RdapDomainAgeLookup
-from app.infrastructure.external_services.dns.socket_infrastructure_lookup import (
-    SocketInfrastructureLookup,
-)
-from app.infrastructure.external_services.html.simple_html_fetcher import SimpleHtmlFetcher
-from app.infrastructure.external_services.outbound_target_guard import assert_safe_outbound_url
-from app.infrastructure.external_services.redirects.http_redirect_resolver import (
-    HttpRedirectResolver,
-)
-from app.infrastructure.external_services.tls.tls_client import SocketTlsValidator
-from app.infrastructure.ids.id_generator import UUIDVerificationIdGenerator
-from app.infrastructure.config.settings import get_settings
-from app.infrastructure.persistence.database import get_session_factory
-from app.infrastructure.persistence.repositories.sqlalchemy_verification_repository import (
-    SQLAlchemyVerificationRepository,
-)
-from app.infrastructure.persistence.repositories.sqlalchemy_api_key_repository import (
-    SQLAlchemyApiKeyRepository,
-)
-from app.infrastructure.persistence.repositories.sqlalchemy_verification_job_store import (
-    SqlAlchemyVerificationJobStore,
-)
-from app.infrastructure.persistence.repositories.sqlalchemy_user_repository import (
-    SQLAlchemyUserRepository,
-)
 from app.infrastructure.security.argon2_password_hasher import Argon2PasswordHasher
-from app.infrastructure.security.sha256_api_key_token_service import Sha256ApiKeyTokenService
 from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
+from app.infrastructure.security.qstash_signature_verifier import (
+    QStashSignatureVerifier,
+)
 from app.infrastructure.security.redis_client import build_redis_client
 from app.infrastructure.security.redis_fixed_window_rate_limiter import (
     RedisFixedWindowRateLimiter,
+)
+from app.infrastructure.security.sha256_api_key_token_service import (
+    Sha256ApiKeyTokenService,
 )
 from app.infrastructure.security.signed_auth_token_service import SignedAuthTokenService
 from app.infrastructure.security.sqlalchemy_utc_day_quota_limiter import (
     SqlAlchemyAuthenticatedUtcDayQuotaLimiter,
     SqlAlchemyUtcDayQuotaLimiter,
 )
+from app.infrastructure.storage.screenshot_store import (
+    NullScreenshotStore,
+    R2ScreenshotStore,
+    build_r2_s3_client,
+)
 from app.infrastructure.time.system_time_provider import SystemTimeProvider
+from app.infrastructure.webhooks.http_scan_webhook_notifier import (
+    HttpScanWebhookNotifier,
+    build_pinned_webhook_poster,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -303,7 +333,9 @@ def get_infrastructure_lookup() -> InfrastructureLookupPort:
 
 @lru_cache(maxsize=1)
 def get_infrastructure_signal_analyzer() -> InfrastructureSignalAnalyzer:
-    return InfrastructureSignalAnalyzer(infrastructure_lookup=get_infrastructure_lookup())
+    return InfrastructureSignalAnalyzer(
+        infrastructure_lookup=get_infrastructure_lookup()
+    )
 
 
 @lru_cache(maxsize=1)
@@ -365,7 +397,9 @@ def get_user_quota_policy() -> UserQuotaPolicy:
 
 
 @lru_cache(maxsize=1)
-def get_authenticated_verification_rate_limiter() -> SqlAlchemyAuthenticatedUtcDayQuotaLimiter:
+def get_authenticated_verification_rate_limiter() -> (
+    SqlAlchemyAuthenticatedUtcDayQuotaLimiter
+):
     # Postgres-backed per-user daily quota (see the anonymous limiter above).
     return SqlAlchemyAuthenticatedUtcDayQuotaLimiter(
         session_factory=get_session_factory(),
@@ -625,7 +659,9 @@ def get_register_with_email_password_use_case() -> RegisterWithEmailPasswordUseC
     )
 
 
-def get_authenticate_with_email_password_use_case() -> AuthenticateWithEmailPasswordUseCase:
+def get_authenticate_with_email_password_use_case() -> (
+    AuthenticateWithEmailPasswordUseCase
+):
     return AuthenticateWithEmailPasswordUseCase(
         user_repository=get_user_repository(),
         password_hasher=get_password_hasher(),

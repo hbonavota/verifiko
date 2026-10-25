@@ -43,7 +43,9 @@ class SocketInfrastructureLookup(InfrastructureLookupPort):
             )
 
         if not resolved_addresses:
-            raise InfrastructureLookupError("DNS resolution returned no usable addresses.")
+            raise InfrastructureLookupError(
+                "DNS resolution returned no usable addresses."
+            )
 
         return InfrastructureProfile(
             queried_host=resolution.hostname,

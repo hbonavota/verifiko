@@ -16,12 +16,12 @@ def _typosquat_signals(url: str):
 @pytest.mark.parametrize(
     "url",
     [
-        "https://paypa1.com/login",       # l -> 1 leetspeak
-        "https://g00gle.com/",            # o -> 0 (twice)
+        "https://paypa1.com/login",  # l -> 1 leetspeak
+        "https://g00gle.com/",  # o -> 0 (twice)
         "https://micr0soft.com/account",  # o -> 0
-        "https://amazn.com/",             # single deletion
-        "https://netfllix.com/",          # single insertion
-        "https://faceb00k.com/login",     # o -> 0 (twice)
+        "https://amazn.com/",  # single deletion
+        "https://netfllix.com/",  # single insertion
+        "https://faceb00k.com/login",  # o -> 0 (twice)
     ],
 )
 def test_flags_brand_look_alike_domains(url: str) -> None:
@@ -33,11 +33,11 @@ def test_flags_brand_look_alike_domains(url: str) -> None:
 @pytest.mark.parametrize(
     "url",
     [
-        "https://paypal.com/login",       # the real brand, exact
-        "https://www.google.com/",        # official brand host
-        "https://example.com/login",      # unrelated
-        "https://github.com/",            # unrelated legitimate
-        "https://apple.com/",             # exact brand token, not a typo
+        "https://paypal.com/login",  # the real brand, exact
+        "https://www.google.com/",  # official brand host
+        "https://example.com/login",  # unrelated
+        "https://github.com/",  # unrelated legitimate
+        "https://apple.com/",  # exact brand token, not a typo
     ],
 )
 def test_does_not_flag_legitimate_or_unrelated_domains(url: str) -> None:
@@ -59,4 +59,8 @@ def test_lone_typosquat_escalates_to_at_least_suspicious() -> None:
     analyzer = DeterministicUrlSignalAnalyzer()
     signals = analyzer.analyze(NormalizedUrl.from_raw("https://g00gle.com/"))
     assessment = RiskScoringEngine().calculate(signals, calculation_version="test")
-    assert assessment.risk_level in {RiskLevel.MEDIUM, RiskLevel.HIGH, RiskLevel.CRITICAL}
+    assert assessment.risk_level in {
+        RiskLevel.MEDIUM,
+        RiskLevel.HIGH,
+        RiskLevel.CRITICAL,
+    }

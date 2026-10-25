@@ -1,21 +1,32 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 
-from app.application.commands.create_verification_command import CreateVerificationCommand
-from app.application.queries.get_owned_verification_query import GetOwnedVerificationQuery
+from app.application.commands.create_verification_command import (
+    CreateVerificationCommand,
+)
+from app.application.ports.screenshot_store import ScreenshotStorePort
+from app.application.queries.get_owned_verification_query import (
+    GetOwnedVerificationQuery,
+)
 from app.application.services.message_resolver import resolve_message
 from app.application.services.quota_status_service import QuotaStatusService
-from app.application.use_cases.create_url_verification import CreateURLVerificationUseCase
-from app.application.use_cases.get_owned_verification_result import GetOwnedVerificationResultUseCase
+from app.application.use_cases.create_url_verification import (
+    CreateURLVerificationUseCase,
+)
+from app.application.use_cases.get_owned_verification_result import (
+    GetOwnedVerificationResultUseCase,
+)
 from app.domain.entities.user import User
-from app.entrypoints.api.client_ip import resolve_client_ip
-from app.entrypoints.api.dependencies.auth import get_current_user, get_optional_current_user
-from app.application.ports.screenshot_store import ScreenshotStorePort
 from app.domain.ports.verification_job_store import VerificationJobStore
+from app.entrypoints.api.client_ip import resolve_client_ip
+from app.entrypoints.api.dependencies.auth import (
+    get_current_user,
+    get_optional_current_user,
+)
 from app.entrypoints.api.dependencies.container import (
     get_authenticated_verification_rate_limiter,
+    get_create_url_verification_use_case,
     get_create_verification_burst_rate_limiter,
     get_create_verification_rate_limiter,
-    get_create_url_verification_use_case,
     get_get_owned_verification_result_use_case,
     get_quota_status_service,
     get_screenshot_store,
@@ -23,30 +34,36 @@ from app.entrypoints.api.dependencies.container import (
 )
 from app.entrypoints.api.locale import select_response_locale
 from app.entrypoints.api.presenters.verification_presenter import VerificationPresenter
+from app.entrypoints.api.schemas.quota_schema import QuotaStatusResponse
 from app.entrypoints.api.schemas.verification_schema import (
     CreateVerificationRequest,
     VerificationResponse,
 )
-from app.entrypoints.api.schemas.quota_schema import QuotaStatusResponse
 from app.infrastructure.config.settings import get_settings
-from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 from app.infrastructure.security.authenticated_utc_day_quota_limiter import (
     AuthenticatedUtcDayQuotaLimiter,
 )
+from app.infrastructure.security.fixed_window_rate_limiter import FixedWindowRateLimiter
 from app.infrastructure.security.utc_day_quota_limiter import UtcDayQuotaLimiter
 
 router = APIRouter(prefix="/verifications", tags=["verifications"])
 
 
-@router.post("", response_model=VerificationResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=VerificationResponse, status_code=status.HTTP_201_CREATED
+)
 def create_verification(
     request: Request,
     response: Response,
     payload: CreateVerificationRequest,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User | None = Depends(get_optional_current_user),
-    use_case: CreateURLVerificationUseCase = Depends(get_create_url_verification_use_case),
-    burst_rate_limiter: FixedWindowRateLimiter = Depends(get_create_verification_burst_rate_limiter),
+    use_case: CreateURLVerificationUseCase = Depends(
+        get_create_url_verification_use_case
+    ),
+    burst_rate_limiter: FixedWindowRateLimiter = Depends(
+        get_create_verification_burst_rate_limiter
+    ),
     rate_limiter: UtcDayQuotaLimiter = Depends(get_create_verification_rate_limiter),
     authenticated_rate_limiter: AuthenticatedUtcDayQuotaLimiter = Depends(
         get_authenticated_verification_rate_limiter
@@ -173,7 +190,9 @@ def get_verification(
     verification_id: str,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
-    use_case: GetOwnedVerificationResultUseCase = Depends(get_get_owned_verification_result_use_case),
+    use_case: GetOwnedVerificationResultUseCase = Depends(
+        get_get_owned_verification_result_use_case
+    ),
     job_store: VerificationJobStore = Depends(get_verification_job_store),
     screenshot_store: ScreenshotStorePort = Depends(get_screenshot_store),
 ) -> VerificationResponse:
@@ -195,6 +214,7 @@ def get_verification(
     return VerificationPresenter.to_response(
         result, locale=locale, screenshot_url=screenshot_url
     )
+
 
 def _rate_limit_headers(quota_status) -> dict[str, str]:
     return {

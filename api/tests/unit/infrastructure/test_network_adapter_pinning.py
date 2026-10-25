@@ -1,4 +1,3 @@
-import socket
 
 import pytest
 
@@ -6,7 +5,9 @@ from app.application.ports.redirect_resolver import RedirectResolutionError
 from app.infrastructure.external_services.dns.socket_infrastructure_lookup import (
     SocketInfrastructureLookup,
 )
-from app.infrastructure.external_services.html.simple_html_fetcher import SimpleHtmlFetcher
+from app.infrastructure.external_services.html.simple_html_fetcher import (
+    SimpleHtmlFetcher,
+)
 from app.infrastructure.external_services.outbound_target_guard import (
     SafeOutboundResolution,
     UnsafeOutboundTargetError,
@@ -22,7 +23,9 @@ def test_html_fetcher_keeps_normal_external_targets_working(monkeypatch) -> None
 
     monkeypatch.setattr(
         "app.infrastructure.external_services.html.simple_html_fetcher.send_pinned_get_request",
-        lambda url, headers, timeout_seconds, read_body, max_bytes: observed_headers.append(headers)
+        lambda url, headers, timeout_seconds, read_body, max_bytes: observed_headers.append(
+            headers
+        )
         or type(
             "Response",
             (),
@@ -52,7 +55,9 @@ def test_html_fetcher_allows_per_request_user_agent_override(monkeypatch) -> Non
 
     monkeypatch.setattr(
         "app.infrastructure.external_services.html.simple_html_fetcher.send_pinned_get_request",
-        lambda url, headers, timeout_seconds, read_body, max_bytes: observed_headers.append(headers)
+        lambda url, headers, timeout_seconds, read_body, max_bytes: observed_headers.append(
+            headers
+        )
         or type(
             "Response",
             (),
@@ -154,7 +159,8 @@ def test_tls_validator_connects_to_validated_ip_not_hostname(monkeypatch) -> Non
     )
     monkeypatch.setattr(
         "app.infrastructure.external_services.tls.tls_client.socket.create_connection",
-        lambda destination, timeout: observed_destinations.append(destination) or _FakeSocket(),
+        lambda destination, timeout: observed_destinations.append(destination)
+        or _FakeSocket(),
     )
     monkeypatch.setattr(
         "app.infrastructure.external_services.tls.tls_client.ssl.create_default_context",
@@ -168,7 +174,9 @@ def test_tls_validator_connects_to_validated_ip_not_hostname(monkeypatch) -> Non
     assert observed_server_hostnames == ["safe.example"]
 
 
-def test_infrastructure_lookup_reuses_validated_addresses_without_second_resolution(monkeypatch) -> None:
+def test_infrastructure_lookup_reuses_validated_addresses_without_second_resolution(
+    monkeypatch,
+) -> None:
     reverse_queries: list[str] = []
 
     monkeypatch.setattr(
@@ -181,7 +189,9 @@ def test_infrastructure_lookup_reuses_validated_addresses_without_second_resolut
     )
 
     def fail_getaddrinfo(*args, **kwargs):
-        raise AssertionError("lookup should not re-resolve hostnames after safety validation")
+        raise AssertionError(
+            "lookup should not re-resolve hostnames after safety validation"
+        )
 
     monkeypatch.setattr(
         "app.infrastructure.external_services.dns.socket_infrastructure_lookup.socket.getaddrinfo",
@@ -192,7 +202,9 @@ def test_infrastructure_lookup_reuses_validated_addresses_without_second_resolut
         lambda ip: reverse_queries.append(ip) or (f"ptr-{ip}.example", [], []),
     )
 
-    profile = SocketInfrastructureLookup(max_reverse_lookups=2).lookup("safe.example", 443)
+    profile = SocketInfrastructureLookup(max_reverse_lookups=2).lookup(
+        "safe.example", 443
+    )
 
     assert profile.queried_host == "safe.example"
     assert tuple(address.ip_address for address in profile.resolved_addresses) == (

@@ -1,13 +1,18 @@
+import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
-import logging
-from typing import Any, Callable
+from typing import Any
 
 from app.domain.entities.user import User
 from app.domain.services.user_quota_policy import UserQuotaPolicy
 from app.infrastructure.security.utc_day_quota_math import (
     as_utc as _as_utc,
+)
+from app.infrastructure.security.utc_day_quota_math import (
     seconds_until_next_midnight as _seconds_until_next_midnight,
+)
+from app.infrastructure.security.utc_day_quota_math import (
     status_for_used as _status_for_used,
 )
 from app.infrastructure.security.utc_day_quota_status import UtcDayQuotaStatus
@@ -45,7 +50,9 @@ class RedisUtcDayQuotaLimiter:
         used_today = _used_today_or_zero(
             self.redis_client, _redis_key(self.key_prefix, now.date(), key)
         )
-        return _status_for_used(used_today=used_today, daily_limit=self.daily_limit, now=now)
+        return _status_for_used(
+            used_today=used_today, daily_limit=self.daily_limit, now=now
+        )
 
     def reset(self) -> None:
         _reset_matching_keys(self.redis_client, f"{self.key_prefix}:*")
@@ -69,7 +76,9 @@ class RedisAuthenticatedUtcDayQuotaLimiter:
                 reset_in_seconds=_seconds_until_next_midnight(now),
             )
         except Exception as exc:  # noqa: BLE001 - fail open on Redis outage/quota
-            logger.warning("Authenticated quota limiter unavailable; failing open: %s", exc)
+            logger.warning(
+                "Authenticated quota limiter unavailable; failing open: %s", exc
+            )
             return None
         if not allowed:
             return _status_for_used(

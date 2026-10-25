@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -37,7 +37,9 @@ class OpenPhishReputationClient(ReputationLookupPort):
     confidence: float = 95.0
     provider_name: str = "openphish.com"
     time_source: Callable[[], float] = time.monotonic
-    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+    _lock: threading.Lock = field(
+        default_factory=threading.Lock, init=False, repr=False
+    )
     _hosts: frozenset[str] | None = field(default=None, init=False, repr=False)
     _loaded_at: float | None = field(default=None, init=False, repr=False)
 
@@ -98,7 +100,9 @@ def build_openphish_feed_fetcher(
     """Returns a fetcher that downloads the OpenPhish feed over HTTPS."""
 
     def _fetch() -> str:
-        request = Request(feed_url, headers={"User-Agent": "Verifiko/1.0"}, method="GET")
+        request = Request(
+            feed_url, headers={"User-Agent": "Verifiko/1.0"}, method="GET"
+        )
         try:
             with urlopen(request, timeout=timeout_seconds) as response:
                 return response.read().decode("utf-8", errors="replace")

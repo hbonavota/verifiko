@@ -1,25 +1,40 @@
 import hashlib
 import html
-import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
-from dataclasses import dataclass, field
-from dataclasses import replace
+import re
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field, replace
 from itertools import combinations
-from typing import Callable, TypeVar
+from typing import TypeVar
 
-from app.application.commands.create_verification_command import CreateVerificationCommand
+from app.application.commands.create_verification_command import (
+    CreateVerificationCommand,
+)
 from app.application.dto.verification_dto import VerificationDTO
 from app.application.mappers.verification_mapper import VerificationMapper
 from app.application.ports.headless_detonation import HeadlessDetonationPort
-from app.application.ports.html_fetcher import FetchedHtmlDocument, HtmlFetchError, HtmlFetcherPort
-from app.application.services.analysis_trace_builder import AnalysisTraceBuilder
+from app.application.ports.html_fetcher import (
+    FetchedHtmlDocument,
+    HtmlFetcherPort,
+    HtmlFetchError,
+)
 from app.application.services.analysis_result import SignalAnalysisResult
+from app.application.services.analysis_trace_builder import AnalysisTraceBuilder
 from app.application.services.behavioral_signal_analyzer import BehavioralSignalAnalyzer
-from app.application.services.domain_recency_signal_analyzer import DomainRecencySignalAnalyzer
-from app.application.services.html_credential_signal_analyzer import HtmlCredentialSignalAnalyzer
+from app.application.services.domain_recency_signal_analyzer import (
+    DomainRecencySignalAnalyzer,
+)
+from app.application.services.html_credential_signal_analyzer import (
+    HtmlCredentialSignalAnalyzer,
+)
 from app.application.services.infrastructure_signal_analyzer import (
     InfrastructureSignalAnalyzer,
+)
+from app.application.services.message_resolver import (
+    build_localized_signal,
+    evidence_ref,
+    resolve_message,
 )
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
@@ -30,28 +45,31 @@ from app.application.services.transport_security_signal_analyzer import (
     TransportSecuritySignalAnalyzer,
 )
 from app.application.services.url_signal_analyzer import DeterministicUrlSignalAnalyzer
-from app.application.services.message_resolver import (
-    build_localized_signal,
-    evidence_ref,
-    resolve_message,
-)
 from app.domain.entities.analysis_signal import AnalysisSignal
 from app.domain.entities.analysis_trace_stage import AnalysisTraceStage
 from app.domain.entities.risk_assessment import RiskAssessment
 from app.domain.entities.verification import Verification
 from app.domain.enums.risk_level import RiskLevel
-from app.domain.value_objects.normalized_url import NormalizedUrl
 from app.domain.enums.signal_severity import SignalSeverity
 from app.domain.enums.signal_type import SignalType
 from app.domain.exceptions.domain_exception import DomainException
 from app.domain.ports.id_generator import IdGeneratorPort
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.services.detonation_policy import DetonationPolicy
-from app.domain.services.risk_scoring_engine import risk_level_for_score, verdict_for_level
-from app.domain.services.scoring_policies import BASE_SIGNAL_WEIGHTS, SIGNAL_CATEGORY_MAP
+from app.domain.services.risk_scoring_engine import (
+    risk_level_for_score,
+    verdict_for_level,
+)
+from app.domain.services.scoring_policies import (
+    BASE_SIGNAL_WEIGHTS,
+    SIGNAL_CATEGORY_MAP,
+)
 from app.domain.services.scoring_service import ScoringService
 from app.domain.value_objects.confidence_score import ConfidenceScore
-from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
+from app.domain.value_objects.normalized_url import NormalizedUrl
+from app.infrastructure.external_services.outbound_target_guard import (
+    UnsafeOutboundTargetError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +102,10 @@ _LOGIN_SURFACE_SIGNAL_TYPES = {
 }
 _LOW_INFORMATION_SIGNAL_TYPES = {SignalType.LOW_INFORMATION_PAGE}
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-_HTML_SCRIPT_STYLE_RE = re.compile(r"<(?:script|style|noscript)\b[^>]*>.*?</(?:script|style|noscript)>", re.IGNORECASE | re.DOTALL)
+_HTML_SCRIPT_STYLE_RE = re.compile(
+    r"<(?:script|style|noscript)\b[^>]*>.*?</(?:script|style|noscript)>",
+    re.IGNORECASE | re.DOTALL,
+)
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _HTML_TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9:/._-]*")
 _UUID_TOKEN_RE = re.compile(
@@ -92,7 +113,10 @@ _UUID_TOKEN_RE = re.compile(
     re.IGNORECASE,
 )
 _HEX_TOKEN_RE = re.compile(r"^[0-9a-f]{16,}$", re.IGNORECASE)
-_ISO_DATE_TOKEN_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(?:t\d{2}:\d{2}(?::\d{2})?(?:z|[+-]\d{2}:?\d{2})?)?$", re.IGNORECASE)
+_ISO_DATE_TOKEN_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}(?:t\d{2}:\d{2}(?::\d{2})?(?:z|[+-]\d{2}:?\d{2})?)?$",
+    re.IGNORECASE,
+)
 _EPOCH_TOKEN_RE = re.compile(r"^\d{10,13}$")
 
 
@@ -200,7 +224,9 @@ class CreateURLVerificationUseCase:
         # expensive network-bound waves entirely — a human analyst would not keep
         # digging once a domain is an obvious brand look-alike or lure. This is
         # the cost/latency gate the deeper (headless) stages will build on.
-        if self.fast_path_enabled and self._url_only_verdict_is_decisive(detected_signals):
+        if self.fast_path_enabled and self._url_only_verdict_is_decisive(
+            detected_signals
+        ):
             analysis_trace.append(
                 self._build_trace_stage(
                     stage="fast_path_short_circuit",
@@ -210,8 +236,8 @@ class CreateURLVerificationUseCase:
                 )
             )
         else:
-            network_signals, network_warnings, network_stages = self._run_network_analysis(
-                verification, normalized_input
+            network_signals, network_warnings, network_stages = (
+                self._run_network_analysis(verification, normalized_input)
             )
             detected_signals.extend(network_signals)
             analysis_warnings.extend(network_warnings)
@@ -270,7 +296,9 @@ class CreateURLVerificationUseCase:
 
         verification.redact_sensitive_input()
         saved = self.repository.save(verification)
-        return VerificationMapper.to_dto(saved, trace=trace, screenshot_ref=screenshot_ref)
+        return VerificationMapper.to_dto(
+            saved, trace=trace, screenshot_ref=screenshot_ref
+        )
 
     def _url_only_verdict_is_decisive(self, url_signals: list[AnalysisSignal]) -> bool:
         """True when the URL-only signals already justify a malicious verdict.
@@ -321,7 +349,9 @@ class CreateURLVerificationUseCase:
             result = self.headless_detonation.detonate(
                 verification.normalized_input.normalized
             )
-        except Exception:  # noqa: BLE001 - fail open; a browser error never fails the scan
+        except (
+            Exception
+        ):  # noqa: BLE001 - fail open; a browser error never fails the scan
             logger.warning(
                 "Headless detonation failed; continuing with the static verdict.",
                 exc_info=True,
@@ -506,7 +536,9 @@ class CreateURLVerificationUseCase:
                     canonical_text=canonical_text,
                     token_set=frozenset(_canonical_tokens(canonical_text)),
                     token_count=len(canonical_text.split()),
-                    content_hash=hashlib.sha256(canonical_text.encode("utf-8")).hexdigest(),
+                    content_hash=hashlib.sha256(
+                        canonical_text.encode("utf-8")
+                    ).hexdigest(),
                 )
             )
 
@@ -563,7 +595,9 @@ class CreateURLVerificationUseCase:
         adjusted_verdict = risk_assessment.verdict
         html_coverage_degraded = _has_html_coverage_warning(degrading_warnings)
         redirect_coverage_degraded = _has_redirect_coverage_warning(degrading_warnings)
-        contextual_coverage_degraded = _has_contextual_coverage_warning(degrading_warnings)
+        contextual_coverage_degraded = _has_contextual_coverage_warning(
+            degrading_warnings
+        )
         source_url_suspicion = _has_meaningful_source_url_suspicion(
             signals,
             source=self.signal_analyzer.source,
@@ -689,17 +723,23 @@ def _has_html_coverage_warning(warnings: tuple[str, ...]) -> bool:
 
 
 def _degrading_analysis_warnings(warnings: tuple[str, ...]) -> tuple[str, ...]:
-    non_degrading = {resolve_message(key) for key in _NON_DEGRADING_ANALYSIS_WARNING_KEYS}
+    non_degrading = {
+        resolve_message(key) for key in _NON_DEGRADING_ANALYSIS_WARNING_KEYS
+    }
     return tuple(warning for warning in warnings if warning not in non_degrading)
 
 
 def _has_redirect_coverage_warning(warnings: tuple[str, ...]) -> bool:
-    redirect_warnings = {resolve_message(key) for key in _REDIRECT_COVERAGE_WARNING_KEYS}
+    redirect_warnings = {
+        resolve_message(key) for key in _REDIRECT_COVERAGE_WARNING_KEYS
+    }
     return any(warning in redirect_warnings for warning in warnings)
 
 
 def _has_contextual_coverage_warning(warnings: tuple[str, ...]) -> bool:
-    contextual_warnings = {resolve_message(key) for key in _CONTEXTUAL_COVERAGE_WARNING_KEYS}
+    contextual_warnings = {
+        resolve_message(key) for key in _CONTEXTUAL_COVERAGE_WARNING_KEYS
+    }
     return any(warning in contextual_warnings for warning in warnings)
 
 
@@ -708,7 +748,8 @@ def _has_meaningful_source_url_suspicion(
     source: str,
 ) -> bool:
     return any(
-        signal.source == source and signal.signal_type in _REDIRECT_DEGRADED_SOURCE_SIGNAL_TYPES
+        signal.source == source
+        and signal.signal_type in _REDIRECT_DEGRADED_SOURCE_SIGNAL_TYPES
         for signal in signals
     )
 
@@ -723,7 +764,9 @@ def _refresh_risk_detected_summary(
         return summary
 
     risk_signal_count = sum(
-        1 for contribution in score_breakdown.signal_contributions if contribution.impact > 0
+        1
+        for contribution in score_breakdown.signal_contributions
+        if contribution.impact > 0
     )
     category_total_penalty = sum(original_assessment.category_breakdown.values())
     compound_penalty = sum(
@@ -783,7 +826,9 @@ def _deduplicate_analysis_signals(
 
 def _freeze_message_params(value):
     if isinstance(value, dict):
-        return tuple(sorted((key, _freeze_message_params(item)) for key, item in value.items()))
+        return tuple(
+            sorted((key, _freeze_message_params(item)) for key, item in value.items())
+        )
     if isinstance(value, (list, tuple)):
         return tuple(_freeze_message_params(item) for item in value)
     return value
@@ -802,10 +847,9 @@ def _build_content_variation_signal(
         candidate = _evaluate_content_variation_pair(left, right)
         if candidate is None:
             continue
-        if (
-            best_candidate is None
-            or _variation_candidate_sort_key(candidate) > _variation_candidate_sort_key(best_candidate)
-        ):
+        if best_candidate is None or _variation_candidate_sort_key(
+            candidate
+        ) > _variation_candidate_sort_key(best_candidate):
             best_candidate = candidate
 
     if best_candidate is None:
@@ -904,7 +948,11 @@ def _evaluate_content_variation_pair(
 
     shorter_length = max(1, min(left.token_count, right.token_count))
     length_ratio = max(left.token_count, right.token_count) / shorter_length
-    if max(left.token_count, right.token_count) >= 25 and length_ratio >= 2.5 and similarity <= 0.35:
+    if (
+        max(left.token_count, right.token_count) >= 25
+        and length_ratio >= 2.5
+        and similarity <= 0.35
+    ):
         return _ContentVariationCandidate(
             severity=SignalSeverity.MEDIUM,
             confidence=79,
@@ -914,7 +962,9 @@ def _evaluate_content_variation_pair(
     return None
 
 
-def _variation_candidate_sort_key(candidate: _ContentVariationCandidate) -> tuple[int, int]:
+def _variation_candidate_sort_key(
+    candidate: _ContentVariationCandidate,
+) -> tuple[int, int]:
     severity_rank = {
         SignalSeverity.MEDIUM: 1,
         SignalSeverity.HIGH: 2,

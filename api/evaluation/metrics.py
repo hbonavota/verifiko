@@ -52,7 +52,9 @@ class ConfusionMatrix:
 
     @property
     def false_positive_rate(self) -> float:
-        return _safe_ratio(self.false_positive, self.true_negative + self.false_positive)
+        return _safe_ratio(
+            self.false_positive, self.true_negative + self.false_positive
+        )
 
     @property
     def f1(self) -> float:

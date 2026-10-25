@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Callable
+from collections.abc import Callable
 
 
 class CircuitOpenError(Exception):
@@ -64,6 +64,9 @@ class CircuitBreaker:
     def record_failure(self) -> None:
         with self._lock:
             self._failure_count += 1
-            if self._state == self._HALF_OPEN or self._failure_count >= self._failure_threshold:
+            if (
+                self._state == self._HALF_OPEN
+                or self._failure_count >= self._failure_threshold
+            ):
                 self._state = self._OPEN
                 self._opened_at = self._time_source()

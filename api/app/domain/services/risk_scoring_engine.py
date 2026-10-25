@@ -13,14 +13,14 @@ from app.domain.services.compound_rules import (
     CredentialExfiltrationRule,
     CredentialLurePatternRule,
     DeceptiveBrandSubdomainRule,
-    EvidenceLightCleanResultRule,
     EmailFraudStagingPatternRule,
+    EvidenceLightCleanResultRule,
     InfrastructureBackedCredentialLureRule,
     LowInformationLandingPageRule,
-    RedirectedLowInformationDestinationRule,
     RedirectedCredentialLureRule,
-    ReputableDomainSupportRule,
     RedirectedDeceptionPatternRule,
+    RedirectedLowInformationDestinationRule,
+    ReputableDomainSupportRule,
     ShortenedCredentialLureRule,
     ShortenedRedirectedLureRule,
     detected_types,
@@ -69,7 +69,9 @@ class RiskScoringEngine(ScoringService):
             ReputableDomainSupportRule(),
         ]
 
-    def calculate(self, signals: list[AnalysisSignal], calculation_version: str) -> RiskAssessment:
+    def calculate(
+        self, signals: list[AnalysisSignal], calculation_version: str
+    ) -> RiskAssessment:
         active_signals = [signal for signal in signals if signal.detected]
         if _is_terminal_blacklist(active_signals):
             final_score = ConfidenceScore(0)
@@ -101,7 +103,9 @@ class RiskScoringEngine(ScoringService):
                 informational_signals.append(signal)
                 continue
             key = signal.category.value
-            raw_category_penalties[key] = raw_category_penalties.get(key, 0.0) + signal_penalty
+            raw_category_penalties[key] = (
+                raw_category_penalties.get(key, 0.0) + signal_penalty
+            )
 
         capped_category_penalties = {
             category.value: min(raw_category_penalties.get(category.value, 0.0), cap)
@@ -111,7 +115,9 @@ class RiskScoringEngine(ScoringService):
         category_total_penalty = sum(capped_category_penalties.values())
         compound_penalty, triggered_rules = self._compound_penalty(active_signals)
 
-        final_score_value = max(0.0, min(100.0, 100 - category_total_penalty - compound_penalty))
+        final_score_value = max(
+            0.0, min(100.0, 100 - category_total_penalty - compound_penalty)
+        )
         final_score = ConfidenceScore(final_score_value)
 
         risk_level = risk_level_for_score(final_score.value)
@@ -127,9 +133,13 @@ class RiskScoringEngine(ScoringService):
             },
         )
         dominant_signal = _select_dominant_summary_signal(active_signals)
-        top_signal_titles = _top_signal_titles_from_penalties(signal_penalties, max_items=3)
+        top_signal_titles = _top_signal_titles_from_penalties(
+            signal_penalties, max_items=3
+        )
         if not top_signal_titles and informational_signals:
-            top_signal_titles = tuple(signal.title for signal in informational_signals[:3])
+            top_signal_titles = tuple(
+                signal.title for signal in informational_signals[:3]
+            )
         if dominant_signal is not None and risk_level is not RiskLevel.SAFE:
             summary = resolve_message(
                 "summary.primary_concern",
@@ -155,7 +165,9 @@ class RiskScoringEngine(ScoringService):
                 "summary.supporting_trust_context",
                 {
                     "summary": summary,
-                    "trust_context": ", ".join(signal.title for signal in informational_signals[:2]),
+                    "trust_context": ", ".join(
+                        signal.title for signal in informational_signals[:2]
+                    ),
                 },
             )
 
@@ -177,7 +189,9 @@ class RiskScoringEngine(ScoringService):
             ),
         )
 
-    def _compound_penalty(self, signals: list[AnalysisSignal]) -> tuple[float, list[str]]:
+    def _compound_penalty(
+        self, signals: list[AnalysisSignal]
+    ) -> tuple[float, list[str]]:
         types = detected_types(signals)
         total = 0.0
         triggered: list[str] = []
@@ -195,7 +209,9 @@ def _signal_penalty(signal: AnalysisSignal) -> float:
     return signal.base_weight * multiplier * signal.confidence.as_ratio
 
 
-def _select_dominant_summary_signal(signals: list[AnalysisSignal]) -> AnalysisSignal | None:
+def _select_dominant_summary_signal(
+    signals: list[AnalysisSignal],
+) -> AnalysisSignal | None:
     eligible = [
         signal
         for signal in signals
@@ -235,12 +251,15 @@ def verdict_for_level(risk_level: RiskLevel) -> VerdictType:
 
 def _is_terminal_blacklist(signals: list[AnalysisSignal]) -> bool:
     return any(
-        signal.signal_type is SignalType.BLACKLIST_MATCH and signal.confidence.as_ratio >= 0.98
+        signal.signal_type is SignalType.BLACKLIST_MATCH
+        and signal.confidence.as_ratio >= 0.98
         for signal in signals
     )
 
 
-def _top_signal_titles(signals: list[AnalysisSignal], max_items: int = 5) -> tuple[str, ...]:
+def _top_signal_titles(
+    signals: list[AnalysisSignal], max_items: int = 5
+) -> tuple[str, ...]:
     sorted_signals = sorted(signals, key=_signal_penalty, reverse=True)
     return tuple(signal.title for signal in sorted_signals[:max_items])
 

@@ -13,9 +13,10 @@ def test_generate_produces_live_prefixed_secret_with_matching_hash() -> None:
 
     assert generated.plaintext.startswith(API_KEY_LIVE_PREFIX)
     assert generated.token_prefix == generated.plaintext[:16]
-    assert generated.token_hash == hashlib.sha256(
-        generated.plaintext.encode("utf-8")
-    ).hexdigest()
+    assert (
+        generated.token_hash
+        == hashlib.sha256(generated.plaintext.encode("utf-8")).hexdigest()
+    )
 
 
 def test_generate_is_unique_per_call() -> None:

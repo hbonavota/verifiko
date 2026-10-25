@@ -1,28 +1,41 @@
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
+import app.entrypoints.api.dependencies.container as container
 from app.application.ports.infrastructure_lookup import (
     InfrastructureLookupPort,
     InfrastructureProfile,
     ResolvedAddress,
 )
-from app.application.ports.redirect_resolver import RedirectResolution, RedirectResolverPort
+from app.application.ports.redirect_resolver import (
+    RedirectResolution,
+    RedirectResolverPort,
+)
 from app.application.ports.reputation_lookup import ReputationLookupPort
-from app.application.services.infrastructure_signal_analyzer import InfrastructureSignalAnalyzer
+from app.application.services.infrastructure_signal_analyzer import (
+    InfrastructureSignalAnalyzer,
+)
 from app.application.services.redirect_signal_analyzer import RedirectSignalAnalyzer
 from app.application.services.reputation_signal_analyzer import ReputationSignalAnalyzer
-import app.entrypoints.api.dependencies.container as container
 from app.entrypoints.api.dependencies.container import (
     get_user_repository,
     get_verification_repository,
 )
 from app.entrypoints.api.main import app
-from app.infrastructure.external_services.outbound_target_guard import UnsafeOutboundTargetError
-from app.infrastructure.jobs.scan_dispatchers import SynchronousVerificationJobDispatcher
-from app.infrastructure.persistence.database import drop_db, get_engine, get_session_factory
+from app.infrastructure.external_services.outbound_target_guard import (
+    UnsafeOutboundTargetError,
+)
+from app.infrastructure.jobs.scan_dispatchers import (
+    SynchronousVerificationJobDispatcher,
+)
+from app.infrastructure.persistence.database import (
+    drop_db,
+    get_engine,
+    get_session_factory,
+)
 from tests.integration.alembic_helpers import upgrade_to_head
 
 
@@ -111,16 +124,24 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setattr(
         container,
         "get_infrastructure_signal_analyzer",
-        lambda: InfrastructureSignalAnalyzer(infrastructure_lookup=NoopInfrastructureLookup()),
+        lambda: InfrastructureSignalAnalyzer(
+            infrastructure_lookup=NoopInfrastructureLookup()
+        ),
     )
-    monkeypatch.setattr(container, "assert_safe_outbound_url", _test_public_target_validator)
-    monkeypatch.setattr(container, "get_scan_webhook_notifier", lambda: _NoopWebhookNotifier())
+    monkeypatch.setattr(
+        container, "assert_safe_outbound_url", _test_public_target_validator
+    )
+    monkeypatch.setattr(
+        container, "get_scan_webhook_notifier", lambda: _NoopWebhookNotifier()
+    )
     # Deterministic: process the scan inline so a poll immediately after submit
     # observes the completed result.
     monkeypatch.setattr(
         container,
         "get_verification_scan_dispatcher",
-        lambda: SynchronousVerificationJobDispatcher(container.get_verification_scan_processor()),
+        lambda: SynchronousVerificationJobDispatcher(
+            container.get_verification_scan_processor()
+        ),
     )
 
     upgrade_to_head(database_url)
@@ -149,7 +170,9 @@ def _register(client: TestClient, email: str = "dev@example.com") -> dict[str, s
 def test_submit_returns_202_and_poll_reaches_completed(client: TestClient) -> None:
     headers = _register(client)
 
-    submitted = client.post("/api/v1/scans", json={"url": "https://example.org"}, headers=headers)
+    submitted = client.post(
+        "/api/v1/scans", json={"url": "https://example.org"}, headers=headers
+    )
     assert submitted.status_code == 202
     body = submitted.json()
     assert body["status"] == "queued"
@@ -169,11 +192,15 @@ def test_scan_consumes_daily_quota(client: TestClient) -> None:
     # otherwise the counter never moves for signed-in users.
     headers = _register(client)
 
-    first = client.post("/api/v1/scans", json={"url": "https://example.org"}, headers=headers)
+    first = client.post(
+        "/api/v1/scans", json={"url": "https://example.org"}, headers=headers
+    )
     assert first.status_code == 202
     remaining_after_first = int(first.headers["X-RateLimit-Remaining"])
 
-    second = client.post("/api/v1/scans", json={"url": "https://example.org"}, headers=headers)
+    second = client.post(
+        "/api/v1/scans", json={"url": "https://example.org"}, headers=headers
+    )
     assert second.status_code == 202
     remaining_after_second = int(second.headers["X-RateLimit-Remaining"])
 
@@ -211,7 +238,10 @@ def test_scan_is_owner_scoped(client: TestClient) -> None:
 
 
 def test_scan_endpoints_require_authentication(client: TestClient) -> None:
-    assert client.post("/api/v1/scans", json={"url": "https://example.org"}).status_code == 401
+    assert (
+        client.post("/api/v1/scans", json={"url": "https://example.org"}).status_code
+        == 401
+    )
     assert client.get("/api/v1/scans/anything").status_code == 401
 
 

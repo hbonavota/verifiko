@@ -11,7 +11,9 @@ from app.infrastructure.external_services.outbound_target_guard import (
     UnsafeOutboundTargetError,
     resolve_safe_outbound_url,
 )
-from app.infrastructure.external_services.pinned_http_client import send_pinned_get_request
+from app.infrastructure.external_services.pinned_http_client import (
+    send_pinned_get_request,
+)
 
 
 @dataclass(slots=True)
@@ -68,4 +70,6 @@ class HttpRedirectResolver(RedirectResolverPort):
         except (TimeoutError, OSError) as exc:
             raise RedirectResolutionError(str(exc)) from exc
 
-        raise RedirectResolutionError("Redirect chain exceeded the configured hop limit.")
+        raise RedirectResolutionError(
+            "Redirect chain exceeded the configured hop limit."
+        )

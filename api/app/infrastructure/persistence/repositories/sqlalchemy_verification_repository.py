@@ -8,7 +8,9 @@ from app.domain.enums.verification_status import VerificationStatus
 from app.domain.ports.verification_repository import VerificationRepository
 from app.domain.value_objects.user_id import UserId
 from app.domain.value_objects.verification_id import VerificationId
-from app.infrastructure.persistence.mappers.verification_model_mapper import VerificationModelMapper
+from app.infrastructure.persistence.mappers.verification_model_mapper import (
+    VerificationModelMapper,
+)
 from app.infrastructure.persistence.models.base_model import VerificationModel
 
 
@@ -115,7 +117,9 @@ class SQLAlchemyVerificationRepository(VerificationRepository):
             return [VerificationModelMapper.to_domain(model) for model in models]
 
     @staticmethod
-    def _get_model(session, verification_id: VerificationId) -> VerificationModel | None:
+    def _get_model(
+        session, verification_id: VerificationId
+    ) -> VerificationModel | None:
         statement = (
             select(VerificationModel)
             .options(
